@@ -1,62 +1,68 @@
-# Considerar produção agendada automaticamente
+## Objetivo
 
-## Problema
+Transformar o card **Produção Agendada** numa visão diária com validação de insumos sequencial, confirmação em massa e exportação PDF, sem sair do bloco existente.
 
-Hoje os cards **Estoque Disponível** e **Sugestão de Produção** só somam a produção agendada quando o switch "Incluir prod. agendada" está ligado. Por padrão ele vem desligado, então depois de agendar uma produção, a sugestão não diminui.
+## Mudanças por arquivo
 
-Comportamento desejado: quando o usuário agenda uma produção (registro `status = 'Registrado'` em `historico_producao`), o estoque disponível final e a sugestão devem refletir isso automaticamente, abatendo as quantidades agendadas.
+### 1. `src/hooks/useProducaoAgendada.ts`
+- Além de `produtosAgrupados`, expor também `registros` brutos (com `data_producao`, `turno`, `produto_id`, `produto_nome`, `formas_producidas`, `unidades_previstas`).
+- Adicionar `diasAgendados`: agrupamento por `data_producao` ordenado **da data mais próxima de hoje em diante** (hoje → futuro; passado fica no fim ou é omitido — por padrão exibimos hoje+futuro).
+  Cada item: `{ data, dataFormatada, registros[], totalFormas, totalUnidades, registroIds[] }`.
 
-## Causa
+### 2. Novo hook: `src/hooks/useValidacaoInsumosProducaoAgendada.ts`
+Responsável por calcular, para cada dia agendado, se há insumos suficientes considerando o **consumo acumulado dos dias anteriores** (lógica sequencial).
 
-Em `ProjecaoProducaoTab.tsx`:
+Algoritmo:
+1. Recebe `diasAgendados` (ordenados do mais próximo ao mais distante).
+2. Para cada dia, percorre seus registros e, usando `useSupabaseReceitas` + `useRendimentosReceitaProduto`, calcula a necessidade de insumos por `formas_producidas` (`receita.itens` × formas, ou via rendimento).
+3. Mantém um mapa `estoqueRestantePorInsumo` inicializado com `insumo.estoque_atual` de `useSupabaseInsumos`.
+4. Para cada dia em ordem cronológica:
+   - Soma a necessidade de cada insumo do dia.
+   - Para cada insumo: se `necessidadeDia > estoqueRestante[insumo]`, marca o insumo como **faltante para esse dia** (registra `faltante` e `quantidadeFaltante`).
+   - Se houver pelo menos um insumo faltante → status do dia = `vermelho`; senão `verde`.
+   - Subtrai a necessidade do estoque restante (mesmo se faltou, subtrai até zerar) antes de processar o próximo dia — assim um insumo escasso compartilhado naturalmente vai gerar vermelho nos dias seguintes.
+5. Retorna `Map<data, { status: 'ok'|'faltante', insumosFaltantes: [{nome, unidade, necessario, disponivel, faltante}] }>`.
 
-```ts
-const [incluirProducaoAgendada, setIncluirProducaoAgendada] = useState(false);
+### 3. `src/components/pcp/ProducaoAgendadaCard.tsx` (refatorar)
+Layout dentro do collapsible expandido (substituindo a lista plana por produto):
 
-const estoqueAjustado = useMemo(() => {
-  return produtosEstoque.map(p => {
-    const extra = incluirProducaoAgendada ? (mapaPorProduto[p.produto_id] || 0) : 0;
-    return { ..., estoque_disponivel: p.estoque_disponivel + extra };
-  });
-}, [...]);
-```
+- **Header de ações** (apenas visível quando há produções):
+  - `Confirmar tudo` (verde) — só habilita dias com badge verde.
+  - `Exportar PDF`.
+- **Cards diários** estilo enxuto (referência da imagem 2):
+  ```
+  ▶ Quinta-Feira, 07/05/2026         [✓ Insumos OK]   22 Formas | 48 Unid.
+    2 registro(s)
+  ```
+  - Borda esquerda colorida: verde (`border-l-green-500`) ou vermelho (`border-l-red-500`).
+  - Badge ao lado do título: `Insumos OK` (verde) ou `Faltam: Nutella, Chocolate…` (vermelho, com tooltip listando quantidades faltantes).
+  - Header clicável colapsa/expande.
+- **Conteúdo expandido (compacto)**: tabela enxuta — Produto | Formas | Unidades | Status, sem ações de editar/deletar (mantém o card pequeno; edição continua na aba Histórico).
+- Botão de **confirmar em massa por dia** dentro do header expandido (verde) — desabilitado se o dia estiver vermelho. Confirma todos os `registros` daquele dia chamando `confirmarProducao(id)` em loop (reutiliza `useConfirmacaoProducao`).
+- Manter o bloco de Total de Unidades Agendadas no topo do card.
+- Manter o botão **Nova Produção** já existente.
 
-E em `EstoqueDisponivel.tsx` o ajuste só acontece se `incluirProducaoAgendada === true`.
+### 4. Exportação PDF
+Criar util `src/utils/exportProducaoAgendadaPDF.ts` usando `jspdf` + `jspdf-autotable` (já disponíveis no projeto, ou instalar se necessário). Conteúdo:
+- Cabeçalho: "Planejamento de Produção Agendada — gerado em DD/MM/AAAA".
+- Para cada dia: título com data, total Formas/Unidades, status de insumos (e lista de faltantes se houver).
+- Tabela: Produto | Formas | Unidades.
+- Ao final, resumo: total geral de formas/unidades e lista consolidada de insumos faltantes.
 
-## Mudanças
+### 5. `ProjecaoProducaoTab.tsx`
+- Passar `diasAgendados` e o resultado de `useValidacaoInsumosProducaoAgendada` para `ProducaoAgendadaCard`.
+- Após confirmar em massa, chamar `recarregarProducaoAgendada()`.
 
-### 1. `ProjecaoProducaoTab.tsx`
-- Mudar o default de `incluirProducaoAgendada` para **`true`**.
-- Calcular `estoqueAjustado` sempre somando `mapaPorProduto`, independentemente do switch (o switch passa a apenas controlar o rótulo/visualização do card de Estoque Disponível, mas a Sugestão sempre considera).
-- Passar `estoqueAjustado` (já com produção agendada somada) para `SugestaoProducao` — isso já é feito; basta garantir que o cálculo seja sempre aplicado.
+## Comportamento esperado (exemplos)
 
-### 2. `EstoqueDisponivel.tsx`
-- Manter o switch como controle apenas visual (mostrar/ocultar quanto da produção agendada já está embutido), porém o estado padrão fica ligado.
-- Alternativa mais simples e clara: **remover o switch** e sempre exibir o estoque disponível considerando produção agendada, ajustando o texto da `CardDescription` para "Saldo atual + produção agendada − expedição".
+- Produção hoje (Nutella 5kg necessária, estoque 5kg) + amanhã (Nutella 3kg necessária):
+  - Hoje: verde (OK). Estoque restante de Nutella = 0.
+  - Amanhã: vermelho — falta 3kg de Nutella.
+- Insumo comum (Chocolate) insuficiente para os dois dias:
+  - Hoje: consome o que tem; se ainda assim faltar para hoje → vermelho hoje.
+  - Amanhã: vermelho (faltando o restante).
+- Se hoje cabe inteiro mas amanhã não cabe pelo restante → hoje verde, amanhã vermelho. (Conforme exemplo do usuário.)
 
-Vou pela alternativa simples (remover o switch), porque o comportamento "sem produção agendada" deixa de fazer sentido para o fluxo do usuário descrito.
-
-### 3. `SugestaoProducao.tsx`
-- Nenhuma mudança de lógica: ele já consome `estoqueDisponivel` recebido como prop. Como o pai sempre soma a produção agendada, a sugestão vai cair automaticamente após o agendamento.
-
-### 4. Recarregamento
-Já existe `recarregarProducaoAgendada` sendo chamado:
-- após salvar nova produção via modal (`handleSalvarProducao`)
-- após agendar em massa (`onAgendamentoCriado` no `SugestaoProducao`)
-
-Vai garantir que `mapaPorProduto` se atualize e os cards recalculem imediatamente.
-
-## Detalhe técnico de exibição
-
-No card "Estoque Disponível", nos detalhes por produto, mostrar a composição na linha de subtítulo:
-
-```
-Saldo: X | Separado: Y | Agendado: Z | Necessário: W
-```
-
-Assim o usuário entende de onde vem o número final.
-
-## Arquivos editados
-
-- `src/components/pcp/ProjecaoProducaoTab.tsx` — default `true`, sempre aplicar produção agendada no `estoqueAjustado`, remover prop de controle do switch.
-- `src/components/pcp/EstoqueDisponivel.tsx` — remover switch "Incluir prod. agendada", sempre considerar `producaoAgendada`, atualizar descrição e linha de detalhe por produto para mostrar "Agendado: Z".
+## Pontos não cobertos (manter como estão)
+- Edição/exclusão de registros continua via aba Histórico de Produção.
+- Validação de insumos individual ao confirmar (já existe em `confirmarProducao`) é mantida — a validação visual nova é apenas preventiva/planejamento.
