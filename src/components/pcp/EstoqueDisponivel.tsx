@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Package, Loader2, ChevronDown, ChevronUp, RefreshCw, AlertCircle, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
 import { useConfigStore } from "@/hooks/useConfigStore";
+import { useMediaVendasSemanais } from "@/hooks/useMediaVendasSemanais";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 interface EstoqueDisponivelProps {
@@ -24,6 +25,7 @@ export default function EstoqueDisponivel({
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
   const { configuracoesProducao } = useConfigStore();
   const pctAlerta = Number((configuracoesProducao as any)?.estoqueAlertaCriticoPercentual ?? 30);
+  const { mediaVendasPorProduto } = useMediaVendasSemanais();
   const {
     produtos,
     loading,
@@ -55,14 +57,37 @@ export default function EstoqueDisponivel({
   const totalDisponivelAjustado = useMemo(() => {
     return produtosAjustados.reduce((sum, p) => sum + p.estoque_disponivel, 0);
   }, [produtosAjustados]);
-  const totalIdeal = useMemo(() => {
-    return produtosAjustados.reduce((sum, p) => sum + (Number(p.estoque_ideal) || 0), 0);
-  }, [produtosAjustados]);
+  // Alvo semanal calculado a partir do Setup PCP (mesma lógica do SetupPCPTab).
+  // Fallback: soma dos estoque_ideal cadastrados nos produtos.
+  const alvoSemanal = useMemo(() => {
+    const cfg: any = configuracoesProducao || {};
+    const modo: "fixo" | "percentual" | "cobertura" = cfg.estoqueAlvoModo ?? "cobertura";
+    const mediaTotal = Object.values(mediaVendasPorProduto).reduce(
+      (sum: number, v) => sum + (Number(v) || 0),
+      0
+    );
+    let calculado = 0;
+    if (modo === "fixo") {
+      const fixos: Record<string, number> = cfg.estoqueAlvoFixoPorProduto || {};
+      calculado = Object.values(fixos).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    } else if (modo === "percentual") {
+      const pct = Number(cfg.estoqueAlvoPercentual ?? 20);
+      calculado = Math.round((mediaTotal * pct) / 100);
+    } else {
+      const dias = Number(cfg.estoqueAlvoCoberturaDias ?? cfg.coberturaAlvoDias ?? 3);
+      calculado = Math.round((mediaTotal * dias) / 7);
+    }
+    if (calculado > 0) return calculado;
+    return produtosAjustados.reduce(
+      (sum, p) => sum + (Number(p.estoque_ideal) || 0),
+      0
+    );
+  }, [configuracoesProducao, mediaVendasPorProduto, produtosAjustados]);
 
   // Cor condicional: vermelho < 0, laranja entre 0 e X% do alvo, amarelo abaixo do alvo, azul ≥ alvo
-  const limiteAlerta = totalIdeal * (pctAlerta / 100);
+  const limiteAlerta = alvoSemanal * (pctAlerta / 100);
   const emAlerta =
-    totalIdeal > 0 &&
+    alvoSemanal > 0 &&
     totalDisponivelAjustado >= 0 &&
     totalDisponivelAjustado < limiteAlerta;
   const blockClass =
@@ -70,7 +95,7 @@ export default function EstoqueDisponivel({
       ? "bg-red-500/10 dark:bg-red-500/20 border-red-500/30"
       : emAlerta
       ? "bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/30"
-      : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
+      : alvoSemanal > 0 && totalDisponivelAjustado < alvoSemanal
       ? "bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/30"
       : "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30";
   const totalTextClass =
@@ -78,9 +103,18 @@ export default function EstoqueDisponivel({
       ? "text-red-600 dark:text-red-400"
       : emAlerta
       ? "text-orange-600 dark:text-orange-400"
-      : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
+      : alvoSemanal > 0 && totalDisponivelAjustado < alvoSemanal
       ? "text-yellow-700 dark:text-yellow-400"
       : "text-blue-600 dark:text-blue-400";
+
+  // Resumo de status por produto (sempre visível, mesmo com detalhes colapsados)
+  const resumoStatus = useMemo(() => {
+    const r = { critico: 0, baixo: 0, adequado: 0, excesso: 0 };
+    for (const p of produtosAjustados) {
+      r[p.status] = (r[p.status] || 0) + 1;
+    }
+    return r;
+  }, [produtosAjustados]);
   const produtosComPrevisao = useMemo(() => {
     const comPrevisao = produtosAjustados.filter(p => p.quantidade_necessaria > 0);
     return comPrevisao.sort((a, b) => {
@@ -183,7 +217,7 @@ export default function EstoqueDisponivel({
                 <div className="flex items-center justify-center gap-1.5 mt-2 text-orange-700 dark:text-orange-400 text-xs font-medium">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   <span>
-                    Estoque abaixo de {pctAlerta}% do alvo ({totalIdeal})
+                    Estoque abaixo de {pctAlerta}% do alvo ({alvoSemanal})
                   </span>
                 </div>
               )}
@@ -198,6 +232,28 @@ export default function EstoqueDisponivel({
                     {totalNecessario} necessários
                   </Badge>}
               </div>
+              {(resumoStatus.critico > 0 || resumoStatus.baixo > 0 || resumoStatus.excesso > 0) && (
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                  {resumoStatus.critico > 0 && (
+                    <Badge variant="outline" className="text-xs border bg-red-600 text-white border-red-600">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {resumoStatus.critico} crítico{resumoStatus.critico > 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                  {resumoStatus.baixo > 0 && (
+                    <Badge variant="outline" className="text-xs border bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">
+                      <TrendingDown className="h-3 w-3 mr-1" />
+                      {resumoStatus.baixo} baixo{resumoStatus.baixo > 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                  {resumoStatus.excesso > 0 && (
+                    <Badge variant="outline" className="text-xs border bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      {resumoStatus.excesso} em excesso
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Produtos Individuais - Collapsible */}
