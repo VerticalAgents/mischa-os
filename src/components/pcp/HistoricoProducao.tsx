@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Edit, Trash2, Calendar, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
 import { HistoricoProducaoModal } from './HistoricoProducaoModal';
+import ProducoesAtrasadasCard from './ProducoesAtrasadasCard';
 import { ConfirmacaoProducaoButton } from './ConfirmacaoProducaoButton';
 import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -168,6 +169,7 @@ export default function HistoricoProducao() {
 
   return (
     <div className="space-y-6">
+      <ProducoesAtrasadasCard onChange={carregarHistorico} />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
