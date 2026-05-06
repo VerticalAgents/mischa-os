@@ -11,6 +11,7 @@ interface Representante {
   cpf?: string;
   ativo: boolean;
   gestaoclick_funcionario_id?: string;
+  cor?: string;
 }
 
 interface UseSupabaseRepresentantesReturn {
