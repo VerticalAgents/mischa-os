@@ -162,7 +162,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   const [rotaFiltro, setRotaFiltro] = useState<number[]>([]);
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
-  const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
+  const [modoGraficos, setModoGraficos] = useState<'status' | 'representantes'>('status');
   const [filtroNome, setFiltroNome] = useState<string>('');
   const [incluirPrevistos, setIncluirPrevistos] = useState(repMode);
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
@@ -1092,7 +1092,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Agendamentos por Dia da Semana</CardTitle>
             <CardDescription className="text-left text-xs md:text-sm">
-              {modoGraficos === 'unidades' ? 'Volume de unidades ao longo da semana' : 'Distribuição dos agendamentos ao longo da semana'}
+              {'Volume de unidades ao longo da semana'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1110,10 +1110,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                           <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
                             <p className="font-semibold text-sm mb-2">{data.diaSemana} ({label})</p>
                             
-                            {(modoGraficos === 'unidades' ? data.previstosUnidades : data.previstos) > 0 && (
+                            {data.previstosUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-amber-600">
-                                  Previstos: {modoGraficos === 'unidades' ? data.previstosUnidades : data.previstos}
+                                  Previstos: {data.previstosUnidades}
                                 </p>
                                 {data.clientesPrevistos?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1128,10 +1128,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {(modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis) > 0 && (
+                            {data.provaveisUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-purple-600">
-                                  Previstos Prováveis: {modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis}
+                                  Previstos Prováveis: {data.provaveisUnidades}
                                 </p>
                                 {data.clientesProvaveis?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1146,10 +1146,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {(modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados) > 0 && (
+                            {data.confirmadosUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-green-600">
-                                  Confirmados: {modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados}
+                                  Confirmados: {data.confirmadosUnidades}
                                 </p>
                                 {data.clientesConfirmados?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1164,10 +1164,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {(modoGraficos === 'unidades' ? data.realizadasUnidades : data.realizadas) > 0 && (
+                            {data.realizadasUnidades > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-blue-600">
-                                  Realizadas: {modoGraficos === 'unidades' ? data.realizadasUnidades : data.realizadas}
+                                  Realizadas: {data.realizadasUnidades}
                                 </p>
                                 {data.clientesRealizadas?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1188,25 +1188,25 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                     }}
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
+                    dataKey={'realizadasUnidades'} 
                     stackId="a" 
                     fill="#3B82F6" 
                     name="Realizadas" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'confirmadosUnidades' : 'confirmados'} 
+                    dataKey={'confirmadosUnidades'} 
                     stackId="a" 
                     fill="#10B981" 
                     name="Confirmados" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'provaveisUnidades' : 'provaveis'} 
+                    dataKey={'provaveisUnidades'} 
                     stackId="a" 
                     fill="#A855F7" 
                     name="Previstos Prováveis" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
+                    dataKey={'previstosUnidades'} 
                     stackId="a" 
                     fill="#F59E0B" 
                     name="Previstos" 
