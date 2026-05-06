@@ -207,7 +207,7 @@ export default function EntregasRealizadasSemanal({
           </div> : quantidadeTotal === 0 ? <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
             <Package className="h-4 w-4 opacity-50" />
             <p>Nenhuma entrega realizada nesta semana</p>
-          </div> : <div className="space-y-3">
+          </div> : (
             <div className="flex items-baseline justify-between gap-3 bg-green-50 dark:bg-green-950/20 px-3 py-2 md:px-4 md:py-3 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-baseline gap-1.5 min-w-0">
                 <span className="text-3xl md:text-4xl font-bold text-green-600 leading-none">{quantidadeTotal}</span>
@@ -217,29 +217,7 @@ export default function EntregasRealizadasSemanal({
                 {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
               </Badge>
             </div>
-
-            <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    {isDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent className="space-y-2 mt-3">
-                {produtosOrdenados.map(produto => <div key={produto.produto_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{produto.produto_nome}</span>
-                    </div>
-                    <Badge variant="secondary" className="text-base px-3 py-1">
-                      {produto.quantidade}
-                    </Badge>
-                  </div>)}
-              </CollapsibleContent>
-            </Collapsible>
-          </div>}
+          )}
       </CardContent>
     </Card>;
 }
