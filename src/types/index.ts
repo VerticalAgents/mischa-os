@@ -84,6 +84,7 @@ export interface Representante {
   email?: string;
   telefone?: string;
   ativo: boolean;
+  cor?: string;
 }
 
 export interface RotaEntrega {
