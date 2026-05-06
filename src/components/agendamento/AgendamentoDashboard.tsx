@@ -1024,10 +1024,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </div>
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
             { label: "Total Sem.", value: totalUnidadesSemana, color: "text-purple-600", Icon: Package },
-            { label: "Restantes", value: indicadoresSemana.totalSemana, color: "text-foreground", Icon: Calendar },
             { label: "Confirmados", value: indicadoresSemana.confirmados, color: "text-green-600", Icon: CheckCircle },
             { label: "Previstos", value: indicadoresSemana.previstos, color: "text-amber-600", Icon: Clock },
             { label: "Entregues", value: indicadoresSemana.entregasRealizadas, color: "text-blue-600", Icon: Truck },
