@@ -3,11 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Package, Loader2, ChevronDown, ChevronUp, Settings } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 
@@ -168,66 +167,49 @@ export default function QuantidadesProdutosSemanal({
   const isProvavelMode = incluirPrevistos && modoPrevistos === 'provaveis';
   return <Card className={isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}>
     <CardHeader>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
-        <div className="space-y-1.5">
+      <div className="flex flex-row items-start justify-between gap-2">
+        <div className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
             <Package className={`h-4 w-4 md:h-5 md:w-5 ${isProvavelMode ? 'text-purple-500' : 'text-blue-500'}`} />
-            Produtos Necessários
+            Projeção de Demanda
           </CardTitle>
           <CardDescription className="text-left text-xs md:text-sm">
-            Quantidades para pedidos {incluirPrevistos
-              ? (modoPrevistos === 'provaveis'
-                  ? 'confirmados + previstos prováveis'
-                  : `confirmados + ${percentualPrevistos}% previstos`)
-              : "confirmados"}
+            {incluirPrevistos ? 'Unidades confirmadas + prováveis' : 'Unidades confirmadas'}
           </CardDescription>
         </div>
         {onToggleIncluirPrevistos && (
-          <div className="flex items-center gap-2 sm:gap-3 sm:justify-end flex-wrap">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="incluir-previstos-prod" className="text-sm cursor-pointer whitespace-nowrap">
-                Incluir previstos
-              </Label>
-              <Switch
-                id="incluir-previstos-prod"
-                checked={incluirPrevistos}
-                onCheckedChange={onToggleIncluirPrevistos}
-              />
-            </div>
-            {incluirPrevistos && onChangeModoPrevistos && (
-              <RadioGroup
-                value={modoPrevistos}
-                onValueChange={(v) => onChangeModoPrevistos(v as 'provaveis' | 'percentual')}
-                className="flex items-center gap-3"
-              >
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="provaveis" id="modo-provaveis" />
-                  <Label htmlFor="modo-provaveis" className="text-xs cursor-pointer whitespace-nowrap">
-                    Apenas prováveis
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Configurar visualização">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Configurar visualização</DialogTitle>
+                <DialogDescription>Defina o padrão de cálculo da projeção de demanda.</DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center justify-between py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="cfg-incluir-provaveis" className="text-sm cursor-pointer">
+                    Incluir previstos prováveis
                   </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Soma à projeção os pedidos previstos com alta probabilidade de confirmação.
+                  </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="percentual" id="modo-percentual" />
-                  <Label htmlFor="modo-percentual" className="text-xs cursor-pointer whitespace-nowrap">
-                    Percentual
-                  </Label>
-                </div>
-              </RadioGroup>
-            )}
-            {incluirPrevistos && modoPrevistos === 'percentual' && onChangePercentualPrevistos && (
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={percentualPrevistos}
-                  onChange={(e) => onChangePercentualPrevistos(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="w-16 h-8 text-center text-sm"
+                <Switch
+                  id="cfg-incluir-provaveis"
+                  checked={incluirPrevistos}
+                  onCheckedChange={(checked) => {
+                    onToggleIncluirPrevistos(checked);
+                    try { localStorage.setItem('agendamento-incluir-provaveis-default', checked ? '1' : '0'); } catch {}
+                    if (checked && onChangeModoPrevistos) onChangeModoPrevistos('provaveis');
+                  }}
                 />
-                <span className="text-sm text-muted-foreground">%</span>
               </div>
-            )}
-          </div>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </CardHeader>
