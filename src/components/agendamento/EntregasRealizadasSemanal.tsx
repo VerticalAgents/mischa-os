@@ -187,15 +187,13 @@ export default function EntregasRealizadasSemanal({
             Produtos Entregues
           </CardTitle>
           {quantidadeSemanaAnterior > 0 && (
-            <div className="flex flex-row items-center gap-2 sm:flex-col sm:items-end sm:text-right sm:gap-0">
-              <div className="text-xs text-muted-foreground sm:mb-1">Semana anterior:</div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg font-semibold text-foreground">{quantidadeSemanaAnterior}</span>
-                <TrendingUp className="h-3 w-3 text-green-600" />
-                <span className="text-sm font-medium text-green-600">
-                  {percentualEntregue.toFixed(0)}%
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="text-xs text-muted-foreground">Sem. anterior:</span>
+              <span className="text-sm font-semibold text-foreground">{quantidadeSemanaAnterior}</span>
+              <TrendingUp className="h-3 w-3 text-green-600" />
+              <span className="text-sm font-medium text-green-600">
+                {percentualEntregue.toFixed(0)}%
+              </span>
             </div>
           )}
         </div>
