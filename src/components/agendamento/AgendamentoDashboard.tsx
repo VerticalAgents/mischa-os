@@ -131,9 +131,10 @@ const IndicadoresEntrega = ({
 
 interface AgendamentoDashboardProps {
   hideExportPDF?: boolean;
+  repMode?: boolean;
 }
 
-export default function AgendamentoDashboard({ hideExportPDF = false }: AgendamentoDashboardProps = {}) {
+export default function AgendamentoDashboard({ hideExportPDF = false, repMode = false }: AgendamentoDashboardProps = {}) {
   const { canEdit } = useEditPermission();
   const isMobile = useIsMobile();
   const {
@@ -163,7 +164,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
   const [filtroNome, setFiltroNome] = useState<string>('');
-  const [incluirPrevistos, setIncluirPrevistos] = useState(false);
+  const [incluirPrevistos, setIncluirPrevistos] = useState(repMode);
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
   const [modoPrevistos, setModoPrevistos] = useState<'provaveis' | 'percentual'>('provaveis');
 
