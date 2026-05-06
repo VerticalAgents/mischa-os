@@ -217,8 +217,7 @@ export default function QuantidadesProdutosSemanal({
           <p>
             Nenhum pedido {incluirPrevistos ? "confirmado ou previsto" : "confirmado"} nesta semana
           </p>
-        </div> : <div className="space-y-3">
-          {/* Total Geral - linha inteira */}
+        </div> : (
           <div className={`flex items-baseline justify-between gap-3 px-3 py-2 md:px-4 md:py-3 rounded-lg border ${isProvavelMode ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
             <div className="flex items-baseline gap-1.5 min-w-0">
               <span className={`text-3xl md:text-4xl font-bold leading-none ${isProvavelMode ? 'text-purple-600' : 'text-blue-600'}`}>{quantidadeTotal}</span>
@@ -228,29 +227,7 @@ export default function QuantidadesProdutosSemanal({
               {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
             </Badge>
           </div>
-
-          <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 px-2">
-                  {isDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent className="space-y-2 mt-3">
-              {produtosOrdenados.map(produto => <div key={produto.produto_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{produto.produto_nome}</span>
-                  </div>
-                  <Badge variant="secondary" className="text-base px-3 py-1">
-                    {produto.quantidade}
-                  </Badge>
-                </div>)}
-            </CollapsibleContent>
-          </Collapsible>
-        </div>}
+        )}
     </CardContent>
   </Card>;
 }
