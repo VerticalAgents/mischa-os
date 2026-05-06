@@ -162,7 +162,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   const [rotaFiltro, setRotaFiltro] = useState<number[]>([]);
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
-  const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
+  const [modoGraficos, setModoGraficos] = useState<'status' | 'representantes'>('status');
   const [filtroNome, setFiltroNome] = useState<string>('');
   const [incluirPrevistos, setIncluirPrevistos] = useState(repMode);
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
@@ -356,6 +356,36 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     
     return data;
   }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
+
+  // Dados do gráfico de pizza por representante (confirmados + previstos prováveis em unidades)
+  const dadosGraficoRepresentantes = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const palette = ["#10B981", "#A855F7", "#F59E0B", "#3B82F6", "#EF4444", "#EC4899", "#14B8A6", "#F97316", "#8B5CF6", "#22C55E"];
+    const buckets: Record<string, { unidades: number; clientes: string[] }> = {};
+    const ensure = (nome: string) => {
+      if (!buckets[nome]) buckets[nome] = { unidades: 0, clientes: [] };
+      return buckets[nome];
+    };
+    const agSemana = agendamentosFiltrados.filter(a => {
+      const d = new Date(a.dataReposicao);
+      return d >= inicioSemana && d <= fimSemana
+        && (a.statusAgendamento === "Agendado"
+          || (a.statusAgendamento === "Previsto" && (scoresSemanais.get(a.cliente.id)?.score ?? 0) > 85));
+    });
+    for (const a of agSemana) {
+      const repId = a.cliente.representanteId;
+      const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : "Sem representante";
+      const unidades = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
+      const b = ensure(nome);
+      b.unidades += unidades;
+      b.clientes.push(a.cliente.nome);
+    }
+    const entries = Object.entries(buckets)
+      .map(([status, v]) => ({ status, unidades: v.unidades, clientes: v.clientes }))
+      .sort((x, y) => y.unidades - x.unidades);
+    return entries.map((e, i) => ({ ...e, cor: palette[i % palette.length] }));
+  }, [agendamentosFiltrados, semanaAtual, scoresSemanais, representantes]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -1005,19 +1035,23 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 space-y-0">
             <div className="space-y-1">
-              <CardTitle className="text-base md:text-lg">Distribuição por Status</CardTitle>
+              <CardTitle className="text-base md:text-lg">
+                {modoGraficos === 'representantes' ? 'Unidades por Representante' : 'Distribuição por Status'}
+              </CardTitle>
               <CardDescription className="text-left text-xs md:text-sm">
-                {modoGraficos === 'unidades' ? 'Volume de unidades por status' : 'Visão geral dos agendamentos por status'}
+                {modoGraficos === 'representantes'
+                  ? 'Confirmadas + previstas prováveis por representante'
+                  : 'Volume de unidades por status'}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
               <Label htmlFor="toggle-graficos" className="text-xs text-muted-foreground">
-                {modoGraficos === 'unidades' ? 'Unidades' : 'Agendamentos'}
+                {modoGraficos === 'representantes' ? 'Representantes' : 'Status'}
               </Label>
               <Switch
                 id="toggle-graficos"
-                checked={modoGraficos === 'unidades'}
-                onCheckedChange={(checked) => setModoGraficos(checked ? 'unidades' : 'agendamentos')}
+                checked={modoGraficos === 'representantes'}
+                onCheckedChange={(checked) => setModoGraficos(checked ? 'representantes' : 'status')}
               />
               <Package className="h-4 w-4 text-muted-foreground" />
             </div>
@@ -1027,18 +1061,17 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
               <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
                   <Pie 
-                    data={dadosGraficoStatus} 
+                    data={modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus} 
                     cx="50%" 
                     cy="50%" 
                     labelLine={false} 
-                    label={isMobile ? false : ({ status, quantidade, unidades }) => 
-                      `${status}: ${modoGraficos === 'unidades' ? unidades : quantidade}`
-                    } 
+                    label={isMobile ? false : ({ status, unidades }) => `${status}: ${unidades}`} 
                     outerRadius={isMobile ? 70 : 80} 
                     fill="#8884d8" 
-                    dataKey={modoGraficos === 'unidades' ? 'unidades' : 'quantidade'}
+                    dataKey="unidades"
+                    nameKey="status"
                   >
-                    {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
+                    {(modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus).map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
                   {isMobile && (
                     <Legend
@@ -1047,8 +1080,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                       wrapperStyle={{ fontSize: '11px' }}
                       formatter={(value, entry: any) => {
                         const data = entry?.payload;
-                        const valor = modoGraficos === 'unidades' ? data?.unidades : data?.quantidade;
-                        return `${data?.status ?? value}: ${valor ?? 0}`;
+                        return `${data?.status ?? value}: ${data?.unidades ?? 0}`;
                       }}
                     />
                   )}
@@ -1059,9 +1091,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                         return (
                           <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
                             <p className="font-semibold text-sm mb-1">{data.status}</p>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              {modoGraficos === 'unidades' ? `${data.unidades} unidades` : `${data.quantidade} agendamentos`}
-                            </p>
+                            <p className="text-xs text-muted-foreground mb-2">{data.unidades} unidades</p>
                             {data.clientes && data.clientes.length > 0 && (
                               <div className="border-t pt-2">
                                 <p className="text-xs font-medium mb-1">Clientes:</p>
@@ -1092,7 +1122,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Agendamentos por Dia da Semana</CardTitle>
             <CardDescription className="text-left text-xs md:text-sm">
-              {modoGraficos === 'unidades' ? 'Volume de unidades ao longo da semana' : 'Distribuição dos agendamentos ao longo da semana'}
+              {'Volume de unidades ao longo da semana'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1110,10 +1140,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                           <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
                             <p className="font-semibold text-sm mb-2">{data.diaSemana} ({label})</p>
                             
-                            {(modoGraficos === 'unidades' ? data.previstosUnidades : data.previstos) > 0 && (
+                            {data.previstosUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-amber-600">
-                                  Previstos: {modoGraficos === 'unidades' ? data.previstosUnidades : data.previstos}
+                                  Previstos: {data.previstosUnidades}
                                 </p>
                                 {data.clientesPrevistos?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1128,10 +1158,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {(modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis) > 0 && (
+                            {data.provaveisUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-purple-600">
-                                  Previstos Prováveis: {modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis}
+                                  Previstos Prováveis: {data.provaveisUnidades}
                                 </p>
                                 {data.clientesProvaveis?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1146,10 +1176,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {(modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados) > 0 && (
+                            {data.confirmadosUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-green-600">
-                                  Confirmados: {modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados}
+                                  Confirmados: {data.confirmadosUnidades}
                                 </p>
                                 {data.clientesConfirmados?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1164,10 +1194,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {(modoGraficos === 'unidades' ? data.realizadasUnidades : data.realizadas) > 0 && (
+                            {data.realizadasUnidades > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-blue-600">
-                                  Realizadas: {modoGraficos === 'unidades' ? data.realizadasUnidades : data.realizadas}
+                                  Realizadas: {data.realizadasUnidades}
                                 </p>
                                 {data.clientesRealizadas?.length > 0 && (
                                   <ul className="text-xs text-muted-foreground">
@@ -1188,25 +1218,25 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                     }}
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
+                    dataKey={'realizadasUnidades'} 
                     stackId="a" 
                     fill="#3B82F6" 
                     name="Realizadas" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'confirmadosUnidades' : 'confirmados'} 
+                    dataKey={'confirmadosUnidades'} 
                     stackId="a" 
                     fill="#10B981" 
                     name="Confirmados" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'provaveisUnidades' : 'provaveis'} 
+                    dataKey={'provaveisUnidades'} 
                     stackId="a" 
                     fill="#A855F7" 
                     name="Previstos Prováveis" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
+                    dataKey={'previstosUnidades'} 
                     stackId="a" 
                     fill="#F59E0B" 
                     name="Previstos" 
