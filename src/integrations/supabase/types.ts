@@ -1891,6 +1891,7 @@ export type Database = {
       representantes: {
         Row: {
           ativo: boolean
+          cor: string | null
           cpf: string | null
           created_at: string
           email: string | null
@@ -1903,6 +1904,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          cor?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -1915,6 +1917,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          cor?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null

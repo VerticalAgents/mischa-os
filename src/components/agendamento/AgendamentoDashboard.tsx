@@ -382,16 +382,18 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     });
     for (const a of agSemana) {
       const repId = a.cliente.representanteId;
-      const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : "Sem representante";
+      const rep = repId ? representantes.find(r => r.id === repId) : undefined;
+      const nome = rep ? rep.nome : (repId ? `Rep #${repId}` : "Sem representante");
       const unidades = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
       const b = ensure(nome);
       b.unidades += unidades;
       b.clientes.push(a.cliente.nome);
+      (b as any).cor = rep?.cor;
     }
     const entries = Object.entries(buckets)
-      .map(([status, v]) => ({ status, unidades: v.unidades, clientes: v.clientes }))
+      .map(([status, v]) => ({ status, unidades: v.unidades, clientes: v.clientes, corCustom: (v as any).cor as string | undefined }))
       .sort((x, y) => y.unidades - x.unidades);
-    return entries.map((e, i) => ({ ...e, cor: palette[i % palette.length] }));
+    return entries.map((e, i) => ({ ...e, cor: e.corCustom || palette[i % palette.length] }));
   }, [agendamentosFiltrados, semanaAtual, scoresSemanais, representantes]);
 
   const dadosGraficoSemanal = useMemo(() => {
@@ -1101,27 +1103,25 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                   <Pie 
                     data={modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus} 
                     cx="50%" 
-                    cy="50%" 
+                    cy="45%" 
                     labelLine={false} 
-                    label={isMobile ? false : ({ status, unidades }) => `${status}: ${unidades}`} 
-                    outerRadius={isMobile ? 70 : 80} 
+                    label={false}
+                    outerRadius={isMobile ? 75 : 95} 
                     fill="#8884d8" 
                     dataKey="unidades"
                     nameKey="status"
                   >
                     {(modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus).map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
-                  {isMobile && (
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      wrapperStyle={{ fontSize: '11px' }}
-                      formatter={(value, entry: any) => {
-                        const data = entry?.payload;
-                        return `${data?.status ?? value}: ${data?.unidades ?? 0}`;
-                      }}
-                    />
-                  )}
+                  <Legend
+                    verticalAlign="bottom"
+                    height={48}
+                    wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
+                    formatter={(value, entry: any) => {
+                      const data = entry?.payload;
+                      return `${data?.status ?? value}: ${data?.unidades ?? 0}`;
+                    }}
+                  />
                   <Tooltip 
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {

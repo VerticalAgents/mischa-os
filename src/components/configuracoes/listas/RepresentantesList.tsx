@@ -34,6 +34,7 @@ interface Representante {
   telefone?: string;
   cpf?: string;
   ativo: boolean;
+  cor?: string;
 }
 
 export default function RepresentantesList() {
@@ -59,7 +60,8 @@ export default function RepresentantesList() {
     nome: "",
     email: "",
     telefone: "",
-    cpf: ""
+    cpf: "",
+    cor: "#3B82F6"
   });
 
   const handleAdd = async () => {
@@ -67,7 +69,7 @@ export default function RepresentantesList() {
     
     const success = await adicionarRepresentante(formData);
     if (success) {
-      setFormData({ nome: "", email: "", telefone: "", cpf: "" });
+      setFormData({ nome: "", email: "", telefone: "", cpf: "", cor: "#3B82F6" });
       setIsAddModalOpen(false);
     }
   };
@@ -77,7 +79,7 @@ export default function RepresentantesList() {
     
     const success = await atualizarRepresentante(editingItem.id, formData);
     if (success) {
-      setFormData({ nome: "", email: "", telefone: "", cpf: "" });
+      setFormData({ nome: "", email: "", telefone: "", cpf: "", cor: "#3B82F6" });
       setIsEditModalOpen(false);
       setEditingItem(null);
     }
@@ -95,7 +97,8 @@ export default function RepresentantesList() {
       nome: item.nome,
       email: item.email || "",
       telefone: item.telefone || "",
-      cpf: item.cpf || ""
+      cpf: item.cpf || "",
+      cor: item.cor || "#3B82F6"
     });
     setIsEditModalOpen(true);
   };
@@ -162,6 +165,24 @@ export default function RepresentantesList() {
                   placeholder="000.000.000-00"
                 />
               </div>
+              <div>
+                <Label htmlFor="cor">Cor identificadora</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="cor"
+                    type="color"
+                    value={formData.cor}
+                    onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
+                    className="h-9 w-12 rounded border border-input cursor-pointer bg-background"
+                  />
+                  <Input
+                    value={formData.cor}
+                    onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
+                    placeholder="#3B82F6"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
@@ -176,6 +197,7 @@ export default function RepresentantesList() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-12">Cor</TableHead>
             <TableHead>Nome</TableHead>
             <TableHead>CPF</TableHead>
             <TableHead>E-mail</TableHead>
@@ -188,6 +210,13 @@ export default function RepresentantesList() {
         <TableBody>
           {representantes.map((representante) => (
             <TableRow key={representante.id}>
+              <TableCell>
+                <div
+                  className="h-5 w-5 rounded border border-border"
+                  style={{ backgroundColor: representante.cor || 'hsl(var(--muted))' }}
+                  title={representante.cor || 'Sem cor definida'}
+                />
+              </TableCell>
               <TableCell className="font-medium">{representante.nome}</TableCell>
               <TableCell>{representante.cpf || "-"}</TableCell>
               <TableCell>{representante.email || "-"}</TableCell>
@@ -326,6 +355,24 @@ export default function RepresentantesList() {
                 onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
                 placeholder="000.000.000-00"
               />
+            </div>
+            <div>
+              <Label htmlFor="edit-cor">Cor identificadora</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="edit-cor"
+                  type="color"
+                  value={formData.cor}
+                  onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
+                  className="h-9 w-12 rounded border border-input cursor-pointer bg-background"
+                />
+                <Input
+                  value={formData.cor}
+                  onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
+                  placeholder="#3B82F6"
+                  className="flex-1"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
