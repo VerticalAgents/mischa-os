@@ -182,11 +182,16 @@ export default function EntregasRealizadasSemanal({
   return <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-          <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
               Produtos Entregues
             </CardTitle>
+            {totalEntregas > 0 && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300 hover:bg-green-100">
+                {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
+              </Badge>
+            )}
           </div>
           {quantidadeSemanaAnterior > 0 && (
             <div className="flex flex-row items-center gap-2 sm:flex-col sm:items-end sm:text-right sm:gap-0">
@@ -209,13 +214,11 @@ export default function EntregasRealizadasSemanal({
           </div> : quantidadeTotal === 0 ? <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
             <Package className="h-4 w-4 opacity-50" />
             <p>Nenhuma entrega realizada nesta semana</p>
-          </div> : <div className="space-y-4">
+          </div> : <div className="space-y-3">
             {/* Total Geral */}
-            <div className="flex items-baseline gap-3 bg-green-50 dark:bg-green-950/20 p-3 md:p-4 rounded-lg border border-green-200 dark:border-green-800">
-              <p className="text-3xl md:text-4xl font-bold text-green-600 leading-none">{quantidadeTotal}</p>
-              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
-              </Badge>
+            <div className="flex items-baseline gap-1.5 bg-green-50 dark:bg-green-950/20 px-3 py-2 md:px-4 md:py-3 rounded-lg border border-green-200 dark:border-green-800">
+              <span className="text-3xl md:text-4xl font-bold text-green-600 leading-none">{quantidadeTotal}</span>
+              <span className="text-base md:text-lg font-medium text-green-600/70">un.</span>
             </div>
 
             {/* Detalhes por Produto - Collapsible */}
