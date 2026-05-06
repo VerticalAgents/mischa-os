@@ -926,12 +926,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
             )}
           </div>
 
-          <RepresentantesFilter
-            selectedIds={representanteFiltro}
-            onSelectionChange={setRepresentanteFiltro}
-            className="w-full sm:w-auto"
-          />
-          
+          {!repMode && (
+            <RepresentantesFilter
+              selectedIds={representanteFiltro}
+              onSelectionChange={setRepresentanteFiltro}
+              className="w-full sm:w-auto"
+            />
+          )}
+
           <RotasFilter
             selectedIds={rotaFiltro}
             onSelectionChange={setRotaFiltro}
