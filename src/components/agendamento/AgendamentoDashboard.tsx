@@ -164,7 +164,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const [modoGraficos, setModoGraficos] = useState<'status' | 'representantes'>('status');
   const [filtroNome, setFiltroNome] = useState<string>('');
-  const [incluirPrevistos, setIncluirPrevistos] = useState(repMode);
+  const [incluirPrevistos, setIncluirPrevistos] = useState(() => {
+    if (repMode) return true;
+    try {
+      const saved = localStorage.getItem('agendamento-incluir-provaveis-default');
+      if (saved !== null) return saved === '1';
+    } catch {}
+    return true; // padrão admin: prováveis ativos
+  });
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
   const [modoPrevistos, setModoPrevistos] = useState<'provaveis' | 'percentual'>('provaveis');
 
