@@ -1106,6 +1106,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                     cy="45%" 
                     labelLine={false} 
                     label={false}
+                    innerRadius={isMobile ? 45 : 60}
                     outerRadius={isMobile ? 75 : 95} 
                     fill="#8884d8" 
                     dataKey="unidades"
