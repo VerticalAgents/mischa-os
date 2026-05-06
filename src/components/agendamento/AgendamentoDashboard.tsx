@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3 } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -926,104 +926,79 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
 
   return <div className="space-y-6">
       {/* Barra de Filtros Unificada */}
-      <div className="bg-muted/30 border rounded-lg p-3 sm:p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 text-sm font-medium text-muted-foreground flex-wrap">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Filtros
-              {(representanteFiltro.length > 0 || rotaFiltro.length > 0 || filtroNome.trim()) && (
-                <Badge variant="secondary" className="text-xs">
-                  {[representanteFiltro.length > 0, rotaFiltro.length > 0, filtroNome.trim().length > 0].filter(Boolean).length} ativo(s)
-                </Badge>
-              )}
-            </div>
-            
-            {/* Campo de busca por nome */}
-            <div className="relative w-full sm:w-auto">
+      <TooltipProvider delayDuration={200}>
+        <div className="bg-muted/30 border rounded-lg p-2 sm:p-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Busca */}
+            <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar cliente ou CNPJ..."
+                placeholder="Buscar cliente..."
                 value={filtroNome}
                 onChange={(e) => setFiltroNome(e.target.value)}
-                className="pl-8 h-9 w-full sm:w-48"
+                className="pl-8 h-9 w-44"
               />
             </div>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{agendamentosFiltrados.length}</span> agendamentos
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3">
-          {/* Navegador de Semana + botão Semana Atual */}
-          <div className="flex w-full sm:w-auto flex-col sm:flex-row sm:items-center gap-2">
-            <div className="flex w-full sm:w-auto items-center gap-1 bg-background border rounded-md px-1 min-w-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={navegarSemanaAnterior}
-                className="h-8 w-8 p-0 shrink-0"
-              >
+
+            {/* Navegador de Semana */}
+            <div className="flex items-center gap-1 bg-background border rounded-md px-1 h-9">
+              <Button variant="ghost" size="sm" onClick={navegarSemanaAnterior} className="h-7 w-7 p-0 shrink-0">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-
-              <div className="flex flex-1 sm:flex-none items-center gap-2 px-2 sm:min-w-[160px] justify-center min-w-0">
+              <div className="flex items-center gap-1.5 px-1.5 min-w-[130px] justify-center">
                 <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm font-medium whitespace-nowrap">
                   {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })}
                 </span>
               </div>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={navegarProximaSemana}
-                className="h-8 w-8 p-0 shrink-0"
-              >
+              <Button variant="ghost" size="sm" onClick={navegarProximaSemana} className="h-7 w-7 p-0 shrink-0">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
 
+            {/* Reset semana atual */}
             {!ehSemanaAtual && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={voltarSemanaAtual}
-                className="text-xs h-8 shrink-0 w-full sm:w-auto"
-              >
-                Ver semana atual
-              </Button>
+              <TooltipUI>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={voltarSemanaAtual} className="h-9 w-9">
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Voltar para semana atual</TooltipContent>
+              </TooltipUI>
             )}
-          </div>
 
-          {!repMode && (
-            <RepresentantesFilter
-              selectedIds={representanteFiltro}
-              onSelectionChange={setRepresentanteFiltro}
-              className="w-full sm:w-auto"
+            {!repMode && (
+              <RepresentantesFilter
+                selectedIds={representanteFiltro}
+                onSelectionChange={setRepresentanteFiltro}
+                compact
+              />
+            )}
+
+            <RotasFilter
+              selectedIds={rotaFiltro}
+              onSelectionChange={setRotaFiltro}
+              compact
             />
-          )}
 
-          <RotasFilter
-            selectedIds={rotaFiltro}
-            onSelectionChange={setRotaFiltro}
-            className="w-full sm:w-auto"
-          />
-          
-          {!hideExportPDF && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportarPDFRepresentante}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
-            >
-              <FileDown className="h-4 w-4" />
-              Exportar PDF
-            </Button>
-          )}
+            {!hideExportPDF && (
+              <TooltipUI>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={exportarPDFRepresentante} className="h-9 w-9">
+                    <FileDown className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Exportar PDF</TooltipContent>
+              </TooltipUI>
+            )}
+
+            <div className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+              <span className="font-medium text-foreground">{agendamentosFiltrados.length}</span> agendamentos
+            </div>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
 
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

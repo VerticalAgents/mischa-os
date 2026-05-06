@@ -5,17 +5,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, ChevronDown } from "lucide-react";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface RotasFilterProps {
   selectedIds: number[];
   onSelectionChange: (ids: number[]) => void;
   className?: string;
+  compact?: boolean;
 }
 
 export const RotasFilter = ({
   selectedIds,
   onSelectionChange,
   className,
+  compact = false,
 }: RotasFilterProps) => {
   const { rotasEntrega } = useSupabaseRotasEntrega();
   const [open, setOpen] = React.useState(false);
@@ -53,16 +56,36 @@ export const RotasFilter = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn("justify-between min-w-[180px]", className)}
-        >
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            <span>{getButtonText()}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
+        {compact ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn("h-9 w-9 relative", className)}
+              >
+                <MapPin className="h-4 w-4" />
+                {!noneSelected && !allSelected && (
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
+                    {selectedIds.length}
+                  </span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{getButtonText()}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            variant="outline"
+            className={cn("justify-between min-w-[180px]", className)}
+          >
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              <span>{getButtonText()}</span>
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[220px] p-0" align="start">
         <div className="p-2 border-b">
