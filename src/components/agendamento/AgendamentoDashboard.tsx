@@ -456,6 +456,38 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     });
   }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
 
+  // Gráfico semanal por representante (unidades confirmadas + previstas prováveis)
+  const dadosGraficoSemanalRep = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const diasSemana = eachDayOfInterval({ start: inicioSemana, end: fimSemana });
+    return diasSemana.map(dia => {
+      const ags = agendamentosFiltrados.filter(a =>
+        isSameDay(new Date(a.dataReposicao), dia)
+        && (a.statusAgendamento === "Agendado"
+          || (a.statusAgendamento === "Previsto" && (scoresSemanais.get(a.cliente.id)?.score ?? 0) > 85))
+      );
+      const porRep: Record<string, number> = {};
+      const clientesPorRep: Record<string, string[]> = {};
+      for (const a of ags) {
+        const repId = a.cliente.representanteId;
+        const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : "Sem representante";
+        const u = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
+        porRep[nome] = (porRep[nome] || 0) + u;
+        if (!clientesPorRep[nome]) clientesPorRep[nome] = [];
+        clientesPorRep[nome].push(a.cliente.nome);
+      }
+      return {
+        dia: format(dia, 'dd/MM', { locale: ptBR }),
+        diaSemana: format(dia, 'EEEE', { locale: ptBR }),
+        isToday: isToday(dia),
+        dataCompleta: dia,
+        clientesPorRep,
+        ...porRep,
+      };
+    });
+  }, [agendamentosFiltrados, semanaAtual, scoresSemanais, representantes]);
+
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
     
@@ -1128,7 +1160,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
           <CardContent>
             <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dadosGraficoSemanal} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={modoGraficos === 'representantes' ? dadosGraficoSemanalRep : dadosGraficoSemanal} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="dia" tick={{ fontSize: 10 }} interval={0} />
                   <YAxis tick={{ fontSize: 10 }} width={30} />
@@ -1140,7 +1172,29 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                           <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
                             <p className="font-semibold text-sm mb-2">{data.diaSemana} ({label})</p>
                             
-                            {data.previstosUnidades > 0 && (
+                            {modoGraficos === 'representantes' && payload.map((p: any) => {
+                              const nome = p.dataKey as string;
+                              const valor = p.value as number;
+                              if (!valor) return null;
+                              const clientes = data.clientesPorRep?.[nome] ?? [];
+                              return (
+                                <div key={nome} className="mb-2">
+                                  <p className="text-xs font-medium" style={{ color: p.color }}>{nome}: {valor}</p>
+                                  {clientes.length > 0 && (
+                                    <ul className="text-xs text-muted-foreground">
+                                      {clientes.slice(0, 5).map((c: string, i: number) => (
+                                        <li key={i} className="truncate">• {c}</li>
+                                      ))}
+                                      {clientes.length > 5 && (
+                                        <li className="text-muted-foreground/70">... +{clientes.length - 5}</li>
+                                      )}
+                                    </ul>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            
+                            {modoGraficos !== 'representantes' && data.previstosUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-amber-600">
                                   Previstos: {data.previstosUnidades}
@@ -1158,7 +1212,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {data.provaveisUnidades > 0 && (
+                            {modoGraficos !== 'representantes' && data.provaveisUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-purple-600">
                                   Previstos Prováveis: {data.provaveisUnidades}
@@ -1176,7 +1230,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {data.confirmadosUnidades > 0 && (
+                            {modoGraficos !== 'representantes' && data.confirmadosUnidades > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-green-600">
                                   Confirmados: {data.confirmadosUnidades}
@@ -1194,7 +1248,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                               </div>
                             )}
                             
-                            {data.realizadasUnidades > 0 && (
+                            {modoGraficos !== 'representantes' && data.realizadasUnidades > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-blue-600">
                                   Realizadas: {data.realizadasUnidades}
@@ -1217,30 +1271,18 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                       return null;
                     }}
                   />
-                  <Bar 
-                    dataKey={'realizadasUnidades'} 
-                    stackId="a" 
-                    fill="#3B82F6" 
-                    name="Realizadas" 
-                  />
-                  <Bar 
-                    dataKey={'confirmadosUnidades'} 
-                    stackId="a" 
-                    fill="#10B981" 
-                    name="Confirmados" 
-                  />
-                  <Bar 
-                    dataKey={'provaveisUnidades'} 
-                    stackId="a" 
-                    fill="#A855F7" 
-                    name="Previstos Prováveis" 
-                  />
-                  <Bar 
-                    dataKey={'previstosUnidades'} 
-                    stackId="a" 
-                    fill="#F59E0B" 
-                    name="Previstos" 
-                  />
+                  {modoGraficos === 'representantes' ? (
+                    dadosGraficoRepresentantes.map((rep) => (
+                      <Bar key={rep.status} dataKey={rep.status} stackId="a" fill={rep.cor} name={rep.status} />
+                    ))
+                  ) : (
+                    <>
+                      <Bar dataKey={'realizadasUnidades'} stackId="a" fill="#3B82F6" name="Realizadas" />
+                      <Bar dataKey={'confirmadosUnidades'} stackId="a" fill="#10B981" name="Confirmados" />
+                      <Bar dataKey={'provaveisUnidades'} stackId="a" fill="#A855F7" name="Previstos Prováveis" />
+                      <Bar dataKey={'previstosUnidades'} stackId="a" fill="#F59E0B" name="Previstos" />
+                    </>
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             </div>
