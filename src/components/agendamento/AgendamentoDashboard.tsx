@@ -1005,19 +1005,23 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 space-y-0">
             <div className="space-y-1">
-              <CardTitle className="text-base md:text-lg">Distribuição por Status</CardTitle>
+              <CardTitle className="text-base md:text-lg">
+                {modoGraficos === 'representantes' ? 'Unidades por Representante' : 'Distribuição por Status'}
+              </CardTitle>
               <CardDescription className="text-left text-xs md:text-sm">
-                {modoGraficos === 'unidades' ? 'Volume de unidades por status' : 'Visão geral dos agendamentos por status'}
+                {modoGraficos === 'representantes'
+                  ? 'Confirmadas + previstas prováveis por representante'
+                  : 'Volume de unidades por status'}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
               <Label htmlFor="toggle-graficos" className="text-xs text-muted-foreground">
-                {modoGraficos === 'unidades' ? 'Unidades' : 'Agendamentos'}
+                {modoGraficos === 'representantes' ? 'Representantes' : 'Status'}
               </Label>
               <Switch
                 id="toggle-graficos"
-                checked={modoGraficos === 'unidades'}
-                onCheckedChange={(checked) => setModoGraficos(checked ? 'unidades' : 'agendamentos')}
+                checked={modoGraficos === 'representantes'}
+                onCheckedChange={(checked) => setModoGraficos(checked ? 'representantes' : 'status')}
               />
               <Package className="h-4 w-4 text-muted-foreground" />
             </div>
@@ -1027,18 +1031,17 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
               <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
                   <Pie 
-                    data={dadosGraficoStatus} 
+                    data={modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus} 
                     cx="50%" 
                     cy="50%" 
                     labelLine={false} 
-                    label={isMobile ? false : ({ status, quantidade, unidades }) => 
-                      `${status}: ${modoGraficos === 'unidades' ? unidades : quantidade}`
-                    } 
+                    label={isMobile ? false : ({ status, unidades }) => `${status}: ${unidades}`} 
                     outerRadius={isMobile ? 70 : 80} 
                     fill="#8884d8" 
-                    dataKey={modoGraficos === 'unidades' ? 'unidades' : 'quantidade'}
+                    dataKey="unidades"
+                    nameKey="status"
                   >
-                    {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
+                    {(modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus).map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
                   {isMobile && (
                     <Legend
@@ -1047,8 +1050,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                       wrapperStyle={{ fontSize: '11px' }}
                       formatter={(value, entry: any) => {
                         const data = entry?.payload;
-                        const valor = modoGraficos === 'unidades' ? data?.unidades : data?.quantidade;
-                        return `${data?.status ?? value}: ${valor ?? 0}`;
+                        return `${data?.status ?? value}: ${data?.unidades ?? 0}`;
                       }}
                     />
                   )}
@@ -1059,9 +1061,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                         return (
                           <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
                             <p className="font-semibold text-sm mb-1">{data.status}</p>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              {modoGraficos === 'unidades' ? `${data.unidades} unidades` : `${data.quantidade} agendamentos`}
-                            </p>
+                            <p className="text-xs text-muted-foreground mb-2">{data.unidades} unidades</p>
                             {data.clientes && data.clientes.length > 0 && (
                               <div className="border-t pt-2">
                                 <p className="text-xs font-medium mb-1">Clientes:</p>
