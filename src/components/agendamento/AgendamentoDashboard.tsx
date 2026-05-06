@@ -1103,27 +1103,25 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                   <Pie 
                     data={modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus} 
                     cx="50%" 
-                    cy="50%" 
+                    cy="45%" 
                     labelLine={false} 
-                    label={isMobile ? false : ({ status, unidades }) => `${status}: ${unidades}`} 
-                    outerRadius={isMobile ? 70 : 80} 
+                    label={false}
+                    outerRadius={isMobile ? 75 : 95} 
                     fill="#8884d8" 
                     dataKey="unidades"
                     nameKey="status"
                   >
                     {(modoGraficos === 'representantes' ? dadosGraficoRepresentantes : dadosGraficoStatus).map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
-                  {isMobile && (
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      wrapperStyle={{ fontSize: '11px' }}
-                      formatter={(value, entry: any) => {
-                        const data = entry?.payload;
-                        return `${data?.status ?? value}: ${data?.unidades ?? 0}`;
-                      }}
-                    />
-                  )}
+                  <Legend
+                    verticalAlign="bottom"
+                    height={48}
+                    wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
+                    formatter={(value, entry: any) => {
+                      const data = entry?.payload;
+                      return `${data?.status ?? value}: ${data?.unidades ?? 0}`;
+                    }}
+                  />
                   <Tooltip 
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
