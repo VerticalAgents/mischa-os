@@ -93,7 +93,7 @@ export function useRepDashboardData() {
       setData({
         totalClientesAtivos: ativos,
         totalClientes: total,
-        previstosSemanaAtual: previstosSemana.slice(0, 10),
+        previstosSemanaAtual: previstosSemana,
         totalBrowniesPrevistosSemana,
         agendamentosPendentes: pendentes.slice(0, 10),
       });
