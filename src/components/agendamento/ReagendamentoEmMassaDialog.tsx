@@ -120,7 +120,7 @@ export default function ReagendamentoEmMassaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-[500px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 pr-8">
             <CalendarIcon className="h-5 w-5 text-primary" />
@@ -131,7 +131,7 @@ export default function ReagendamentoEmMassaDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 min-w-0">
           {agendamentosDisponiveis.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Não há agendamentos disponíveis para reagendar.
@@ -206,11 +206,11 @@ export default function ReagendamentoEmMassaDialog({
 
               {/* Lista de Agendamentos com Checkboxes */}
               <ScrollArea className="h-[200px] pr-2 sm:pr-4">
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   {agendamentosFiltrados.map((agendamento) => (
                     <div
                       key={agendamento.cliente.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-2 p-2 sm:p-3 rounded-lg border hover:bg-muted/50 transition-colors min-w-0"
                     >
                       <Checkbox
                         checked={selecionados.has(agendamento.cliente.id)}
