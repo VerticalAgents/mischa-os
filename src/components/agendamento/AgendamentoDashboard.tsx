@@ -1029,7 +1029,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
             { label: "Total Sem.", value: totalUnidadesSemana, color: "text-purple-600", Icon: Package },
             { label: "Confirmados", value: indicadoresSemana.confirmados, color: "text-green-600", Icon: CheckCircle },
             { label: "Previstos", value: indicadoresSemana.previstos, color: "text-amber-600", Icon: Clock },
-            { label: "Entregues", value: indicadoresSemana.entregasRealizadas, color: "text-blue-600", Icon: Truck },
+            { label: "Entregues", value: indicadoresSemana.entregasRealizadas, color: "text-green-600", Icon: Truck },
           ].map(({ label, value, color, Icon }) => (
             <Card key={label} className="p-2.5">
               <div className="flex items-center gap-2">
