@@ -5,9 +5,9 @@ import logo from "@/assets/mischas-logo.png";
 
 const items = [
   { to: "/rep/home", label: "Início", icon: Home },
-  { to: "/rep/clientes", label: "Meus Clientes", icon: Users },
   { to: "/rep/agendamentos", label: "Agendamentos", icon: Calendar },
   { to: "/rep/estatisticas", label: "Estatísticas Comerciais", icon: BarChart3 },
+  { to: "/rep/clientes", label: "Meus Clientes", icon: Users },
   { to: "/rep/configuracoes", label: "Configurações", icon: Settings },
 ];
 
