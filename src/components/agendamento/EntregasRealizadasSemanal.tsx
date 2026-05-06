@@ -187,9 +187,6 @@ export default function EntregasRealizadasSemanal({
               <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
               Produtos Entregues
             </CardTitle>
-            <CardDescription className="text-left text-xs md:text-sm">
-              Quantidades já entregues nesta semana
-            </CardDescription>
           </div>
           {quantidadeSemanaAnterior > 0 && (
             <div className="flex flex-row items-center gap-2 sm:flex-col sm:items-end sm:text-right sm:gap-0">
@@ -214,10 +211,9 @@ export default function EntregasRealizadasSemanal({
             <p>Nenhuma entrega realizada nesta semana</p>
           </div> : <div className="space-y-4">
             {/* Total Geral */}
-            <div className="bg-green-50 dark:bg-green-950/20 p-3 md:p-4 rounded-lg border border-green-200 dark:border-green-800">
-              <p className="text-xs md:text-sm text-muted-foreground mb-1">Quantidade Total Entregue</p>
-              <p className="text-2xl md:text-3xl font-bold text-green-600">{quantidadeTotal}</p>
-              <Badge variant="default" className="mt-2 bg-green-600 hover:bg-green-700">
+            <div className="flex items-baseline gap-3 bg-green-50 dark:bg-green-950/20 p-3 md:p-4 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="text-3xl md:text-4xl font-bold text-green-600 leading-none">{quantidadeTotal}</p>
+              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
                 {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
               </Badge>
             </div>
