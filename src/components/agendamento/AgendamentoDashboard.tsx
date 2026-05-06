@@ -382,16 +382,18 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     });
     for (const a of agSemana) {
       const repId = a.cliente.representanteId;
-      const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : "Sem representante";
+      const rep = repId ? representantes.find(r => r.id === repId) : undefined;
+      const nome = rep ? rep.nome : (repId ? `Rep #${repId}` : "Sem representante");
       const unidades = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
       const b = ensure(nome);
       b.unidades += unidades;
       b.clientes.push(a.cliente.nome);
+      (b as any).cor = rep?.cor;
     }
     const entries = Object.entries(buckets)
-      .map(([status, v]) => ({ status, unidades: v.unidades, clientes: v.clientes }))
+      .map(([status, v]) => ({ status, unidades: v.unidades, clientes: v.clientes, corCustom: (v as any).cor as string | undefined }))
       .sort((x, y) => y.unidades - x.unidades);
-    return entries.map((e, i) => ({ ...e, cor: palette[i % palette.length] }));
+    return entries.map((e, i) => ({ ...e, cor: e.corCustom || palette[i % palette.length] }));
   }, [agendamentosFiltrados, semanaAtual, scoresSemanais, representantes]);
 
   const dadosGraficoSemanal = useMemo(() => {
