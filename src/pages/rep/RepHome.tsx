@@ -137,7 +137,7 @@ export default function RepHome() {
             tone="warning"
             provavelIds={new Set(
               Array.from(scores.entries())
-                .filter(([, s]) => (s?.score ?? 0) >= 80)
+                .filter(([, s]) => (s?.score ?? 0) > 85)
                 .map(([id]) => id)
             )}
           />
