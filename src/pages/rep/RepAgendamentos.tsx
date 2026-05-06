@@ -187,7 +187,7 @@ export default function RepAgendamentos() {
 
         <TabsContent value="dashboard" className="space-y-4">
           <EditPermissionProvider value={{ canEdit: true }}>
-            <AgendamentoDashboard hideExportPDF />
+            <AgendamentoDashboard hideExportPDF repMode />
           </EditPermissionProvider>
         </TabsContent>
 

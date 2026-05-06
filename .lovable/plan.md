@@ -1,58 +1,63 @@
-# Separar gráfico de Evolução: Revenda x Food-Service
+## Objetivo
 
-## Problema
-Hoje o gráfico **Evolução da Produção por Categoria** mostra Revenda e Food-Service na mesma escala. Como Food-Service usa embalagens muito maiores (mini/nano em volumes pequenos), a barra verde fica praticamente invisível ao lado da Revenda.
+Adaptar a experiência do representante em duas telas: `/rep` (Home) e `/rep/agendamentos` (Dashboard), priorizando os "previstos prováveis" e simplificando o layout.
 
-## Solução
+---
 
-Dividir em **dois gráficos lado a lado** (em telas largas) ou empilhados (mobile), cada um com sua própria escala Y:
+## 1. Home do representante — `src/pages/rep/RepHome.tsx`
 
-1. **Gráfico Revenda** — apenas unidades produzidas (mantém o que já existe).
-2. **Gráfico Food-Service** — com um toggle local **Unidades / Peso (kg)**, já que peso é uma métrica mais fiel para embalagens grandes.
+No bloco amarelo "Previstos da semana", ordenar por probabilidade de confirmação (prováveis primeiro):
 
-Ambos compartilham o mesmo seletor de timeframe (3/6/12/24 meses) que já existe.
+- Usar `useConfirmationScore` (já existente) sobre `data.previstosSemanaAtual`.
+- Como o hook recebe `AgendamentoItem[]` (com `cliente.id` e `dataReposicao`), construir um array compatível mínimo a partir de `RepAgendamentoLite` (mapeando `cliente_id` → `cliente.id`, `data_proxima_reposicao` → `dataReposicao`).
+- Ordenar a lista por `score` decrescente (sem score = trata como 70). Empate: data mais próxima primeiro.
+- Adicionar um pequeno selo "Provável" ao lado do badge "Previsto" quando `score > 85` (mesmo critério usado no dashboard).
 
-## Mudanças em `src/components/pcp/HistoricoAnalytics.tsx`
+Não muda o bloco vermelho de pendentes.
 
-### 1. Cálculo do peso no `useMemo` `dadosGraficoComparativo`
-- Buscar `peso_unitario` dos produtos via `useSupabaseProdutos` (já usado em outros lugares do projeto).
-- Para cada registro de histórico, calcular `pesoKg = (unidades_calculadas × peso_unitario_g) / 1000`.
-- Retornar para cada mês: `{ mes, revendaUnidades, foodServiceUnidades, foodServicePesoKg }`.
-- Se `peso_unitario` não estiver cadastrado para um produto, ele soma 0 no peso (com fallback silencioso) e log de aviso no console.
+---
 
-### 2. Estado novo
-```ts
-const [foodServiceMetrica, setFoodServiceMetrica] = useState<"unidades" | "peso">("unidades");
+## 2. Dashboard de agendamento do representante — `src/components/agendamento/AgendamentoDashboard.tsx`
+
+Adicionar uma nova prop opcional `repMode?: boolean` (default `false`) e propagá-la a partir de `RepAgendamentos.tsx`:
+
+```tsx
+<AgendamentoDashboard hideExportPDF repMode />
 ```
 
-### 3. Layout — substituir o card único por dois cards em grid
+Comportamentos quando `repMode = true`:
 
-```text
-┌─────────────────────────────┬─────────────────────────────┐
-│ Evolução Revenda            │ Evolução Food-Service       │
-│ Últimos 12 meses ▾          │ [Unidades|Peso] 12 meses ▾  │
-│ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆     │ ▂ ▃ ▂ ▄ ▃ ▂ ▃ ▄ ▅ ▃ ▂ ▄    │
-│ Y: Unidades                 │ Y: Unidades ou kg           │
-└─────────────────────────────┴─────────────────────────────┘
-```
+### 2.1 Previstos prováveis visíveis por padrão
+No `useState` atual:
+- `incluirPrevistos` inicia em `true` (em vez de `false`).
+- `modoPrevistos` inicia em `'provaveis'` (já é o default).
 
-- Wrapper: `grid gap-4 lg:grid-cols-2`.
-- Cada card mantém `<ChartContainer>` + `<BarChart>` próprio com **uma única série**, com YAxis independente (ajusta automaticamente ao range dos dados).
-- Cores mantidas: Revenda roxo `hsl(262 83% 58%)`, Food-Service verde `hsl(142 76% 36%)`.
-- O toggle de métrica do Food-Service usa um pequeno `<Tabs>` ou um `<Select>` compacto no header do card. Vou usar `<Select>` para manter consistência com o seletor de meses já presente.
-- Y-axis label: "Unidades Produzidas" no card Revenda; "Unidades Produzidas" ou "Peso (kg)" no card Food-Service conforme toggle.
-- Tooltip formata números com `pt-BR`; quando peso, sufixo " kg" e 1 casa decimal.
+Manter o toggle visível para o admin/funcionário. Para o representante, usar valor inicial diferente via `useState(repMode ? true : false)`.
 
-### 4. Seletor de timeframe
-Continua único (mantém `mesesGrafico`) e controla os dois gráficos simultaneamente. Posicionado no header do card da Revenda com label "Período aplicado aos dois gráficos" — ou duplicado em ambos para clareza visual. **Decisão**: duplicar o `<Select>` de meses em cada card (mesmo state controlando), assim cada card é visualmente autocontido.
+### 2.2 Esconder blocos pesados
+Não renderizar quando `repMode`:
+- `<QuantidadesProdutosSemanal ... />` (linha ~1053)
+- `<EntregasRealizadasSemanal ... />` (linha ~1064)
 
-### 5. Legenda
-Como cada gráfico tem só uma série, remover a `<Legend />` (o título do card já identifica a categoria).
+Envolver o `<div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> ... </div>` em `{!repMode && (...)}`.
 
-## Arquivos editados
-- `src/components/pcp/HistoricoAnalytics.tsx` (único arquivo)
+### 2.3 Cards de indicadores mais minimalistas (somente repMode)
+Os 5 cards do topo (Total da Semana, Agendamentos Restantes, Confirmados, Previstos, Entregas Realizadas) hoje têm `CardHeader` + `CardContent` separados com descrição em `text-xs`.
 
-## Não muda
-- Hook `useSupabaseHistoricoProducao` e tipo `RegistroHistorico` permanecem iguais.
-- Lógica de categorização `mini/nano → foodservice` permanece.
-- Cards de KPI, filtros de período (90 dias) e detalhes por produto não mudam.
+Para `repMode`, renderizar uma versão compacta:
+- Grid `grid-cols-2 md:grid-cols-5 gap-2`.
+- Cada card: `p-3`, sem `CardHeader/CardContent` separados.
+- Layout horizontal: ícone pequeno à esquerda, valor `text-xl font-bold`, label `text-[11px] text-muted-foreground` em uma linha; sem texto descritivo extra.
+- Mesmas cores semânticas (verde/âmbar/azul/roxo).
+
+Implementar via condicional dentro do mesmo bloco (`repMode ? <CompactCards/> : <CardsAtuais/>`) para não impactar o admin.
+
+---
+
+## 3. Arquivos a editar
+
+- `src/pages/rep/RepHome.tsx` — ordenar previstos por score + selo "Provável".
+- `src/pages/rep/RepAgendamentos.tsx` — passar `repMode` para `<AgendamentoDashboard/>`.
+- `src/components/agendamento/AgendamentoDashboard.tsx` — aceitar `repMode`, defaults diferentes, esconder blocos, cards compactos.
+
+Sem alterações de schema/backend.
