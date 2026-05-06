@@ -181,12 +181,18 @@ export default function EntregasRealizadasSemanal({
   }, [quantidadesPorProduto, quantidadeSemanaAnterior]);
   return <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
               Produtos Entregues
             </CardTitle>
+            {!loading && quantidadeTotal > 0 && (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl md:text-3xl font-bold leading-none text-green-600">{quantidadeTotal}</span>
+                <span className="text-sm md:text-base font-medium text-green-600/70">un.</span>
+              </div>
+            )}
             {totalEntregas > 0 && (
               <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300 hover:bg-green-100">
                 {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
@@ -208,22 +214,14 @@ export default function EntregasRealizadasSemanal({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="pt-0">
         {loading ? <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div> : quantidadeTotal === 0 ? <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
             <Package className="h-4 w-4 opacity-50" />
             <p>Nenhuma entrega realizada nesta semana</p>
-          </div> : <div className="space-y-3">
-            {/* Total Geral */}
-            <div className="flex items-baseline gap-1.5 bg-green-50 dark:bg-green-950/20 px-3 py-2 md:px-4 md:py-3 rounded-lg border border-green-200 dark:border-green-800">
-              <span className="text-3xl md:text-4xl font-bold text-green-600 leading-none">{quantidadeTotal}</span>
-              <span className="text-base md:text-lg font-medium text-green-600/70">un.</span>
-            </div>
-
-            {/* Detalhes por Produto - Collapsible */}
-            <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <div className="flex items-center justify-between mb-3">
+          </div> : <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+              <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -231,7 +229,7 @@ export default function EntregasRealizadasSemanal({
                   </Button>
                 </CollapsibleTrigger>
               </div>
-              <CollapsibleContent className="space-y-2">
+              <CollapsibleContent className="space-y-2 mt-3">
                 {produtosOrdenados.map(produto => <div key={produto.produto_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <Package className="h-4 w-4 text-muted-foreground" />
@@ -242,8 +240,7 @@ export default function EntregasRealizadasSemanal({
                     </Badge>
                   </div>)}
               </CollapsibleContent>
-            </Collapsible>
-          </div>}
+            </Collapsible>}
       </CardContent>
     </Card>;
 }

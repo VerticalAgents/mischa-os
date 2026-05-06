@@ -167,12 +167,18 @@ export default function QuantidadesProdutosSemanal({
   const isProvavelMode = incluirPrevistos && modoPrevistos === 'provaveis';
   return <Card className={isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}>
     <CardHeader>
-      <div className="flex flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-row items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
             <Package className={`h-4 w-4 md:h-5 md:w-5 ${isProvavelMode ? 'text-purple-500' : 'text-blue-500'}`} />
             Projeção de Demanda
           </CardTitle>
+          {!loading && produtosOrdenados.length > 0 && (
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-2xl md:text-3xl font-bold leading-none ${isProvavelMode ? 'text-purple-600' : 'text-blue-600'}`}>{quantidadeTotal}</span>
+              <span className={`text-sm md:text-base font-medium ${isProvavelMode ? 'text-purple-600/70' : 'text-blue-600/70'}`}>un.</span>
+            </div>
+          )}
           {totalPedidos > 0 && (
             <Badge variant="secondary" className={isProvavelMode ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 hover:bg-purple-100' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100'}>
               {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
@@ -215,7 +221,7 @@ export default function QuantidadesProdutosSemanal({
         )}
       </div>
     </CardHeader>
-    <CardContent>
+    <CardContent className="pt-0">
       {loading ? <div className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Calculando quantidades...</span>
@@ -224,16 +230,8 @@ export default function QuantidadesProdutosSemanal({
           <p>
             Nenhum pedido {incluirPrevistos ? "confirmado ou previsto" : "confirmado"} nesta semana
           </p>
-        </div> : <div className="space-y-3">
-          {/* Total Geral */}
-          <div className={`flex items-baseline gap-1.5 px-3 py-2 md:px-4 md:py-3 rounded-lg border ${isProvavelMode ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
-            <span className={`text-3xl md:text-4xl font-bold leading-none ${isProvavelMode ? 'text-purple-600' : 'text-blue-600'}`}>{quantidadeTotal}</span>
-            <span className={`text-base md:text-lg font-medium ${isProvavelMode ? 'text-purple-600/70' : 'text-blue-600/70'}`}>un.</span>
-          </div>
-
-          {/* Produtos Individuais - Collapsible */}
-          <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-            <div className="flex items-center justify-between mb-3">
+        </div> : <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+            <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -241,7 +239,7 @@ export default function QuantidadesProdutosSemanal({
                 </Button>
               </CollapsibleTrigger>
             </div>
-            <CollapsibleContent className="space-y-2">
+            <CollapsibleContent className="space-y-2 mt-3">
               {produtosOrdenados.map(produto => <div key={produto.produto_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <Package className="h-4 w-4 text-muted-foreground" />
@@ -252,8 +250,7 @@ export default function QuantidadesProdutosSemanal({
                   </Badge>
                 </div>)}
             </CollapsibleContent>
-          </Collapsible>
-        </div>}
+          </Collapsible>}
     </CardContent>
   </Card>;
 }
