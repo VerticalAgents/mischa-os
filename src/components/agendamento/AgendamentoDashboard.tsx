@@ -357,6 +357,36 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     return data;
   }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
 
+  // Dados do gráfico de pizza por representante (confirmados + previstos prováveis em unidades)
+  const dadosGraficoRepresentantes = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const palette = ["#10B981", "#A855F7", "#F59E0B", "#3B82F6", "#EF4444", "#EC4899", "#14B8A6", "#F97316", "#8B5CF6", "#22C55E"];
+    const buckets: Record<string, { unidades: number; clientes: string[] }> = {};
+    const ensure = (nome: string) => {
+      if (!buckets[nome]) buckets[nome] = { unidades: 0, clientes: [] };
+      return buckets[nome];
+    };
+    const agSemana = agendamentosFiltrados.filter(a => {
+      const d = new Date(a.dataReposicao);
+      return d >= inicioSemana && d <= fimSemana
+        && (a.statusAgendamento === "Agendado"
+          || (a.statusAgendamento === "Previsto" && (scoresSemanais.get(a.cliente.id)?.score ?? 0) > 85));
+    });
+    for (const a of agSemana) {
+      const repId = a.cliente.representanteId;
+      const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : "Sem representante";
+      const unidades = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
+      const b = ensure(nome);
+      b.unidades += unidades;
+      b.clientes.push(a.cliente.nome);
+    }
+    const entries = Object.entries(buckets)
+      .map(([status, v]) => ({ status, unidades: v.unidades, clientes: v.clientes }))
+      .sort((x, y) => y.unidades - x.unidades);
+    return entries.map((e, i) => ({ ...e, cor: palette[i % palette.length] }));
+  }, [agendamentosFiltrados, semanaAtual, scoresSemanais, representantes]);
+
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
