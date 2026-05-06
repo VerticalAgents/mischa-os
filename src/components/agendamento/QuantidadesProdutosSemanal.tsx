@@ -173,9 +173,6 @@ export default function QuantidadesProdutosSemanal({
             <Package className={`h-4 w-4 md:h-5 md:w-5 ${isProvavelMode ? 'text-purple-500' : 'text-blue-500'}`} />
             Projeção de Demanda
           </CardTitle>
-          <CardDescription className="text-left text-xs md:text-sm">
-            {incluirPrevistos ? 'Unidades confirmadas + prováveis' : 'Unidades confirmadas'}
-          </CardDescription>
         </div>
         {onToggleIncluirPrevistos && (
           <Dialog>
@@ -224,10 +221,9 @@ export default function QuantidadesProdutosSemanal({
           </p>
         </div> : <div className="space-y-4">
           {/* Total Geral */}
-          <div className={`p-3 md:p-4 rounded-lg border ${isProvavelMode ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
-            <p className="text-xs md:text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-            <p className={`text-2xl md:text-3xl font-bold ${isProvavelMode ? 'text-purple-600' : 'text-blue-600'}`}>{quantidadeTotal}</p>
-            <Badge variant="default" className={`mt-2 ${isProvavelMode ? 'bg-purple-200 text-purple-900 hover:bg-purple-200' : 'bg-blue-200'}`}>
+          <div className={`flex items-baseline gap-3 p-3 md:p-4 rounded-lg border ${isProvavelMode ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
+            <p className={`text-3xl md:text-4xl font-bold leading-none ${isProvavelMode ? 'text-purple-600' : 'text-blue-600'}`}>{quantidadeTotal}</p>
+            <Badge variant="default" className={`${isProvavelMode ? 'bg-purple-200 text-purple-900 hover:bg-purple-200' : 'bg-blue-200'}`}>
               {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
             </Badge>
           </div>
