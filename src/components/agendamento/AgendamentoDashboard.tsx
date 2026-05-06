@@ -131,9 +131,10 @@ const IndicadoresEntrega = ({
 
 interface AgendamentoDashboardProps {
   hideExportPDF?: boolean;
+  repMode?: boolean;
 }
 
-export default function AgendamentoDashboard({ hideExportPDF = false }: AgendamentoDashboardProps = {}) {
+export default function AgendamentoDashboard({ hideExportPDF = false, repMode = false }: AgendamentoDashboardProps = {}) {
   const { canEdit } = useEditPermission();
   const isMobile = useIsMobile();
   const {
@@ -163,7 +164,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
   const [filtroNome, setFiltroNome] = useState<string>('');
-  const [incluirPrevistos, setIncluirPrevistos] = useState(false);
+  const [incluirPrevistos, setIncluirPrevistos] = useState(repMode);
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
   const [modoPrevistos, setModoPrevistos] = useState<'provaveis' | 'percentual'>('provaveis');
 
@@ -952,6 +953,27 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
       </div>
 
       {/* Cards de Indicadores */}
+      {repMode ? (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          {[
+            { label: "Total Sem.", value: totalUnidadesSemana, color: "text-purple-600", Icon: Package },
+            { label: "Restantes", value: indicadoresSemana.totalSemana, color: "text-foreground", Icon: Calendar },
+            { label: "Confirmados", value: indicadoresSemana.confirmados, color: "text-green-600", Icon: CheckCircle },
+            { label: "Previstos", value: indicadoresSemana.previstos, color: "text-amber-600", Icon: Clock },
+            { label: "Entregues", value: indicadoresSemana.entregasRealizadas, color: "text-blue-600", Icon: Truck },
+          ].map(({ label, value, color, Icon }) => (
+            <Card key={label} className="p-2.5">
+              <div className="flex items-center gap-2">
+                <Icon className={`h-4 w-4 shrink-0 ${color}`} />
+                <div className="min-w-0 flex-1">
+                  <div className={`text-lg font-bold leading-tight ${color}`}>{value}</div>
+                  <div className="text-[10px] text-muted-foreground leading-tight truncate">{label}</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3 sm:gap-4">
         {/* Total da Semana */}
         <Card>
@@ -1047,8 +1069,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Resumo de Produtos da Semana */}
+      {!repMode && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <QuantidadesProdutosSemanal 
           agendamentosFiltrados={agendamentosFiltrados} 
@@ -1068,6 +1092,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
           clientes={clientes}
         />
       </div>
+      )}
 
       {/* Gráficos */}
       {dadosGraficoStatus.length > 0 && (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Users, Calendar, Plus, AlertCircle, Clock, Cookie } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext";
 import { useRepDashboardData, RepAgendamentoLite } from "@/hooks/useRepDashboardData";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
+import { useConfirmationScore } from "@/hooks/useConfirmationScore";
+import { AgendamentoItem } from "@/components/agendamento/types";
 
 function formatDate(s: string | null) {
   if (!s) return "-";
@@ -32,6 +34,31 @@ export default function RepHome() {
   };
 
   const greetingName = user?.email?.split("@")[0] || "representante";
+
+  // Build minimal AgendamentoItem-shaped objects to feed useConfirmationScore
+  const previstosForScore = useMemo<AgendamentoItem[]>(() => {
+    return (data.previstosSemanaAtual || []).map((a) => ({
+      id: a.id,
+      cliente: { id: a.cliente_id, nome: a.cliente_nome } as any,
+      dataReposicao: a.data_proxima_reposicao
+        ? new Date(a.data_proxima_reposicao + "T00:00:00")
+        : new Date(),
+      statusAgendamento: "Previsto",
+    } as any));
+  }, [data.previstosSemanaAtual]);
+
+  const { scores } = useConfirmationScore(previstosForScore);
+
+  const previstosOrdenados = useMemo(() => {
+    const list = [...(data.previstosSemanaAtual || [])];
+    list.sort((a, b) => {
+      const sa = scores.get(a.cliente_id)?.score ?? 70;
+      const sb = scores.get(b.cliente_id)?.score ?? 70;
+      if (sb !== sa) return sb - sa;
+      return (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || "");
+    });
+    return list;
+  }, [data.previstosSemanaAtual, scores]);
 
   return (
     <div className="space-y-6">
@@ -103,11 +130,16 @@ export default function RepHome() {
           </div>
 
           <AgendamentoList
-            items={data.previstosSemanaAtual}
+            items={previstosOrdenados}
             empty="Nenhum agendamento previsto para esta semana."
             loading={loading}
             onItemClick={goToAgendamento}
             tone="warning"
+            provavelIds={new Set(
+              Array.from(scores.entries())
+                .filter(([, s]) => (s?.score ?? 0) > 85)
+                .map(([id]) => id)
+            )}
           />
         </CardContent>
       </Card>
@@ -151,12 +183,14 @@ function AgendamentoList({
   loading,
   onItemClick,
   tone,
+  provavelIds,
 }: {
   items: RepAgendamentoLite[];
   empty: string;
   loading: boolean;
   onItemClick: (id: string) => void;
   tone: Tone;
+  provavelIds?: Set<string>;
 }) {
   if (loading) {
     return <div className="text-sm text-muted-foreground py-4">Carregando…</div>;
@@ -178,9 +212,19 @@ function AgendamentoList({
               {formatDate(a.data_proxima_reposicao)} • {a.quantidade_total} un.
             </div>
           </div>
-          <Badge variant="outline" className={TONE_BADGE[tone]}>
-            {a.status_agendamento === "Agendar" ? "Pendente" : a.status_agendamento}
-          </Badge>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {provavelIds?.has(a.cliente_id) && (
+              <Badge
+                variant="outline"
+                className="bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-100 text-[10px] px-1.5 py-0"
+              >
+                Provável
+              </Badge>
+            )}
+            <Badge variant="outline" className={TONE_BADGE[tone]}>
+              {a.status_agendamento === "Agendar" ? "Pendente" : a.status_agendamento}
+            </Badge>
+          </div>
         </button>
       ))}
     </div>
