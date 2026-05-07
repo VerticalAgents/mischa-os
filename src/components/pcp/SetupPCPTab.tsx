@@ -51,6 +51,9 @@ export default function SetupPCPTab() {
   const [alertaPercentual, setAlertaPercentual] = useState<number>(
     (configuracoesProducao as any)?.estoqueAlertaCriticoPercentual ?? 30
   );
+  const [margemAlvoPercentual, setMargemAlvoPercentual] = useState<number>(
+    (configuracoesProducao as any)?.estoqueAlvoMargemPercentual ?? 20
+  );
 
   const [produtos, setProdutos] = useState<ProdutoAtivo[]>([]);
   const [loadingProdutos, setLoadingProdutos] = useState(true);
@@ -104,6 +107,7 @@ export default function SetupPCPTab() {
       estoqueAlvoCoberturaDias: coberturaDias,
       estoqueAlvoFixoPorProduto: fixoPorProduto,
       estoqueAlertaCriticoPercentual: alertaPercentual,
+      estoqueAlvoMargemPercentual: margemAlvoPercentual,
       coberturaAlvoDias: coberturaDias, // compat
     });
     toast({
@@ -299,6 +303,53 @@ export default function SetupPCPTab() {
                 <strong className="text-orange-600 dark:text-orange-400">
                   {Math.round((previewAlvoTotal * alertaPercentual) / 100)} un
                 </strong>
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-emerald-500" />
+            <CardTitle>Margem de tolerância do alvo</CardTitle>
+          </div>
+          <CardDescription>
+            Define a faixa (% para mais ou para menos) em torno do alvo de cada produto
+            considerada como <strong>"alvo atingido"</strong>. Acima da faixa = excesso,
+            abaixo = baixo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div className="space-y-2">
+              <Label htmlFor="margem-pct">Margem ± (%)</Label>
+              <Input
+                id="margem-pct"
+                type="number"
+                min={0}
+                max={100}
+                value={margemAlvoPercentual}
+                onChange={(e) =>
+                  setMargemAlvoPercentual(Math.max(0, Math.min(100, Number(e.target.value))))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Ex: alvo 100 com margem {margemAlvoPercentual}% → "no alvo" entre{" "}
+                {Math.round(100 * (1 - margemAlvoPercentual / 100))} e{" "}
+                {Math.round(100 * (1 + margemAlvoPercentual / 100))} unidades.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-emerald-500/5 border-emerald-500/30 p-4 text-sm space-y-1">
+              <p className="text-muted-foreground">Faixa "no alvo" total</p>
+              <p>
+                Mínimo:{" "}
+                <strong>{Math.round(previewAlvoTotal * (1 - margemAlvoPercentual / 100))} un</strong>
+              </p>
+              <p>
+                Máximo:{" "}
+                <strong>{Math.round(previewAlvoTotal * (1 + margemAlvoPercentual / 100))} un</strong>
               </p>
             </div>
           </div>
