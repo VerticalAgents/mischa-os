@@ -206,7 +206,7 @@ export default function EstoqueDisponivel({
       case 'excesso':
         return 'Excesso';
       default:
-        return 'Adequado';
+        return 'No alvo';
     }
   };
   return <Card className="h-full flex flex-col">
@@ -329,8 +329,7 @@ export default function EstoqueDisponivel({
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="text-xs space-y-1">
-                          <p><strong>Mínimo:</strong> {produto.estoque_minimo}</p>
-                          <p><strong>Ideal:</strong> {produto.estoque_ideal}</p>
+                          <p><strong>Alvo:</strong> {alvoPorProduto[produto.produto_id] ?? 0} (±{margemPct}%)</p>
                           <p><strong>Disponível:</strong> {produto.estoque_disponivel}</p>
                           {produto.status === 'critico' && <p className="text-red-500 font-semibold">⚠️ Estoque insuficiente!</p>}
                         </div>
@@ -374,8 +373,7 @@ export default function EstoqueDisponivel({
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="text-xs space-y-1">
-                                  <p><strong>Mínimo:</strong> {produto.estoque_minimo}</p>
-                                  <p><strong>Ideal:</strong> {produto.estoque_ideal}</p>
+                                  <p><strong>Alvo:</strong> {alvoPorProduto[produto.produto_id] ?? 0} (±{margemPct}%)</p>
                                   <p><strong>Disponível:</strong> {produto.estoque_disponivel}</p>
                                   {produto.status === 'critico' && <p className="text-red-500 font-semibold">⚠️ Estoque insuficiente!</p>}
                                 </div>
