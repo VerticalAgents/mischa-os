@@ -25,6 +25,7 @@ export default function EstoqueDisponivel({
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
   const { configuracoesProducao } = useConfigStore();
   const pctAlerta = Number((configuracoesProducao as any)?.estoqueAlertaCriticoPercentual ?? 30);
+  const margemPct = Number((configuracoesProducao as any)?.estoqueAlvoMargemPercentual ?? 20);
   const { mediaVendasPorProduto } = useMediaVendasSemanais();
   const {
     produtos,
@@ -36,24 +37,57 @@ export default function EstoqueDisponivel({
     recarregar
   } = useEstoqueDisponivel(quantidadesNecessarias);
 
-  // Sempre aplicar produção agendada ao estoque disponível
-  const produtosAjustados = useMemo(() => {
-    if (Object.keys(producaoAgendada).length === 0) {
-      return produtos;
+  // Calcular alvo individual por produto a partir do Setup PCP
+  const alvoPorProduto = useMemo(() => {
+    const cfg: any = configuracoesProducao || {};
+    const modo: "fixo" | "percentual" | "cobertura" = cfg.estoqueAlvoModo ?? "cobertura";
+    const map: Record<string, number> = {};
+    for (const p of produtos) {
+      const media = Number(mediaVendasPorProduto[p.produto_id] || 0);
+      let alvo = 0;
+      if (modo === "fixo") {
+        alvo = Number((cfg.estoqueAlvoFixoPorProduto || {})[p.produto_id] || 0);
+      } else if (modo === "percentual") {
+        const pct = Number(cfg.estoqueAlvoPercentual ?? 20);
+        alvo = Math.round((media * pct) / 100);
+      } else {
+        const dias = Number(cfg.estoqueAlvoCoberturaDias ?? cfg.coberturaAlvoDias ?? 3);
+        alvo = Math.round((media * dias) / 7);
+      }
+      if (!alvo || alvo <= 0) alvo = Number(p.estoque_ideal) || 0;
+      map[p.produto_id] = alvo;
     }
+    return map;
+  }, [configuracoesProducao, mediaVendasPorProduto, produtos]);
+
+  // Sempre aplicar produção agendada e recalcular status pela margem do alvo individual
+  const produtosAjustados = useMemo(() => {
     return produtos.map(p => {
       const extra = producaoAgendada[p.produto_id] || 0;
-      if (extra === 0) return p;
       const novoDisponivel = p.estoque_disponivel + extra;
-      let status: 'critico' | 'baixo' | 'adequado' | 'excesso' = 'adequado';
-      if (novoDisponivel < 0) status = 'critico';else if (novoDisponivel < p.estoque_minimo) status = 'baixo';else if (novoDisponivel > (p.estoque_ideal || p.estoque_minimo)) status = 'excesso';
+      const alvo = alvoPorProduto[p.produto_id] || 0;
+      const margem = margemPct / 100;
+      const limiteInf = Math.round(alvo * (1 - margem));
+      const limiteSup = Math.round(alvo * (1 + margem));
+      let status: 'critico' | 'baixo' | 'adequado' | 'excesso';
+      if (novoDisponivel < 0) {
+        status = 'critico';
+      } else if (alvo <= 0) {
+        status = 'adequado';
+      } else if (novoDisponivel < limiteInf) {
+        status = 'baixo';
+      } else if (novoDisponivel > limiteSup) {
+        status = 'excesso';
+      } else {
+        status = 'adequado';
+      }
       return {
         ...p,
         estoque_disponivel: novoDisponivel,
-        status
+        status,
       };
     });
-  }, [produtos, producaoAgendada]);
+  }, [produtos, producaoAgendada, alvoPorProduto, margemPct]);
   const totalDisponivelAjustado = useMemo(() => {
     return produtosAjustados.reduce((sum, p) => sum + p.estoque_disponivel, 0);
   }, [produtosAjustados]);
@@ -172,7 +206,7 @@ export default function EstoqueDisponivel({
       case 'excesso':
         return 'Excesso';
       default:
-        return 'Adequado';
+        return 'No alvo';
     }
   };
   return <Card className="h-full flex flex-col">
@@ -295,8 +329,7 @@ export default function EstoqueDisponivel({
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="text-xs space-y-1">
-                          <p><strong>Mínimo:</strong> {produto.estoque_minimo}</p>
-                          <p><strong>Ideal:</strong> {produto.estoque_ideal}</p>
+                          <p><strong>Alvo:</strong> {alvoPorProduto[produto.produto_id] ?? 0} (±{margemPct}%)</p>
                           <p><strong>Disponível:</strong> {produto.estoque_disponivel}</p>
                           {produto.status === 'critico' && <p className="text-red-500 font-semibold">⚠️ Estoque insuficiente!</p>}
                         </div>
@@ -340,8 +373,7 @@ export default function EstoqueDisponivel({
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="text-xs space-y-1">
-                                  <p><strong>Mínimo:</strong> {produto.estoque_minimo}</p>
-                                  <p><strong>Ideal:</strong> {produto.estoque_ideal}</p>
+                                  <p><strong>Alvo:</strong> {alvoPorProduto[produto.produto_id] ?? 0} (±{margemPct}%)</p>
                                   <p><strong>Disponível:</strong> {produto.estoque_disponivel}</p>
                                   {produto.status === 'critico' && <p className="text-red-500 font-semibold">⚠️ Estoque insuficiente!</p>}
                                 </div>
