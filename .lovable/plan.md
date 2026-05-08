@@ -1,31 +1,66 @@
-## Objetivo
-Reduzir a barra de filtros do Dashboard de Agendamento (`AgendamentoDashboard.tsx`) para caber tudo em **uma única linha** no desktop, mantendo a responsividade no mobile.
+## Auditoria de Estoque - Folha Imprimível
 
-## Mudanças em `src/components/agendamento/AgendamentoDashboard.tsx`
+Criar uma folha de auditoria imprimível para contagem física de insumos e produtos, com posterior ajuste no sistema.
 
-Substituir o bloco "Barra de Filtros Unificada" (linhas ~928–1026) por um layout único `flex items-center gap-2`:
+### 1. Renomear aba "Pedidos de Compra" → "Contagem de Estoque"
 
-1. **Remover** o ícone `Filter` e o texto "Filtros" + badge de "ativos".
-2. **Busca** (1º item): `Input` compacto `h-9 w-44` com ícone search interno e placeholder "Buscar cliente…".
-3. **Navegador de semana** (2º item): manter o grupo `‹ dd/MM - dd/MM ›` com `min-w-0` reduzido (`min-w-[140px]`).
-4. **Botão "Voltar semana atual"**: virar **icon-only** usando `RotateCcw` da lucide (ícone circular com seta, mesmo padrão usado para resetar preço padrão), com `tooltip` "Voltar para semana atual". Tamanho `h-9 w-9 p-0`, variant `ghost`. Continuar condicional em `!ehSemanaAtual`.
-5. **RepresentantesFilter** e **RotasFilter**: passar nova prop `compact` para reduzir botão a **icon-only com badge numérico** quando houver seleção. Layout: `<Button variant="outline" size="icon" className="h-9 w-9 relative">` mostrando apenas o ícone (`Users` / `Map`); se `selectedIds.length > 0 && !allSelected`, mostrar `<Badge>` no canto superior direito com a contagem. Tooltip com texto atual ("Todos os representantes" / "N representantes"). Comportamento do popover inalterado.
-6. **Botão Exportar PDF**: virar icon-only `h-9 w-9` com ícone `FileDown` + tooltip "Exportar PDF".
-7. **Contador "N agendamentos"**: mover para a direita da linha com `ml-auto` em texto pequeno (`text-xs text-muted-foreground whitespace-nowrap`), ex.: `123 agend.`.
+**Arquivos:**
+- `src/pages/EstoqueInsumos.tsx` — alterar label "Compras" → manter "Compras" (já é a aba pai). A sub-aba é a interna.
+- `src/components/estoque/tabs/PedidosTab.tsx` — renomear sub-aba `"pedidos"` para "Contagem de Estoque" com ícone `ClipboardCheck`. Substituir o conteúdo "Em Desenvolvimento" pelo novo componente de auditoria.
 
-Layout final desktop:
-```text
-[🔍 Buscar...] [‹ 03/11 - 09/11 ›] [⟲] [👥•] [🗺•] [⬇] ........... 123 agend.
-```
+### 2. Novo componente `AuditoriaEstoqueTab.tsx`
 
-No mobile (`< sm`): o container vira `flex-wrap gap-2`; cada item mantém tamanho compacto (já são pequenos), assim cabem em 2 linhas no máximo. Remover `w-full sm:w-auto` dos elementos para que fiquem inline.
+Localização: `src/components/estoque/tabs/AuditoriaEstoqueTab.tsx`
 
-## Mudanças em `RepresentantesFilter.tsx` e `RotasFilter.tsx`
-- Adicionar prop opcional `compact?: boolean`.
-- Quando `compact`: renderizar apenas botão icon-only (`h-9 w-9`) com ícone + badge da contagem; envolver em `Tooltip` mostrando o texto longo. Conteúdo do popover permanece igual.
+Conteúdo da tela (visualização):
+- Card explicativo do fluxo: imprimir → contar → ajustar.
+- Filtros: incluir/excluir insumos, incluir/excluir produtos prontos, ordenar por categoria.
+- Botão **"Imprimir folha de auditoria"** (ícone `Printer`).
+- Botão secundário **"Lançar contagem"** (ajuste em massa) — opcional, pode ficar como "em breve" para manter o escopo focado em impressão.
 
-## Tooltips
-Usar o componente `Tooltip` já existente em `@/components/ui/tooltip` (`TooltipProvider`, `TooltipTrigger`, `TooltipContent`).
+### 3. Folha imprimível (HTML print)
 
-## Fora de escopo
-- Nenhuma alteração no PCP, nas tabs, nos cards de indicadores ou nos gráficos abaixo.
+Implementação: abrir nova janela com layout otimizado para impressão A4 retrato, usando `window.open` + template HTML (padrão `SecurePrint`-like, mas controlado).
+
+**Cabeçalho:**
+- Título: "Auditoria de Estoque"
+- Data da contagem (campo em branco para preenchimento manual)
+- Responsável (campo em branco)
+
+**Seção INSUMOS** — tabela:
+| # | Insumo | Categoria | Estoque sistema | Unidade | Contagem física (kg) | Comprar? | Obs |
+|---|--------|-----------|-----------------|---------|----------------------|----------|-----|
+
+- Coluna "Estoque sistema": valor atual convertido para Kg quando aplicável (g→kg, ml→l mantém como referência).
+- Coluna "Contagem física (kg)": linha em branco para preenchimento.
+- Coluna "Comprar?": checkbox vazio (`☐`).
+- Linhas com altura confortável para escrita manual (~28px).
+
+**Seção PRODUTOS PRONTOS** — tabela:
+| # | Produto | Categoria | Estoque sistema (un) | Contagem física (un) | Comprar? | Obs |
+
+- Agrupado por categoria com subtítulos.
+- Apenas produtos ativos.
+
+**Rodapé:**
+- Espaço para assinatura do responsável e do conferente.
+- CSS `@media print` para remover margens desnecessárias, repetir cabeçalho da tabela em cada página (`thead { display: table-header-group }`).
+
+### 4. Detalhes técnicos
+
+- Hooks reutilizados: `useSupabaseInsumos`, `useEstoqueComExpedicao` (para saldos reais de produtos).
+- Conversão kg para insumos: se `unidade_medida === 'g'` → dividir por 1000; `'kg'` → manter; outros → exibir na unidade original com aviso.
+- Ordenação: insumos por categoria + nome; produtos por categoria + nome.
+- Sanitização: escapar todo conteúdo dinâmico ao montar o HTML da janela de impressão (evitar XSS via nomes de insumos/produtos).
+
+### Arquivos a criar/editar
+
+- **Criar:** `src/components/estoque/tabs/AuditoriaEstoqueTab.tsx`
+- **Criar:** `src/utils/auditoriaEstoquePrint.ts` — função `gerarFolhaAuditoria({ insumos, produtos })` que abre a janela de impressão.
+- **Editar:** `src/components/estoque/tabs/PedidosTab.tsx` — renomear sub-aba e montar `AuditoriaEstoqueTab`.
+- **Editar:** `src/components/estoque/InsumosTabs.tsx` — exportar novo tab se necessário.
+
+### Fora de escopo (confirmar antes)
+
+- Salvar histórico de auditorias no banco.
+- Tela de "Lançar contagem" para ajuste em massa direto no sistema (atualmente o ajuste seria feito manualmente via tela de movimentação existente).
