@@ -17,6 +17,13 @@ function converterParaKg(valor: number, unidade: string): number | null {
   return null;
 }
 
+function decidirUnidadeContagem(categoria: string, unidade: string): "kg" | "un" | string {
+  const cat = (categoria || "").toLowerCase();
+  if (cat.includes("embalagem")) return "un";
+  if (cat.includes("matéria") || cat.includes("materia") || cat.includes("prima")) return "kg";
+  return (unidade || "un").toLowerCase();
+}
+
 export default function AuditoriaEstoqueTab() {
   const { insumos } = useSupabaseInsumos();
   const { obterSaldoInsumo } = useMovimentacoesEstoqueInsumos();
@@ -51,12 +58,18 @@ export default function AuditoriaEstoqueTab() {
 
   const linhasInsumos = useMemo(() => insumos.map((i) => {
     const saldo = saldosInsumos[i.id] ?? i.estoque_atual ?? 0;
+    const unidadeContagem = decidirUnidadeContagem(i.categoria, i.unidade_medida);
+    let estoqueExibido = saldo;
+    if (unidadeContagem === "kg") {
+      const kg = converterParaKg(saldo, i.unidade_medida);
+      estoqueExibido = kg !== null ? kg : saldo;
+    }
     return {
       nome: i.nome,
       categoria: i.categoria || "Sem categoria",
-      estoqueSistema: saldo,
+      estoqueSistema: estoqueExibido,
       unidade: i.unidade_medida,
-      estoqueEmKg: converterParaKg(saldo, i.unidade_medida),
+      unidadeContagem,
     };
   }), [insumos, saldosInsumos]);
 
