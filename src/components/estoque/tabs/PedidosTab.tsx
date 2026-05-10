@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, ClipboardCheck } from "lucide-react";
+import { ShoppingCart, ClipboardCheck } from "lucide-react";
 import NecessidadeInsumosTab from "./NecessidadeInsumosTab";
 import AuditoriaEstoqueTab from "./AuditoriaEstoqueTab";
 
@@ -13,8 +13,8 @@ export default function PedidosTab() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="necessidade" className="flex items-center gap-2">
-            <Calculator className="h-4 w-4" />
-            Necessidade de Insumos
+            <ShoppingCart className="h-4 w-4" />
+            Lista de Compras
           </TabsTrigger>
           <TabsTrigger value="pedidos" className="flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
