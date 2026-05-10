@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShoppingCart, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { ShoppingCart, FileSpreadsheet, Sparkles, AlertTriangle } from 'lucide-react';
 import { useListaComprasAutomatica } from '@/hooks/useListaComprasAutomatica';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -16,7 +16,7 @@ const COBERTURAS = [7, 14, 30] as const;
 export default function NecessidadeInsumosTab() {
   const [cobertura, setCobertura] = useState<number>(7);
   const [mostrarTodos, setMostrarTodos] = useState(false);
-  const { linhas, totalCompra, loading, coberturaUsada, gerar } = useListaComprasAutomatica();
+  const { linhas, totalCompra, loading, coberturaUsada, produtosIgnorados, gerar } = useListaComprasAutomatica();
 
   const fmtMoeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fmtQtd = (v: number, dec = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -60,7 +60,7 @@ export default function NecessidadeInsumosTab() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Geração automática baseada no consumo médio dos últimos 28 dias.
+            Baseado nas entregas confirmadas dos últimos 28 dias, convertidas em insumos via receitas.
           </p>
 
           <div className="flex flex-wrap items-end gap-4">
@@ -101,6 +101,29 @@ export default function NecessidadeInsumosTab() {
 
       {linhas.length > 0 && (
         <>
+          {produtosIgnorados.length > 0 && (
+            <Card className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20">
+              <CardContent className="p-4 flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">
+                    {produtosIgnorados.length} {produtosIgnorados.length === 1 ? 'produto ignorado' : 'produtos ignorados'} no cálculo
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Sem receita ou rendimento configurado. Cadastre em PCP &gt; Rendimentos para incluir.
+                  </p>
+                  <ul className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                    {produtosIgnorados.map(p => (
+                      <li key={p.produtoId}>
+                        • <span className="font-medium text-foreground">{p.nome}</span> — {p.unidades} un vendidas
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="p-4 flex flex-wrap items-center gap-6">
               <div>
@@ -125,7 +148,7 @@ export default function NecessidadeInsumosTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Insumo</TableHead>
-                    <TableHead className="text-right">Consumo médio/dia</TableHead>
+                    <TableHead className="text-right">Consumo/semana</TableHead>
                     <TableHead className="text-right">Estoque</TableHead>
                     <TableHead className="text-right">Necessário</TableHead>
                     <TableHead className="text-right">A comprar</TableHead>
@@ -137,7 +160,7 @@ export default function NecessidadeInsumosTab() {
                     <TableRow key={l.insumoId}>
                       <TableCell className="font-medium">{l.nome}</TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {fmtQtd(l.consumoMedioDia, 2)} {l.unidade}
+                        {fmtQtd(l.consumoMedioSemanal, 2)} {l.unidade}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {fmtQtd(l.estoqueAtual, 2)} {l.unidade}
