@@ -3,7 +3,7 @@ interface InsumoLinha {
   categoria: string;
   estoqueSistema: number;
   unidade: string;
-  estoqueEmKg: number | null;
+  unidadeContagem: string;
 }
 
 interface ProdutoLinha {
@@ -60,13 +60,14 @@ export function gerarFolhaAuditoria(opts: {
           .sort((a, b) => a.nome.localeCompare(b.nome))
           .map((l) => {
             i += 1;
-            const sistemaKg = l.estoqueEmKg !== null ? `${fmt(l.estoqueEmKg, 3)} kg` : `${fmt(l.estoqueSistema, 2)} ${escapeHtml(l.unidade)}`;
+            const dec = l.unidadeContagem === "kg" ? 3 : (l.unidadeContagem === "un" ? 0 : 2);
+            const sistemaTxt = `${fmt(l.estoqueSistema, dec)} ${escapeHtml(l.unidadeContagem)}`;
             return `
               <tr>
                 <td class="num">${i}</td>
                 <td>${escapeHtml(l.nome)}</td>
-                <td class="sistema">${sistemaKg}</td>
-                <td class="contagem"></td>
+                <td class="sistema">${sistemaTxt}</td>
+                <td class="contagem"><span class="un-hint">${escapeHtml(l.unidadeContagem)}</span></td>
                 <td class="check">&#9633;</td>
                 <td class="obs"></td>
               </tr>`;
@@ -86,7 +87,7 @@ export function gerarFolhaAuditoria(opts: {
             <th style="width:30px">#</th>
             <th>Insumo</th>
             <th style="width:110px">Sistema</th>
-            <th style="width:130px">Contagem (kg)</th>
+            <th style="width:130px">Contagem</th>
             <th style="width:60px">Comprar?</th>
             <th style="width:140px">Observação</th>
           </tr>
@@ -164,6 +165,7 @@ export function gerarFolhaAuditoria(opts: {
   td.contagem, td.obs { height: 26px; }
   td.check { font-size: 16px; }
   tr.cat-row td { background: #f4f4f4; font-weight: bold; font-size: 11px; }
+  td.contagem .un-hint { float: right; color: #999; font-size: 10px; }
   .assinaturas { display: flex; gap: 40px; margin-top: 28px; page-break-inside: avoid; }
   .assinaturas .col { flex: 1; text-align: center; }
   .assinaturas .linha-ass { border-top: 1px solid #111; margin-top: 40px; padding-top: 4px; font-size: 11px; }
