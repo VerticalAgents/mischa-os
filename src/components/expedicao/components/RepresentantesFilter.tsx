@@ -58,10 +58,10 @@ export const RepresentantesFilter = ({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {compact ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 size="icon"
@@ -74,10 +74,12 @@ export const RepresentantesFilter = ({
                   </span>
                 )}
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>{getButtonText()}</TooltipContent>
-          </Tooltip>
-        ) : (
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{getButtonText()}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <PopoverTrigger asChild>
           <Button
             variant="outline"
             className={cn("justify-between min-w-[200px]", className)}
@@ -88,8 +90,8 @@ export const RepresentantesFilter = ({
             </div>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </Button>
-        )}
-      </PopoverTrigger>
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-[250px] p-0" align="start">
         <div className="p-2 border-b">
           <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
