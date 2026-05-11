@@ -120,7 +120,11 @@ export const useListaComprasAutomatica = () => {
         const necessario = medioSemanal * (coberturaDias / 7);
         const estoqueAtual = Number(insumo.estoque_atual) || 0;
         const aComprar = Math.max(0, necessario - estoqueAtual);
-        const custoUnit = Number(insumo.custo_medio) || 0;
+        // custo_medio é o preço pago pelo volume_bruto (ex: R$ 4,19 por 1000 g).
+        // Custo unitário real = custo_medio / volume_bruto.
+        const volumeBruto = Number(insumo.volume_bruto) || 0;
+        const custoMedioPack = Number(insumo.custo_medio) || 0;
+        const custoUnit = volumeBruto > 0 ? custoMedioPack / volumeBruto : 0;
         const custoTotal = aComprar * custoUnit;
         total += custoTotal;
 
