@@ -21,6 +21,14 @@ export default function NecessidadeInsumosTab() {
   const fmtMoeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fmtQtd = (v: number, dec = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
+  // Converte g→kg e ml→L para exibição mais limpa.
+  const fmtMedida = (valor: number, unidade: string) => {
+    const u = (unidade || '').toLowerCase();
+    if (u === 'g') return `${fmtQtd(valor / 1000, 3)} kg`;
+    if (u === 'ml') return `${fmtQtd(valor / 1000, 3)} L`;
+    return `${fmtQtd(valor, 2)} ${unidade}`;
+  };
+
   const linhasVisiveis = useMemo(
     () => mostrarTodos ? linhas : linhas.filter(l => l.aComprar > 0),
     [linhas, mostrarTodos]
@@ -160,18 +168,18 @@ export default function NecessidadeInsumosTab() {
                     <TableRow key={l.insumoId}>
                       <TableCell className="font-medium">{l.nome}</TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {fmtQtd(l.consumoMedioSemanal, 2)} {l.unidade}
+                        {fmtMedida(l.consumoMedioSemanal, l.unidade)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {fmtQtd(l.estoqueAtual, 2)} {l.unidade}
+                        {fmtMedida(l.estoqueAtual, l.unidade)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtQtd(l.necessario, 2)} {l.unidade}
+                        {fmtMedida(l.necessario, l.unidade)}
                       </TableCell>
                       <TableCell className="text-right">
                         {l.aComprar > 0 ? (
                           <Badge variant="destructive">
-                            {fmtQtd(l.aComprar, 2)} {l.unidade}
+                            {fmtMedida(l.aComprar, l.unidade)}
                           </Badge>
                         ) : (
                           <Badge variant="secondary">OK</Badge>
