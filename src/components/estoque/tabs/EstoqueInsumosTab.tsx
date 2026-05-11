@@ -5,17 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, TrendingDown, BarChart3, Search, Settings } from "lucide-react";
+import { Plus, TrendingDown, BarChart3, Search, Settings, DollarSign, Package, AlertTriangle } from "lucide-react";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useMovimentacoesEstoqueInsumos } from "@/hooks/useMovimentacoesEstoqueInsumos";
+import { useConsumoSemanalInsumos } from "@/hooks/useConsumoSemanalInsumos";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
 import EditarInsumoModal from "../EditarInsumoModal";
 
+const fmtMedida = (valor: number, unidade: string) => {
+  if (unidade === 'g') return `${(valor / 1000).toFixed(3)} kg`;
+  if (unidade === 'ml') return `${(valor / 1000).toFixed(3)} L`;
+  return `${valor.toFixed(2)} ${unidade}`;
+};
+
+const fmtMoeda = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 export default function EstoqueInsumosTab() {
   const { insumos, loading: loadingInsumos } = useSupabaseInsumos();
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoInsumo } = useMovimentacoesEstoqueInsumos();
+  const { consumoSemanal } = useConsumoSemanalInsumos();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [saldos, setSaldos] = useState<Record<string, number>>({});
@@ -90,12 +101,32 @@ export default function EstoqueInsumosTab() {
     carregarSaldos();
   };
 
-  const getStatusEstoque = (saldo: number, minimo?: number) => {
+  const getStatusEstoque = (saldo: number, consumoSem: number, minimo?: number) => {
     if (saldo <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
+    if (consumoSem > 0 && saldo < consumoSem * 0.2) {
+      return { variant: "destructive" as const, label: "Estoque baixo" };
+    }
     if (minimo && saldo <= minimo) return { variant: "secondary" as const, label: "Abaixo do mínimo" };
-    if (saldo <= 10) return { variant: "outline" as const, label: "Baixo" };
     return { variant: "default" as const, label: "Normal" };
   };
+
+  // ==== Insights ====
+  const valorTotalEstoque = insumos.reduce((acc, ins) => {
+    const saldo = saldos[ins.id] || 0;
+    const volumeBruto = Number(ins.volume_bruto) || 0;
+    const custoMedioPack = Number(ins.custo_medio) || 0;
+    const custoUnit = volumeBruto > 0 ? custoMedioPack / volumeBruto : 0;
+    return acc + saldo * custoUnit;
+  }, 0);
+
+  const totalCadastrados = insumos.length;
+
+  const itensEstoqueBaixo = insumos.filter(ins => {
+    const saldo = saldos[ins.id] || 0;
+    const consumoSem = consumoSemanal.get(ins.id) || 0;
+    if (saldo <= 0) return true;
+    return consumoSem > 0 && saldo < consumoSem * 0.2;
+  }).length;
 
   const movimentacoesInsumoSelecionado = showHistorico 
     ? movimentacoes.filter(mov => mov.insumo_id === showHistorico)
@@ -113,6 +144,46 @@ export default function EstoqueInsumosTab() {
 
   return (
     <div className="space-y-6">
+      {/* Cards de insights */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Valor total em estoque
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{fmtMoeda(valorTotalEstoque)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Insumos cadastrados
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCadastrados}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Estoque baixo
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{itensEstoqueBaixo}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Saldo &lt; 20% do consumo semanal
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filtros e busca */}
       <div className="flex gap-4">
         <div className="relative flex-1">
@@ -139,6 +210,7 @@ export default function EstoqueInsumosTab() {
                 <TableHead>Categoria</TableHead>
                 <TableHead className="text-center">Saldo Atual</TableHead>
                 <TableHead className="text-center">Unidade</TableHead>
+                <TableHead className="text-center">Consumo/sem</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -146,14 +218,15 @@ export default function EstoqueInsumosTab() {
             <TableBody>
               {insumosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
+                  <TableCell colSpan={7} className="text-center py-4">
                     {searchTerm ? "Nenhum insumo encontrado" : "Nenhum insumo cadastrado"}
                   </TableCell>
                 </TableRow>
               ) : (
                 insumosFiltrados.map((insumo) => {
                   const saldo = saldos[insumo.id] || 0;
-                  const status = getStatusEstoque(saldo, insumo.estoque_minimo);
+                  const consumoSem = consumoSemanal.get(insumo.id) || 0;
+                  const status = getStatusEstoque(saldo, consumoSem, insumo.estoque_minimo);
                   
                   return (
                     <TableRow key={insumo.id}>
@@ -179,6 +252,9 @@ export default function EstoqueInsumosTab() {
                       </TableCell>
                       <TableCell className="text-center">
                         {insumo.unidade_medida}
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-sm">
+                        {consumoSem > 0 ? fmtMedida(consumoSem, insumo.unidade_medida) : '—'}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={status.variant}>{status.label}</Badge>
