@@ -94,7 +94,7 @@ export default function ClienteFormDialog({
   const { categorias } = useSupabaseCategoriasProduto();
   const { representantes } = useSupabaseRepresentantes();
   const { isRepresentante } = useUserRoles();
-  const { representanteId: meuRepresentanteId } = useMyRepresentanteId();
+  const { representanteId: meuRepresentanteId, loading: loadingMeuRep } = useMyRepresentanteId();
   const isRep = isRepresentante();
   // Representante não pode editar dados básicos de clientes já criados.
   // Só pode preencher no primeiro cadastro. Depois, somente admin altera.
@@ -135,6 +135,12 @@ export default function ClienteFormDialog({
         temDadosIniciais: !!dadosIniciais 
       });
       
+      // Se for representante, aguardar o id resolver antes de inicializar o form
+      // de criação — caso contrário o representante_id sai null e o RLS rejeita.
+      if (!cliente && isRep && loadingMeuRep) {
+        return;
+      }
+
       if (cliente) {
         // MODO DE EDIÇÃO: Cliente existente
         setFormData({
@@ -165,7 +171,7 @@ export default function ClienteFormDialog({
     } else {
       console.log('⏭️ Mantendo formData (sem reinit)');
     }
-  }, [open, cliente?.id, dadosIniciais]);
+  }, [open, cliente?.id, dadosIniciais, isRep, meuRepresentanteId, loadingMeuRep]);
 
   const handleInputChange = (field: keyof Cliente, value: any) => {
     console.log(`ClienteFormDialog: Atualizando campo ${field}:`, value);
@@ -211,7 +217,22 @@ export default function ClienteFormDialog({
         });
       } else {
         console.log('➕ Criando novo cliente');
-        const novoCliente = await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
+        // Salvaguarda: representante deve ter representanteId preenchido
+        // (caso contrário a RLS rejeita o insert).
+        let payload = formData;
+        if (isRep && !payload.representanteId) {
+          if (!meuRepresentanteId) {
+            toast({
+              title: "Aguarde",
+              description: "Carregando seu cadastro de representante. Tente salvar novamente em instantes.",
+              variant: "destructive",
+            });
+            setIsSaving(false);
+            return;
+          }
+          payload = { ...payload, representanteId: meuRepresentanteId };
+        }
+        const novoCliente = await adicionarCliente(payload as Omit<Cliente, 'id' | 'dataCadastro'>);
         clienteId = novoCliente.id;
         
         toast({
@@ -813,7 +834,7 @@ export default function ClienteFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || isSaving}>
+            <Button type="submit" disabled={loading || isSaving || (isRep && loadingMeuRep)}>
               <Save className="h-4 w-4 mr-2" />
               {cliente ? 'Atualizar' : 'Cadastrar'}
             </Button>
