@@ -1,56 +1,29 @@
-# Lista de Compras — base em entregas confirmadas
+## Problema
 
-## Objetivo
+O cadastro de cliente pelo representante está falhando com:
+`new row violates row-level security policy for table "clientes"`
 
-Substituir a fonte de dados do cálculo (movimentações de estoque, que estão poluídas por ajustes manuais) pelas **entregas confirmadas dos últimos 28 dias**, convertendo para insumos via receitas.
+A política de INSERT exige:
+`is_representante() AND representante_id = get_my_representante_id()`
 
-## Lógica nova
+No `ClienteFormDialog.tsx`, o `representanteId` do form é preenchido com `meuRepresentanteId` (vindo do hook `useMyRepresentanteId`, que faz uma chamada RPC assíncrona). Mas isso é feito dentro de um `useEffect` cujas deps são apenas `[open, cliente?.id, dadosIniciais]`. Quando o representante abre o diálogo antes do RPC terminar, `meuRepresentanteId` ainda é `null`, o form salva com `representante_id = null`, e o RLS rejeita o insert.
 
-1. Buscar `historico_entregas` dos últimos 28 dias com `tipo = 'entrega'` (confirmadas).
-2. A partir do campo `itens` (jsonb), somar quantidade vendida por produto.
-3. Para cada produto:
-   - Encontrar receita via `rendimentos_receita_produto` (rendimento real por forma).
-   - `formas_necessarias = unidades_vendidas / rendimento`
-   - Se produto não tem receita/rendimento configurado: **ignorar e listar no aviso**.
-4. Para cada receita, multiplicar quantidade dos itens (`itens_receita`) pelo nº de formas → consumo total de cada insumo nos 28 dias.
-5. `consumo_semanal_medio = consumo_28d / 4`
-6. `necessario = consumo_semanal_medio * (cobertura / 7)` onde cobertura ∈ {7, 14, 30}.
-7. `a_comprar = max(0, necessario - estoque_atual_insumo)`
-8. `custo_total = a_comprar * custo_medio`
+Isso é um regressão recente — o fluxo funcionava quando o RPC respondia mais rápido que o usuário clicar em "Salvar" ou quando o diálogo era aberto por um caminho que já tinha o id resolvido.
 
-## UI
+## Correção
 
-- Mantém os 3 botões de cobertura (7/14/30 dias).
-- Mantém botão "Gerar lista" e "Exportar XLSX".
-- Card de total estimado.
-- **Novo:** banner com lista de produtos ignorados (sem receita/rendimento), pra usuário saber o que ficou de fora.
-- Tabela: insumo, consumo médio semanal, necessário no período, estoque atual, a comprar, custo.
+`src/components/clientes/ClienteFormDialog.tsx`
 
-## Arquivos
+1. No `useEffect` de inicialização (linhas ~119-168), adicionar `meuRepresentanteId` e `isRep` às dependências, e só rodar a inicialização do "modo criação" quando `meuRepresentanteId` estiver resolvido (caso o usuário seja representante).
 
-- `src/hooks/useListaComprasAutomatica.ts` — reescrita completa: trocar query de `movimentacoes_estoque_insumos` por `historico_entregas`, e usar `receitas` + `rendimentos_receita_produto` + `produtos` + `insumos` (já há hooks: `useSupabaseReceitas`, `useRendimentosReceitaProduto`, `useSupabaseProdutos`, `useSupabaseInsumos`).
-- `src/components/estoque/tabs/NecessidadeInsumosTab.tsx` — adicionar exibição de produtos ignorados (array vindo do hook).
+2. Como salvaguarda dentro de `handleSubmit`, se `isRep` e `formData.representanteId` estiver vazio, forçar `formData.representanteId = meuRepresentanteId` antes de chamar `adicionarCliente`. Se ainda assim estiver `null`, abortar com toast pedindo para tentar novamente.
 
-## Detalhes técnicos
+3. Desabilitar o botão "Salvar" enquanto `isRep && !meuRepresentanteId` (loading do hook), para evitar submit prematuro.
 
-```ts
-// Query
-.from('historico_entregas')
-.select('itens, data')
-.eq('tipo', 'entrega')
-.gte('data', dataLimite28d)
+Nada mais precisa mudar — RLS, sanitizer e store já estão corretos.
 
-// Agregação
-itens.forEach(i => unidadesPorProduto[i.produto] += i.quantidade)
+## Verificação
 
-// Por produto -> receita -> formas -> insumos
-formas = unidadesVendidas / rendimento
-insumosConsumo[insumoId] += itemReceita.quantidade * formas
-
-// Por insumo
-medioSemanal = consumo28d / 4
-necessario = medioSemanal * (coberturaDias / 7)
-aComprar = max(0, necessario - estoqueAtual)
-```
-
-Sem mudanças de schema, sem migrations.
+- Login como representante → abrir cadastro de novo cliente → salvar imediatamente → deve funcionar.
+- Console deve mostrar `representante_id` preenchido no payload sanitizado.
+- Admin/staff continuam podendo cadastrar normalmente (sem mudança de comportamento para esses papéis).
