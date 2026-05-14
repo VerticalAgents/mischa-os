@@ -834,7 +834,7 @@ export default function ClienteFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || isSaving}>
+            <Button type="submit" disabled={loading || isSaving || (isRep && loadingMeuRep)}>
               <Save className="h-4 w-4 mr-2" />
               {cliente ? 'Atualizar' : 'Cadastrar'}
             </Button>
