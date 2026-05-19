@@ -105,10 +105,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   // Usar hook de sincronização
   useExpedicaoSync();
 
-  useEffect(() => {
-    carregarPedidos();
-  }, [carregarPedidos]);
-
   // Handlers para GestaoClick
   const handleGerarVendaGC = async (pedidoId: string, clienteId: string) => {
     const result = await gerarVendaGC(pedidoId, clienteId);
@@ -225,7 +221,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   const handleConfirmarDespachoEmMassa = async (pedidoIds: string[]) => {
     const pedidosSelecionados = pedidosFiltrados.filter(p => pedidoIds.includes(String(p.id)));
     await confirmarDespachoEmMassa(pedidosSelecionados);
-    recarregarSilencioso();
   };
 
   // Handler para confirmar entrega em massa com data
@@ -246,7 +241,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         pedidosSelecionados.forEach(pedido => {
           removerPedidoDaLista(String(pedido.id));
         });
-        recarregarSilencioso();
       }
     } catch (error) {
       console.error('Erro ao confirmar entregas em massa:', error);
@@ -265,8 +259,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
     // Remover o pedido da lista imediatamente (atualização otimista)
     removerPedidoDaLista(pedidoId);
-    // Recarregar dados em background para sincronizar com o banco
-    recarregarSilencioso();
   };
 
   const handleDownloadCSV = () => {

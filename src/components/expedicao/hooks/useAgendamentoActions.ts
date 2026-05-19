@@ -10,7 +10,7 @@ export const useAgendamentoActions = () => {
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>(null);
   
   const { agendamentos, salvarAgendamento, carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { pedidos, carregarPedidos } = useExpedicaoStore();
+  const { pedidos } = useExpedicaoStore();
 
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
@@ -68,12 +68,9 @@ export const useAgendamentoActions = () => {
         data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
         quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || PEDIDO_MINIMO_UNIDADES
       });
-      
-      // Recarregar dados após atualização
-      await Promise.all([
-        carregarPedidos(), // MODIFICADO: Garantir que os pedidos são recarregados
-        carregarTodosAgendamentos()
-      ]);
+
+      // Atualizar apenas o store de agendamentos (mais leve que recarregar toda expedição)
+      await carregarTodosAgendamentos();
       
       toast.success("Agendamento atualizado com sucesso!");
       setModalEditarAberto(false);
