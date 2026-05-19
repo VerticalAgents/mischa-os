@@ -100,6 +100,83 @@ const parseDataSegura = (dataString: string | Date): Date => {
   return new Date(dataString);
 };
 
+// Cache de razões sociais por sessão (evita refetch da edge function)
+let razoesSociaisCache: Record<string, string> = {};
+let razoesSociaisCacheLoadedAt = 0;
+const RAZOES_TTL_MS = 5 * 60 * 1000; // 5 min
+
+// Throttle de carregamento — evita múltiplas chamadas concorrentes
+let carregamentoEmAndamento: Promise<void> | null = null;
+let ultimoCarregamento = 0;
+const CARREGAMENTO_MIN_INTERVAL_MS = 2000;
+
+const buscarRazoesSociaisBackground = async (
+  gcClienteIds: string[],
+  set: (fn: (state: any) => any) => void,
+  get: () => any,
+) => {
+  if (gcClienteIds.length === 0) return;
+
+  // Usa cache se recente
+  const cacheValido = Date.now() - razoesSociaisCacheLoadedAt < RAZOES_TTL_MS;
+  if (cacheValido && Object.keys(razoesSociaisCache).length > 0) {
+    aplicarRazoesSociaisAoStore(razoesSociaisCache, set, get);
+    return;
+  }
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.user?.id) return;
+
+    const { data: configData } = await supabase
+      .from('integracoes_config')
+      .select('config')
+      .eq('user_id', sessionData.session.user.id)
+      .eq('integracao', 'gestaoclick')
+      .maybeSingle();
+
+    const config = configData?.config as any;
+    if (!config?.access_token || !config?.secret_token) return;
+
+    const { data: razaoData } = await supabase.functions.invoke('gestaoclick-proxy', {
+      body: {
+        action: 'buscar_razoes_sociais_lote',
+        gestaoclick_cliente_ids: gcClienteIds,
+        access_token: config.access_token,
+        secret_token: config.secret_token,
+      },
+    });
+
+    if (razaoData?.razoes_sociais) {
+      razoesSociaisCache = razaoData.razoes_sociais;
+      razoesSociaisCacheLoadedAt = Date.now();
+      aplicarRazoesSociaisAoStore(razoesSociaisCache, set, get);
+    }
+  } catch (err) {
+    console.warn('Erro ao buscar razões sociais (background):', err);
+  }
+};
+
+const aplicarRazoesSociaisAoStore = (
+  razoesMap: Record<string, string>,
+  set: (fn: (state: any) => any) => void,
+  get: () => any,
+) => {
+  const pedidosAtuais = get().pedidos;
+  let mudou = false;
+  const novos = pedidosAtuais.map((p: any) => {
+    const gcId = p.gestaoclick_cliente_id;
+    if (gcId && razoesMap[gcId] && p.cliente_razao_social !== razoesMap[gcId]) {
+      mudou = true;
+      return { ...p, cliente_razao_social: razoesMap[gcId] };
+    }
+    return p;
+  });
+  if (mudou) {
+    set((state: any) => ({ ...state, pedidos: novos }));
+  }
+};
+
 export const useExpedicaoStore = create<ExpedicaoStore>()(
   devtools(
     (set, get) => ({
