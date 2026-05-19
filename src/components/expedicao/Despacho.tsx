@@ -43,7 +43,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     getPedidosParaDespacho,
     getPedidosAtrasados,
     getPedidosSeparadosAntecipados,
-    carregarPedidos,
     recarregarSilencioso,
     removerPedidoDaLista
   } = useExpedicaoStore();
