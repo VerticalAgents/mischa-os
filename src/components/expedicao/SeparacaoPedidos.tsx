@@ -77,17 +77,11 @@ const SeparacaoPedidos = () => {
 
   const handleGerarVendaGC = async (pedidoId: string, clienteId: string) => {
     const result = await gerarVendaGC(pedidoId, clienteId);
-    if (result.success) {
-      await carregarPedidos();
-    }
     return result;
   };
 
   const handleAtualizarVendaGC = async (pedidoId: string, clienteId: string, vendaId: string) => {
     const success = await atualizarVendaGC(pedidoId, clienteId, vendaId);
-    if (success) {
-      await carregarPedidos();
-    }
     return success;
   };
 
@@ -136,7 +130,7 @@ const SeparacaoPedidos = () => {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    carregarPedidos();
+    // store já atualizou via salvarAgendamento; recarga full apenas se necessário
     setModalEditarAberto(false);
     setPedidoEditando(null);
     setPedidoEditandoOriginal(null);
@@ -165,7 +159,6 @@ const SeparacaoPedidos = () => {
     for (const pedidoId of pedidoIds) {
       await confirmarSeparacao(pedidoId);
     }
-    await carregarPedidos();
   };
 
   const handleGerarVendasEmMassa = async (pedidoIds: string[]) => {
@@ -175,6 +168,7 @@ const SeparacaoPedidos = () => {
         await gerarVendaGC(pedidoId, pedido.cliente_id);
       }
     }
+    // Recarrega uma vez ao final para refletir gestaoclick_venda_id no card
     await carregarPedidos();
   };
 

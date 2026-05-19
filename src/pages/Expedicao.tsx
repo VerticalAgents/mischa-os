@@ -62,7 +62,6 @@ export default function Expedicao() {
       newParams.set('tab', newValue);
       return newParams;
     }, { replace: true });
-    recarregarDados(); // Recarrega os dados ao trocar de aba
   };
 
   const handleEntregasTabChange = (newValue: string) => {
@@ -74,7 +73,6 @@ export default function Expedicao() {
       newParams.set('entregas', newValue);
       return newParams;
     }, { replace: true });
-    recarregarDados(); // Recarrega os dados ao trocar sub-abas
   };
 
   const { canEdit } = useRoutePermission('/expedicao');
