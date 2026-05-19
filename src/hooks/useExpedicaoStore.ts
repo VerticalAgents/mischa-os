@@ -208,155 +208,109 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       },
       
       carregarPedidos: async () => {
-        set({ isLoading: true });
-        
-        try {
-          console.log('🔄 Carregando agendamentos para expedição...');
-          
-          const { data: agendamentos, error } = await supabase
-            .from('agendamentos_clientes')
-            .select('*')
-            .eq('status_agendamento', 'Agendado');
+        // Throttle: se já carregou recentemente, ignora chamadas duplicadas
+        const agora = Date.now();
+        if (carregamentoEmAndamento) return carregamentoEmAndamento;
+        if (agora - ultimoCarregamento < CARREGAMENTO_MIN_INTERVAL_MS && get().pedidos.length > 0) {
+          return;
+        }
 
-          if (error) {
-            console.error('Erro ao carregar agendamentos:', error);
-            throw error;
-          }
+        const promise = (async () => {
+          // Apenas mostrar loading se ainda não há pedidos (primeira carga)
+          if (get().pedidos.length === 0) set({ isLoading: true });
 
-          console.log('📥 Agendamentos carregados:', agendamentos?.length || 0);
-
-          // Tentar carregar dados dos clientes com gestaoclick_cliente_id
-          let clientesData: any[] = [];
-          
           try {
-            const { data: clientesComLink, error: clientesError } = await supabase
-              .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento, tipo_logistica');
+            const { data, error } = await supabase
+              .from('agendamentos_clientes')
+              .select(`
+                *,
+                clientes (
+                  id, nome, endereco_entrega, contato_telefone, link_google_maps,
+                  representante_id, observacoes, gestaoclick_cliente_id,
+                  emite_nota_fiscal, forma_pagamento, tipo_logistica
+                )
+              `)
+              .eq('status_agendamento', 'Agendado');
 
-            if (clientesError) {
-              console.warn('Erro ao carregar clientes:', clientesError);
-              
-              // Fallback: carregar sem gestaoclick_cliente_id
-              const { data: clientesSemGC, error: fallbackError } = await supabase
-                .from('clientes')
-                .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes');
+            if (error) {
+              console.error('Erro ao carregar agendamentos:', error);
+              throw error;
+            }
 
-              if (fallbackError) {
-                throw fallbackError;
+            const pedidosFormatados = (data || []).map((agendamento: any) => {
+              const cliente = agendamento.clientes || {};
+              const gcId = cliente?.gestaoclick_cliente_id;
+
+              let dataPrevisao = new Date();
+              if (agendamento.data_proxima_reposicao) {
+                dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao);
               }
 
-              clientesData = clientesSemGC || [];
-            } else {
-              clientesData = clientesComLink || [];
+              return {
+                id: agendamento.id,
+                cliente_id: agendamento.cliente_id,
+                cliente_nome: cliente?.nome || 'Cliente não encontrado',
+                cliente_razao_social: gcId && razoesSociaisCache[gcId] ? razoesSociaisCache[gcId] : undefined,
+                cliente_endereco: cliente?.endereco_entrega,
+                cliente_telefone: cliente?.contato_telefone,
+                link_google_maps: cliente?.link_google_maps,
+                representante_id: cliente?.representante_id,
+                gestaoclick_cliente_id: gcId || undefined,
+                data_prevista_entrega: dataPrevisao,
+                quantidade_total: agendamento.quantidade_total || 0,
+                tipo_pedido: agendamento.tipo_pedido || 'Padrão',
+                status_agendamento: agendamento.status_agendamento,
+                substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
+                itens_personalizados: agendamento.itens_personalizados,
+                gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
+                gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
+                created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date(),
+                observacoes_gerais: cliente?.observacoes || undefined,
+                observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
+                trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
+                emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
+                forma_pagamento: cliente?.forma_pagamento || 'PIX',
+                tipo_logistica: cliente?.tipo_logistica || undefined,
+              };
+            });
+
+            set({
+              pedidos: pedidosFormatados,
+              ultimaAtualizacao: new Date(),
+              _cachePedidos: {
+                separacao: [],
+                despacho: [],
+                proximoDia: [],
+                atrasados: [],
+                separadosAntecipados: [],
+                lastUpdate: 0,
+              },
+            });
+
+            ultimoCarregamento = Date.now();
+
+            // Disparar busca de razões sociais em background (não bloqueia render)
+            const gcIds = Array.from(new Set(
+              pedidosFormatados
+                .map(p => p.gestaoclick_cliente_id)
+                .filter((v): v is string => !!v)
+            ));
+            if (gcIds.length > 0) {
+              void buscarRazoesSociaisBackground(gcIds, set, get);
             }
-          } catch (fallbackError) {
-            console.error('Erro ao carregar dados dos clientes:', fallbackError);
-            clientesData = [];
+          } catch (error) {
+            console.error('Erro ao carregar pedidos:', error);
+            toast.error('Erro ao carregar pedidos');
+          } finally {
+            set({ isLoading: false });
           }
+        })();
 
-          const clientesMap = new Map(clientesData.map(c => [c.id, c]));
-
-          // Coletar IDs do GestaoClick para buscar razões sociais
-          const gcClienteIds = clientesData
-            .filter(c => c.gestaoclick_cliente_id)
-            .map(c => c.gestaoclick_cliente_id);
-
-          // Buscar razões sociais em lote se houver IDs do GC
-          let razoesSociaisMap: Record<string, string> = {};
-          if (gcClienteIds.length > 0) {
-            try {
-              // Buscar configuração do GestaoClick
-              const { data: sessionData } = await supabase.auth.getSession();
-              if (sessionData?.session?.user?.id) {
-                const { data: configData } = await supabase
-                  .from('integracoes_config')
-                  .select('config')
-                  .eq('user_id', sessionData.session.user.id)
-                  .eq('integracao', 'gestaoclick')
-                  .maybeSingle();
-
-                if (configData?.config) {
-                  const config = configData.config as any;
-                  if (config.access_token && config.secret_token) {
-                    const { data: razaoData } = await supabase.functions.invoke('gestaoclick-proxy', {
-                      body: {
-                        action: 'buscar_razoes_sociais_lote',
-                        gestaoclick_cliente_ids: gcClienteIds,
-                        access_token: config.access_token,
-                        secret_token: config.secret_token
-                      }
-                    });
-                    
-                    if (razaoData?.razoes_sociais) {
-                      razoesSociaisMap = razaoData.razoes_sociais;
-                      console.log('📋 Razões sociais carregadas:', Object.keys(razoesSociaisMap).length);
-                    }
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn('Erro ao buscar razões sociais:', err);
-            }
-          }
-
-          const pedidosFormatados = (agendamentos || []).map(agendamento => {
-            const cliente = clientesMap.get(agendamento.cliente_id);
-            const gcId = cliente?.gestaoclick_cliente_id;
-            
-            let dataPrevisao = new Date();
-            if (agendamento.data_proxima_reposicao) {
-              dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao);
-            }
-            
-            return {
-              id: agendamento.id,
-              cliente_id: agendamento.cliente_id,
-              cliente_nome: cliente?.nome || 'Cliente não encontrado',
-              cliente_razao_social: gcId && razoesSociaisMap[gcId] ? razoesSociaisMap[gcId] : undefined,
-              cliente_endereco: cliente?.endereco_entrega,
-              cliente_telefone: cliente?.contato_telefone,
-              link_google_maps: cliente?.link_google_maps,
-              representante_id: cliente?.representante_id,
-              gestaoclick_cliente_id: gcId || undefined,
-              data_prevista_entrega: dataPrevisao,
-              quantidade_total: agendamento.quantidade_total || 0,
-              tipo_pedido: agendamento.tipo_pedido || 'Padrão',
-              status_agendamento: agendamento.status_agendamento,
-              substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
-              itens_personalizados: agendamento.itens_personalizados,
-              gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
-              gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
-              created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date(),
-              // Observações e trocas
-              observacoes_gerais: cliente?.observacoes || undefined,
-              observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
-              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
-              // Campos para lista de documentos
-              emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
-              forma_pagamento: cliente?.forma_pagamento || 'PIX',
-              tipo_logistica: cliente?.tipo_logistica || undefined
-            };
-          });
-
-          console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
-          set({ 
-            pedidos: pedidosFormatados,
-            ultimaAtualizacao: new Date(),
-            _cachePedidos: {
-              separacao: [],
-              despacho: [],
-              proximoDia: [],
-              atrasados: [],
-              separadosAntecipados: [],
-              lastUpdate: 0
-            }
-          });
-          
-        } catch (error) {
-          console.error('Erro ao carregar pedidos:', error);
-          toast.error("Erro ao carregar pedidos");
+        carregamentoEmAndamento = promise;
+        try {
+          await promise;
         } finally {
-          set({ isLoading: false });
+          carregamentoEmAndamento = null;
         }
       },
 
