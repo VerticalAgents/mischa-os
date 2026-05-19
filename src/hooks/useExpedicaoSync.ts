@@ -34,20 +34,5 @@ export const useExpedicaoSync = () => {
     }
   }, [carregarPedidos]);
 
-  // Adicionar efeito para recarregar dados quando a página de expedição estiver visível/em foco
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        recarregarDados();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [recarregarDados]);
-
   return { carregarPedidos, recarregarDados };
 };
