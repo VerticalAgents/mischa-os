@@ -23,22 +23,47 @@ class LazyErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    const isDynamicImportError = error.message.includes('Failed to fetch dynamically imported module');
-    
+    const msg = error?.message || '';
+    const isDynamicImportError =
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes('error loading dynamically imported module') ||
+      /ChunkLoadError/i.test(error?.name || '');
+
     if (isDynamicImportError) {
-      console.warn('Dynamic import failed, attempting auto-reload:', error.message);
-      if (!sessionStorage.getItem('lazy-reload-attempted')) {
-        sessionStorage.setItem('lazy-reload-attempted', 'true');
-        window.location.reload();
+      const key = 'lazy-reload-attempts';
+      const attempts = Number(sessionStorage.getItem(key) || '0');
+      console.warn('Dynamic import failed, attempt', attempts + 1, msg);
+      if (attempts < 2) {
+        sessionStorage.setItem(key, String(attempts + 1));
+        this.hardReload();
         return;
       }
     }
   }
 
+  hardReload = async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch (e) {
+      console.warn('Cache/SW cleanup failed:', e);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', Date.now().toString());
+    window.location.replace(url.toString());
+  };
+
   handleRetry = () => {
     this.setState({ hasError: false, error: null });
-    sessionStorage.removeItem('lazy-reload-attempted');
-    window.location.reload();
+    sessionStorage.removeItem('lazy-reload-attempts');
+    this.hardReload();
   };
 
   render() {
