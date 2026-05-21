@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -25,11 +25,8 @@ export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
-  const [processingUrlParam, setProcessingUrlParam] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [isSyncingGC, setIsSyncingGC] = useState(false);
   
@@ -37,6 +34,7 @@ export default function Clientes() {
     filtros,
     loading,
     carregarClientes,
+    recarregarSilencioso,
     setFiltroTermo,
     setFiltroStatus,
     setFiltroRepresentante,
@@ -46,7 +44,8 @@ export default function Clientes() {
     selecionarCliente,
     removerCliente,
     getClientePorId,
-    clientes: todosClientes
+    clientes: todosClientes,
+    hasLoaded,
   } = useClienteStore();
 
   const { config, fetchClientesGestaoClick } = useGestaoClickConfig();
@@ -207,7 +206,7 @@ export default function Clientes() {
         }
       }
 
-      await carregarClientes();
+      await recarregarSilencioso();
       
       // Exibir resumo
       const mensagens: string[] = [];
@@ -234,57 +233,23 @@ export default function Clientes() {
   // Handle URL parameter for direct client selection
   const clienteIdFromUrl = searchParams.get('clienteId');
 
-  // Sequential loading and URL processing
+  // Carga inicial única
+  const hasInitialLoadRef = useRef(false);
   useEffect(() => {
-    const processInitialLoad = async () => {
-      console.log('Clientes: Iniciando carregamento inicial');
-      
-      // Step 1: Load clients data first
-      if (initialLoad) {
-        await carregarClientes();
-        setInitialLoad(false);
-        console.log('Clientes: Dados carregados');
-      }
-      
-      // Step 2: Process URL parameter only after data is loaded and not already processing
-      if (!loading && !initialLoad && clienteIdFromUrl && !processingUrlParam && !clienteAtual) {
-        console.log('Clientes: Processando parâmetro da URL:', clienteIdFromUrl);
-        setProcessingUrlParam(true);
-        
-        const cliente = getClientePorId(clienteIdFromUrl);
-        if (cliente) {
-          console.log('Clientes: Cliente encontrado, selecionando:', cliente.nome);
-          selecionarCliente(clienteIdFromUrl);
-        } else {
-          console.log('Clientes: Cliente não encontrado, tentando recarregar dados');
-          // If client not found, try refreshing data once more
-          setRefreshTrigger(prev => prev + 1);
-        }
-        
-        setProcessingUrlParam(false);
-      }
-    };
-
-    processInitialLoad();
-  }, [
-    carregarClientes,
-    loading,
-    initialLoad,
-    clienteIdFromUrl,
-    processingUrlParam,
-    clienteAtual,
-    getClientePorId,
-    selecionarCliente,
-    refreshTrigger
-  ]);
-
-  // Refresh data when refreshTrigger changes
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      console.log('Clientes: Recarregando devido ao refreshTrigger');
+    if (!hasInitialLoadRef.current && !hasLoaded) {
+      hasInitialLoadRef.current = true;
       carregarClientes();
     }
-  }, [carregarClientes, refreshTrigger]);
+  }, [carregarClientes, hasLoaded]);
+
+  // Processa parâmetro da URL quando os clientes estão carregados
+  useEffect(() => {
+    if (!hasLoaded || !clienteIdFromUrl || clienteAtual) return;
+    const cliente = getClientePorId(clienteIdFromUrl);
+    if (cliente) {
+      selecionarCliente(clienteIdFromUrl);
+    }
+  }, [hasLoaded, clienteIdFromUrl, clienteAtual, getClientePorId, selecionarCliente]);
 
   // Available columns for the table
   const columnOptions: ColumnOption[] = [
@@ -319,7 +284,6 @@ export default function Clientes() {
 
   const handleFormClose = () => {
     setIsFormOpen(false);
-    setRefreshTrigger(prev => prev + 1);
   };
   
   const handleSelectCliente = (id: string) => {
@@ -342,7 +306,6 @@ export default function Clientes() {
       newParams.delete('clienteId');
       return newParams;
     });
-    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleDeleteCliente = (id: string) => {
@@ -355,7 +318,6 @@ export default function Clientes() {
       await removerCliente(clienteToDelete);
       setDeleteDialogOpen(false);
       setClienteToDelete(null);
-      setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -388,8 +350,8 @@ export default function Clientes() {
     setSelectedClienteIds([]);
   };
 
-  // Show loading state during initial load or URL processing
-  if (loading && initialLoad) {
+  // Show loading state only on first load
+  if (loading && !hasLoaded) {
     return (
       <EditPermissionProvider value={{ canEdit }}>
         <div className="flex justify-center items-center py-8">
@@ -468,7 +430,7 @@ export default function Clientes() {
         columnOptions={columnOptions}
       />
 
-      {loading ? (
+      {loading && !hasLoaded ? (
         <div className="flex justify-center items-center py-8">
           <div className="text-muted-foreground">Carregando clientes...</div>
         </div>
@@ -489,7 +451,7 @@ export default function Clientes() {
       <ClienteFormDialog 
         open={isFormOpen} 
         onOpenChange={handleFormClose}
-        onClienteUpdate={() => setRefreshTrigger(prev => prev + 1)}
+        onClienteUpdate={() => { /* update otimista no store cuida disso */ }}
       />
 
       <DeleteClienteDialog

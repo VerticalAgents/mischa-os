@@ -2,36 +2,47 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGestaoClickConfig } from './useGestaoClickConfig';
 
+// ============================================================
+// Module-level cache (shared across components & navigations)
+// ============================================================
+const moduleCache: Record<string, string> = {};
+const pendingIds: Set<string> = new Set();
+let isFetching = false;
+let lastFetchAt = 0;
+const FETCH_THROTTLE_MS = 2000;
+
 /**
  * Hook para buscar e cachear razões sociais do GestaoClick
+ * Cache vive em escopo de módulo — sobrevive a unmount/navegação.
  */
 export const useRazaoSocialGC = () => {
   const { config } = useGestaoClickConfig();
-  const [razoesSociais, setRazoesSociais] = useState<Record<string, string>>({});
+  const [razoesSociais, setRazoesSociais] = useState<Record<string, string>>({ ...moduleCache });
   const [loading, setLoading] = useState(false);
-  const cacheRef = useRef<Record<string, string>>({});
-  const pendingIdsRef = useRef<Set<string>>(new Set());
-  const fetchingRef = useRef(false);
 
   const buscarRazoesSociaisLote = useCallback(async (gcIds: string[]) => {
     if (!config?.access_token || !config?.secret_token) {
       console.log('[useRazaoSocialGC] GestaoClick não configurado');
       return;
     }
-    
-    // Filtrar IDs que não estão no cache e não estão pendentes
+
+    // Filtrar IDs que não estão no cache de módulo e não estão pendentes
     const idsNaoCache = gcIds.filter(id => 
-      id && !cacheRef.current[id] && !pendingIdsRef.current.has(id)
+      id && !moduleCache[id] && !pendingIds.has(id)
     );
-    
+
     if (idsNaoCache.length === 0) return;
 
+    // Throttle: ignorar disparos muito próximos quando já temos algo recente
+    const now = Date.now();
+    if (isFetching || now - lastFetchAt < FETCH_THROTTLE_MS) {
+      return;
+    }
+
     // Marcar como pendentes
-    idsNaoCache.forEach(id => pendingIdsRef.current.add(id));
-    
-    // Evitar múltiplas requisições simultâneas
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
+    idsNaoCache.forEach(id => pendingIds.add(id));
+    isFetching = true;
+    lastFetchAt = now;
 
     setLoading(true);
     try {
@@ -50,34 +61,26 @@ export const useRazaoSocialGC = () => {
         console.error('[useRazaoSocialGC] Erro na edge function:', error);
         // Marcar como "-" para não tentar novamente
         idsNaoCache.forEach(id => {
-          cacheRef.current[id] = '-';
+          moduleCache[id] = '-';
         });
       } else if (data?.razoes_sociais) {
         console.log('[useRazaoSocialGC] Razões sociais recebidas:', Object.keys(data.razoes_sociais).length);
-        cacheRef.current = { ...cacheRef.current, ...data.razoes_sociais };
+        Object.assign(moduleCache, data.razoes_sociais);
       }
       
-      setRazoesSociais({ ...cacheRef.current });
+      setRazoesSociais({ ...moduleCache });
     } catch (err) {
       console.error('[useRazaoSocialGC] Erro ao buscar razões sociais:', err);
     } finally {
-      // Limpar pendentes
-      idsNaoCache.forEach(id => pendingIdsRef.current.delete(id));
-      fetchingRef.current = false;
+      idsNaoCache.forEach(id => pendingIds.delete(id));
+      isFetching = false;
       setLoading(false);
     }
   }, [config]);
 
   const getRazaoSocial = useCallback((gcId: string | undefined | null): string => {
     if (!gcId) return '-';
-    return cacheRef.current[gcId] || '-';
-  }, []);
-
-  // Limpar cache ao desmontar
-  useEffect(() => {
-    return () => {
-      pendingIdsRef.current.clear();
-    };
+    return moduleCache[gcId] || '-';
   }, []);
 
   return {

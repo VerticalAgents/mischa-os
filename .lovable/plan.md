@@ -1,44 +1,51 @@
 ## Problema
 
-A página de Expedição (Separação e Despacho) está lenta porque:
+A página de Clientes está lenta pelo mesmo padrão que a Expedição tinha:
 
-1. **Recarregamento completo a cada troca de aba**: `Expedicao.tsx` chama `recarregarDados()` (full reload) toda vez que o usuário troca de aba ou sub-aba.
-2. **Recarregamento ao voltar para a aba do navegador**: `useExpedicaoSync` dispara reload no evento `visibilitychange`.
-3. **Recarregamento após cada edição**: `SeparacaoPedidos` e o `useAgendamentoActions` chamam `carregarPedidos()` depois de cada salvamento, mesmo quando o store já fez atualização otimista.
-4. **Razões sociais bloqueando o load**: `carregarPedidos`/`recarregarSilencioso` chamam a edge function `gestaoclick-proxy` (`buscar_razoes_sociais_lote`) sincronamente. Essa é a chamada mais lenta e bloqueia a renderização dos pedidos.
-5. **Mount duplo**: `Despacho` e `SeparacaoPedidos` também chamam `carregarPedidos()` no próprio `useEffect` de mount, redundante com o sync do page.
-
-A aba "Agendamentos" é rápida porque faz **uma única query** com join (`agendamentos_clientes` + `clientes`), sem edge function, e mantém um Map em memória.
+1. **`Clientes.tsx`** chama `carregarClientes()` toda vez que monta. Além disso, um `refreshTrigger` é incrementado após fechar formulário, voltar dos detalhes e deletar — cada incremento dispara um **recarregamento completo** da lista (já redundante com os updates otimistas do store).
+2. **`useClienteStore.carregarClientes`** seta `loading: true` no início → a tabela inteira é desmontada e substituída por "Carregando clientes...", mesmo quando já há dados em memória.
+3. **`ClientesTable`** dispara `buscarRazoesSociaisLote` no `useEffect` a cada mudança em `clientes`. O cache (`cacheRef`) vive **dentro do hook** — ao desmontar/remontar o componente (navegação, voltar dos detalhes, fechar form), o cache é perdido e a edge function `gestaoclick-proxy` é chamada de novo para **todos** os clientes. Essa é a chamada mais lenta.
+4. **Sem guarda de carga inicial**: voltar para /clientes vindo de outra rota refaz tudo — fetch dos clientes + fetch das razões sociais.
 
 ## Solução
 
-Aplicar o mesmo padrão da página de Agendamentos: uma carga inicial rápida + atualizações otimistas, sem reloads em troca de aba.
+Aplicar o mesmo padrão que resolveu a Expedição: carga inicial única, sem reloads em fechamento de modal/navegação, cache global de razões sociais e renderização não bloqueante.
 
-### 1. `src/pages/Expedicao.tsx`
-- Remover as chamadas `recarregarDados()` em `handleTabChange` e `handleEntregasTabChange`. Dados ficam em memória; trocar de aba é instantâneo.
+### 1. `src/hooks/useClienteStore.ts`
+- Adicionar flag `hasLoaded: boolean` no estado.
+- Em `carregarClientes`, **não setar `loading: true`** se já houver dados em memória (refresh em background). Setar loading apenas na primeira carga.
+- Marcar `hasLoaded = true` após sucesso.
+- Adicionar `recarregarSilencioso()` opcional para refreshes manuais (sem flash de loading).
+- Manter os updates otimistas que já existem em `adicionarCliente`, `atualizarCliente`, `excluirCliente`.
 
-### 2. `src/hooks/useExpedicaoSync.ts`
-- Remover o listener de `visibilitychange` que recarrega tudo ao voltar para a aba.
-- Manter apenas a carga inicial única.
+### 2. `src/pages/Clientes.tsx`
+- Criar/usar `useClientesSync` (espelho de `useExpedicaoSync`) que carrega **uma única vez** via `useRef(false)` na montagem da página.
+- Remover o `useEffect` complexo que depende de `loading`, `processingUrlParam`, `clienteAtual`, `refreshTrigger` etc. Separar em dois efeitos pequenos:
+  - Carga inicial (uma vez).
+  - Processamento do `clienteId` da URL, só quando `hasLoaded` e `clientes.length > 0`.
+- **Eliminar `refreshTrigger`**: tirar `setRefreshTrigger(prev => prev + 1)` de:
+  - `handleFormClose` (o store já fez update otimista).
+  - `handleBackToList` (nada precisa ser refeito).
+  - `confirmDeleteCliente` (delete já remove do estado).
+- Remover o segundo `useEffect` que reage ao `refreshTrigger`.
+- Tela de "Carregando..." só aparece quando `loading && !hasLoaded` (primeira carga).
 
-### 3. `src/hooks/useExpedicaoStore.ts` — acelerar `carregarPedidos`
-- Fazer a query principal com **join embutido** (`agendamentos_clientes` com `clientes(...)` em uma única chamada) em vez de duas queries separadas.
-- **Renderizar os pedidos imediatamente** sem esperar pelas razões sociais.
-- Mover a busca de `razoes_sociais` para um passo assíncrono em background: depois que `pedidos` for setado, disparar fetch da edge function e fazer `set()` apenas atualizando `cliente_razao_social` quando chegar.
-- Adicionar um cache simples por sessão para `razoesSociaisMap` (evitar refetch se já carregado).
+### 3. `src/hooks/useRazaoSocialGC.ts` — cache em escopo de módulo
+- Mover `cacheRef`, `pendingIdsRef`, `fetchingRef` para variáveis **fora** do hook (escopo de módulo), com TTL de ~5 min como na Expedição.
+- Adicionar throttle (não disparar lote se outro disparou nos últimos 2s).
+- Assim, sair de /clientes, entrar em detalhes ou fechar form **não** invalida o cache. Razões sociais já carregadas não voltam a ser buscadas.
 
-### 4. Remover reloads redundantes após edições
-- `src/components/expedicao/SeparacaoPedidos.tsx`: tirar os `await carregarPedidos()` após confirmar/desfazer separação e após edição (linhas 81, 89, 168, 178, 233). O store já atualiza otimisticamente. Manter apenas o load inicial.
-- `src/components/expedicao/Despacho.tsx`: tirar os `carregarPedidos()` e `recarregarSilencioso()` após ações pontuais (linhas 109/116/124/228/249/269/313). Substituir por confiança nos updates otimistas do store. Manter apenas a carga inicial se necessário (idealmente remover, pois o page já dispara via `useExpedicaoSync`).
-- `src/components/expedicao/hooks/useAgendamentoActions.ts`: substituir `carregarPedidos()` por atualização local no store quando aplicável; manter reload apenas se a ação afetar múltiplos campos não cobertos pela atualização otimista.
+### 4. `src/components/clientes/ClientesTable.tsx`
+- Manter o `useEffect` que chama `buscarRazoesSociaisLote`, mas confiar no cache de módulo — primeira vez busca, depois é instantâneo.
+- Sem mudança na renderização (já é não bloqueante: razões sociais aparecem progressivamente).
 
 ### 5. Manter
-- O comportamento de update otimista que já existe em `confirmarSeparacao`, `confirmarDespacho`, etc.
-- O botão manual "Atualizar" no `ResumoExpedicao` (única forma explícita de refresh full).
+- Updates otimistas (`adicionarCliente`, `atualizarCliente`, `excluirCliente`) já em vigor.
+- Comportamento de filtros, seleção e ordenação.
 
 ## Resultado esperado
 
-- Primeira carga: ~2–3x mais rápida (uma query com join, sem bloquear na edge function do GestaoClick).
-- Trocar entre Separação/Despacho/sub-abas: instantâneo (sem refetch).
-- Editar/confirmar um pedido: instantâneo (otimista), sem reload da lista inteira.
-- Razões sociais aparecem progressivamente em segundo plano sem travar a UI.
+- Primeira carga: igual ao atual (uma query) + razões sociais em background.
+- Voltar para /clientes, fechar formulário, sair dos detalhes de um cliente: **instantâneo** — sem refetch de clientes e sem refetch de razões sociais.
+- Adicionar/editar/deletar cliente: lista atualiza instantaneamente via update otimista, sem flash de "Carregando...".
+- Edge function `gestaoclick-proxy` chamada **uma única vez por sessão** para os IDs já vistos.
