@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 interface ClienteState {
   clientes: Cliente[];
   loading: boolean;
+  hasLoaded: boolean;
   clienteAtual: Cliente | null;
   filtros: {
     termo: string;
@@ -19,7 +20,8 @@ interface ClienteState {
   atualizarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
   excluirCliente: (id: string) => Promise<void>;
   removerCliente: (id: string) => Promise<void>;
-  carregarClientes: () => Promise<void>;
+  carregarClientes: (forceReload?: boolean) => Promise<void>;
+  recarregarSilencioso: () => Promise<void>;
   duplicarCliente: (clienteId: string) => Promise<Cliente>;
   selecionarCliente: (id: string | null) => void;
   getClientePorId: (id: string) => Cliente | undefined;
@@ -188,6 +190,7 @@ export const transformDbRowToCliente = (row: any): Cliente => {
 export const useClienteStore = create<ClienteState>((set, get) => ({
   clientes: [],
   loading: false,
+  hasLoaded: false,
   clienteAtual: null,
   filtros: {
     termo: '',
