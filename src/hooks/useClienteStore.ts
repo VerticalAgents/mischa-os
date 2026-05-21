@@ -468,8 +468,11 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   removerCliente: async (id) => {
     return get().excluirCliente(id);
   },
-  carregarClientes: async () => {
-    set({ loading: true });
+  carregarClientes: async (forceReload = false) => {
+    const { hasLoaded, clientes } = get();
+    // Só mostra "loading" se ainda não tem dados em memória
+    const showLoading = !hasLoaded || clientes.length === 0;
+    if (showLoading) set({ loading: true });
     try {
       const { data, error } = await supabase
         .from('clientes')
@@ -489,12 +492,30 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         return {
           clientes: clientesTransformados,
           clienteAtual: clienteAtualAtualizado,
-          loading: false
+          loading: false,
+          hasLoaded: true,
         };
       });
     } catch (error: any) {
       console.error("Erro ao carregar clientes:", error);
       set({ loading: false });
+    }
+  },
+  recarregarSilencioso: async () => {
+    // Atualiza em background sem flash de loading
+    try {
+      const { data, error } = await supabase.from('clientes').select('*');
+      if (error) throw error;
+      const clientesTransformados = data.map(transformDbRowToCliente);
+      set((state) => ({
+        clientes: clientesTransformados,
+        clienteAtual: state.clienteAtual
+          ? clientesTransformados.find(c => c.id === state.clienteAtual?.id) || state.clienteAtual
+          : null,
+        hasLoaded: true,
+      }));
+    } catch (error: any) {
+      console.error("Erro no recarregamento silencioso:", error);
     }
   },
   duplicarCliente: async (clienteId: string): Promise<Cliente> => {
