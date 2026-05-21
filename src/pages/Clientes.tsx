@@ -451,7 +451,7 @@ export default function Clientes() {
       <ClienteFormDialog 
         open={isFormOpen} 
         onOpenChange={handleFormClose}
-        onClienteUpdate={() => setRefreshTrigger(prev => prev + 1)}
+        onClienteUpdate={() => { /* update otimista no store cuida disso */ }}
       />
 
       <DeleteClienteDialog
