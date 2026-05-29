@@ -4,19 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShoppingCart, FileSpreadsheet, Sparkles, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, FileText, Sparkles, AlertTriangle } from 'lucide-react';
 import { useListaComprasAutomatica } from '@/hooks/useListaComprasAutomatica';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const COBERTURAS = [7, 14, 30] as const;
 
 export default function NecessidadeInsumosTab() {
   const [cobertura, setCobertura] = useState<number>(7);
+  const [margem, setMargem] = useState<number>(0);
   const [mostrarTodos, setMostrarTodos] = useState(false);
-  const { linhas, totalCompra, loading, coberturaUsada, produtosIgnorados, gerar } = useListaComprasAutomatica();
+  const { linhas, totalCompra, loading, coberturaUsada, margemUsada, produtosIgnorados, gerar } = useListaComprasAutomatica();
 
   const fmtMoeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fmtQtd = (v: number, dec = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -35,26 +38,64 @@ export default function NecessidadeInsumosTab() {
   );
 
   const handleGerar = async () => {
-    await gerar(cobertura);
-    toast({ title: 'Lista gerada', description: `Cobertura para ${cobertura} dias calculada.` });
+    await gerar(cobertura, margem);
+    toast({
+      title: 'Lista gerada',
+      description: `Cobertura ${cobertura}d${margem > 0 ? ` +${margem}% de margem` : ''}.`,
+    });
   };
 
-  const handleExportar = () => {
+  const handleExportarPDF = () => {
     if (linhas.length === 0) return;
-    const dados = linhasVisiveis.map(l => ({
-      Insumo: l.nome,
-      Unidade: l.unidade,
-      'Consumo médio/dia': Number(l.consumoMedioDia.toFixed(3)),
-      'Estoque atual': Number(l.estoqueAtual.toFixed(3)),
-      [`Necessário (${coberturaUsada}d)`]: Number(l.necessario.toFixed(3)),
-      'A comprar': Number(l.aComprar.toFixed(3)),
-      'Custo unitário': l.custoMedio,
-      'Custo total': l.custoTotal,
-    }));
-    const ws = XLSX.utils.json_to_sheet(dados);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Lista de Compras');
-    XLSX.writeFile(wb, `lista-compras-${coberturaUsada}d-${format(new Date(), 'dd-MM-yyyy')}.xlsx`);
+
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const dataStr = format(new Date(), 'dd/MM/yyyy HH:mm');
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Lista de Compras', 40, 50);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110);
+    doc.text(`Gerado em ${dataStr}`, 40, 68);
+
+    const infoLinha = `Cobertura: ${coberturaUsada} dias  ·  Margem de segurança: ${margemUsada}%  ·  Total estimado: ${fmtMoeda(totalCompra)}`;
+    doc.text(infoLinha, 40, 84);
+
+    autoTable(doc, {
+      startY: 100,
+      head: [['Insumo', 'Consumo/sem.', 'Estoque', 'Necessário', 'A comprar', 'Custo']],
+      body: linhasVisiveis.map(l => [
+        l.nome,
+        fmtMedida(l.consumoMedioSemanal, l.unidade),
+        fmtMedida(l.estoqueAtual, l.unidade),
+        fmtMedida(l.necessario, l.unidade),
+        fmtMedida(l.aComprar, l.unidade),
+        l.custoTotal > 0 ? fmtMoeda(l.custoTotal) : '-',
+      ]),
+      styles: { fontSize: 9, cellPadding: 5 },
+      headStyles: { fillColor: [209, 25, 58], textColor: 255 },
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'right' },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+        5: { halign: 'right' },
+      },
+      margin: { left: 40, right: 40 },
+    });
+
+    const blobUrl = doc.output('bloburl');
+    const win = window.open(blobUrl, '_blank');
+    if (!win) {
+      toast({
+        title: 'Pop-up bloqueado',
+        description: 'Permita pop-ups para abrir o PDF.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -91,15 +132,37 @@ export default function NecessidadeInsumosTab() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Margem de segurança (%)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={margem}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isNaN(v)) return setMargem(0);
+                    setMargem(Math.max(0, Math.min(100, v)));
+                  }}
+                  className="w-28 pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                  %
+                </span>
+              </div>
+            </div>
+
             <div className="ml-auto flex gap-2">
               <Button onClick={handleGerar} disabled={loading} className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 {loading ? 'Gerando...' : 'Gerar lista'}
               </Button>
               {linhas.length > 0 && (
-                <Button variant="outline" onClick={handleExportar} className="gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Exportar
+                <Button variant="outline" onClick={handleExportarPDF} className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Abrir PDF
                 </Button>
               )}
             </div>
@@ -148,7 +211,7 @@ export default function NecessidadeInsumosTab() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                {linhasVisiveis.length} {linhasVisiveis.length === 1 ? 'item' : 'itens'} · cobertura {coberturaUsada} dias
+                {linhasVisiveis.length} {linhasVisiveis.length === 1 ? 'item' : 'itens'} · cobertura {coberturaUsada} dias{margemUsada > 0 ? ` · +${margemUsada}% margem` : ''}
               </CardTitle>
             </CardHeader>
             <CardContent>
