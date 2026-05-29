@@ -87,15 +87,18 @@ export default function NecessidadeInsumosTab() {
       margin: { left: 40, right: 40 },
     });
 
-    const blobUrl = doc.output('bloburl');
-    const win = window.open(blobUrl, '_blank');
-    if (!win) {
-      toast({
-        title: 'Pop-up bloqueado',
-        description: 'Permita pop-ups para abrir o PDF.',
-        variant: 'destructive',
-      });
-    }
+    // Usa <a target="_blank"> ao invés de window.open para evitar bloqueio
+    // de pop-up (Brave/Chrome com bloqueadores agressivos).
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   return (
