@@ -289,6 +289,31 @@ export default function NecessidadeInsumosTab() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!pdfUrl} onOpenChange={(open) => { if (!open) handleFecharPdf(); }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-3 border-b flex flex-row items-center justify-between space-y-0">
+            <DialogTitle className="text-base">Lista de Compras</DialogTitle>
+            <div className="flex items-center gap-2 mr-8">
+              <Button size="sm" variant="outline" onClick={handleAbrirNovaAba} className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Nova aba
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleBaixar} className="gap-2">
+                <Download className="h-4 w-4" />
+                Baixar
+              </Button>
+            </div>
+          </DialogHeader>
+          {pdfUrl && (
+            <iframe
+              src={pdfUrl}
+              title="Lista de Compras"
+              className="flex-1 w-full border-0"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
