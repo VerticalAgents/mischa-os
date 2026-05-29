@@ -38,9 +38,10 @@ export const useListaComprasAutomatica = () => {
   const [totalCompra, setTotalCompra] = useState(0);
   const [loading, setLoading] = useState(false);
   const [coberturaUsada, setCoberturaUsada] = useState<number | null>(null);
+  const [margemUsada, setMargemUsada] = useState<number>(0);
   const [produtosIgnorados, setProdutosIgnorados] = useState<ProdutoIgnorado[]>([]);
 
-  const gerar = useCallback(async (coberturaDias: number) => {
+  const gerar = useCallback(async (coberturaDias: number, margemPct: number = 0) => {
     setLoading(true);
     try {
       const dataLimite = new Date();
@@ -117,7 +118,8 @@ export const useListaComprasAutomatica = () => {
 
         const medioSemanal = consumo28d / SEMANAS_JANELA; // /4
         const medioDia = consumo28d / JANELA_DIAS;
-        const necessario = medioSemanal * (coberturaDias / 7);
+        const fatorMargem = 1 + (Number(margemPct) || 0) / 100;
+        const necessario = medioSemanal * (coberturaDias / 7) * fatorMargem;
         const estoqueAtual = Number(insumo.estoque_atual) || 0;
         const aComprar = Math.max(0, necessario - estoqueAtual);
         // custo_medio é o preço pago pelo volume_bruto (ex: R$ 4,19 por 1000 g).
@@ -147,11 +149,12 @@ export const useListaComprasAutomatica = () => {
       setLinhas(resultado);
       setTotalCompra(total);
       setCoberturaUsada(coberturaDias);
+      setMargemUsada(Number(margemPct) || 0);
       setProdutosIgnorados(ignorados);
     } finally {
       setLoading(false);
     }
   }, [insumos, receitas, produtos, rendimentos]);
 
-  return { linhas, totalCompra, loading, coberturaUsada, produtosIgnorados, gerar };
+  return { linhas, totalCompra, loading, coberturaUsada, margemUsada, produtosIgnorados, gerar };
 };
