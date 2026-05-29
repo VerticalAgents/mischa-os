@@ -6,7 +6,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShoppingCart, FileText, Sparkles, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ShoppingCart, FileText, Sparkles, AlertTriangle, Download, ExternalLink } from 'lucide-react';
 import { useListaComprasAutomatica } from '@/hooks/useListaComprasAutomatica';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -19,6 +20,7 @@ export default function NecessidadeInsumosTab() {
   const [cobertura, setCobertura] = useState<number>(7);
   const [margem, setMargem] = useState<number>(0);
   const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const { linhas, totalCompra, loading, coberturaUsada, margemUsada, produtosIgnorados, gerar } = useListaComprasAutomatica();
 
   const fmtMoeda = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -89,16 +91,32 @@ export default function NecessidadeInsumosTab() {
 
     // Usa <a target="_blank"> ao invés de window.open para evitar bloqueio
     // de pop-up (Brave/Chrome com bloqueadores agressivos).
+    // Renderiza dentro de um modal com iframe (não depende de pop-up,
+    // funciona no Brave/Chrome mesmo com bloqueadores agressivos).
     const blob = doc.output('blob');
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     const url = URL.createObjectURL(blob);
+    setPdfUrl(url);
+  };
+
+  const handleFecharPdf = () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfUrl(null);
+  };
+
+  const handleAbrirNovaAba = () => {
+    if (!pdfUrl) return;
+    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleBaixar = () => {
+    if (!pdfUrl) return;
     const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    a.href = pdfUrl;
+    a.download = `lista-compras-${format(new Date(), 'ddMMyyyy-HHmm')}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   return (
@@ -271,6 +289,31 @@ export default function NecessidadeInsumosTab() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!pdfUrl} onOpenChange={(open) => { if (!open) handleFecharPdf(); }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-3 border-b flex flex-row items-center justify-between space-y-0">
+            <DialogTitle className="text-base">Lista de Compras</DialogTitle>
+            <div className="flex items-center gap-2 mr-8">
+              <Button size="sm" variant="outline" onClick={handleAbrirNovaAba} className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Nova aba
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleBaixar} className="gap-2">
+                <Download className="h-4 w-4" />
+                Baixar
+              </Button>
+            </div>
+          </DialogHeader>
+          {pdfUrl && (
+            <iframe
+              src={pdfUrl}
+              title="Lista de Compras"
+              className="flex-1 w-full border-0"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
