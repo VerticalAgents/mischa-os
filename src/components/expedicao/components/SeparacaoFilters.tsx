@@ -15,6 +15,7 @@ interface SeparacaoFiltersProps {
   filtroData: string;
   filtroRepresentantes: number[];
   filtroProdutos: string[];
+  filtroProdutosModo?: 'incluir' | 'excluir';
   produtosDisponiveisIds?: string[];
   totalFiltrados: number;
   totalGeral: number;
@@ -23,6 +24,7 @@ interface SeparacaoFiltersProps {
   onFiltroDataChange: (value: string) => void;
   onFiltroRepresentantesChange: (ids: number[]) => void;
   onFiltroProdutosChange: (ids: string[]) => void;
+  onFiltroProdutosModoChange?: (modo: 'incluir' | 'excluir') => void;
   // Props para modo semana
   modoData: 'dia' | 'semana';
   semanaSelecionada: Date;
@@ -36,6 +38,7 @@ export const SeparacaoFilters = ({
   filtroData,
   filtroRepresentantes,
   filtroProdutos,
+  filtroProdutosModo,
   produtosDisponiveisIds,
   totalFiltrados,
   totalGeral,
@@ -44,6 +47,7 @@ export const SeparacaoFilters = ({
   onFiltroDataChange,
   onFiltroRepresentantesChange,
   onFiltroProdutosChange,
+  onFiltroProdutosModoChange,
   modoData,
   semanaSelecionada,
   onModoDataChange,
@@ -126,6 +130,8 @@ export const SeparacaoFilters = ({
           selectedIds={filtroProdutos}
           onSelectionChange={onFiltroProdutosChange}
           allowedIds={produtosDisponiveisIds}
+          modo={filtroProdutosModo}
+          onModoChange={onFiltroProdutosModoChange}
         />
       </div>
 
