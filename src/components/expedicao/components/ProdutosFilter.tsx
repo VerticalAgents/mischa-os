@@ -10,6 +10,8 @@ interface ProdutosFilterProps {
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   allowedIds?: string[];
+  modo?: 'incluir' | 'excluir';
+  onModoChange?: (modo: 'incluir' | 'excluir') => void;
   className?: string;
 }
 
@@ -17,6 +19,8 @@ export const ProdutosFilter = ({
   selectedIds,
   onSelectionChange,
   allowedIds,
+  modo = 'incluir',
+  onModoChange,
   className,
 }: ProdutosFilterProps) => {
   const { produtos } = useSupabaseProdutos();
@@ -41,11 +45,12 @@ export const ProdutosFilter = ({
 
   const getButtonText = () => {
     if (noneSelected) return "Todos os produtos";
+    const prefix = modo === 'excluir' ? 'Sem ' : '';
     if (selectedIds.length === 1) {
       const p = produtosAtivos.find((x) => x.id === selectedIds[0]);
-      return p?.nome || "1 produto";
+      return prefix + (p?.nome || "1 produto");
     }
-    return `${selectedIds.length} produtos`;
+    return `${prefix}${selectedIds.length} produtos`;
   };
 
   return (
@@ -75,6 +80,26 @@ export const ProdutosFilter = ({
             Limpar
           </Button>
         </div>
+        {onModoChange && (
+          <div className="px-2 py-2 border-b flex rounded-none overflow-hidden">
+            <Button
+              variant={modo === 'incluir' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onModoChange('incluir')}
+              className="flex-1 h-7 text-xs rounded-r-none"
+            >
+              Contém
+            </Button>
+            <Button
+              variant={modo === 'excluir' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onModoChange('excluir')}
+              className="flex-1 h-7 text-xs rounded-l-none"
+            >
+              Não contém
+            </Button>
+          </div>
+        )}
         <div className="max-h-[300px] overflow-y-auto p-2">
           {produtosAtivos.length === 0 ? (
             <div className="text-sm text-muted-foreground py-4 text-center">
