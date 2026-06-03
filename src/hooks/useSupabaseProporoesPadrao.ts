@@ -9,6 +9,7 @@ export interface ProporcaoPadrao {
   produto_nome: string;
   percentual: number;
   ativo: boolean;
+  ordem_categoria: number | null;
 }
 
 export const useSupabaseProporoesPadrao = () => {
@@ -46,7 +47,7 @@ export const useSupabaseProporoesPadrao = () => {
       // Primeiro, buscar todos os produtos ativos
       const { data: produtos, error: produtosError } = await supabase
         .from('produtos_finais')
-        .select('id, nome')
+        .select('id, nome, ordem_categoria')
         .eq('ativo', true)
         .order('nome');
 
@@ -90,8 +91,19 @@ export const useSupabaseProporoesPadrao = () => {
           produto_id: produto.id,
           produto_nome: produto.nome,
           percentual: proporcaoExistente?.percentual ? Number(proporcaoExistente.percentual) : 0,
-          ativo: proporcaoExistente?.ativo || true
+          ativo: proporcaoExistente?.ativo || true,
+          ordem_categoria: (produto as any).ordem_categoria ?? null,
         };
+      });
+
+      // Ordenar por ordem_categoria (definida primeiro, depois alfabético por nome)
+      proporcoesFormatadas.sort((a, b) => {
+        const ao = a.ordem_categoria;
+        const bo = b.ordem_categoria;
+        if (ao != null && bo == null) return -1;
+        if (ao == null && bo != null) return 1;
+        if (ao != null && bo != null && ao !== bo) return ao - bo;
+        return a.produto_nome.localeCompare(b.produto_nome);
       });
 
       setProporcoes(proporcoesFormatadas);
