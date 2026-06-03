@@ -56,6 +56,7 @@ interface ExpedicaoStore {
   confirmarDespachoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  converterParaPadrao: (pedidoIds: string[]) => Promise<void>;
   
   // Remoção imediata de pedido da lista (para atualização otimista)
   removerPedidoDaLista: (pedidoId: string) => void;
