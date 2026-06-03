@@ -611,17 +611,7 @@ export const PrintingActions = ({
     `;
     
     listaAtual.forEach(pedido => {
-      const produtos = pedido.itens_personalizados || [];
-      
-      // Filtrar produtos com quantidade maior que 0
-      const produtosFiltrados = produtos.filter((item: any) => {
-        const quantidade = item.quantidade || item.quantidade_sabor || 0;
-        return quantidade > 0;
-      });
-      
-      const produtosParaExibir = produtosFiltrados.length > 0 ? produtosFiltrados : [
-        { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
-      ];
+      const produtosParaExibir = buildProdutosParaExibir(pedido);
       
       let produtosHtml = '';
       produtosParaExibir.forEach((item: any) => {
