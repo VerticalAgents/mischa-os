@@ -13,8 +13,10 @@ import { SeparacaoActionsCard } from "./components/SeparacaoActionsCard";
 import { SeparacaoFilters } from "./components/SeparacaoFilters";
 import { SeparacaoEmMassaDialog } from "./components/SeparacaoEmMassaDialog";
 import { GerarVendasEmMassaDialog } from "./components/GerarVendasEmMassaDialog";
+import { AplicarPadraoEmMassaDialog } from "./components/AplicarPadraoEmMassaDialog";
 import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { toast } from "sonner";
 
 const SeparacaoPedidos = () => {
@@ -22,7 +24,8 @@ const SeparacaoPedidos = () => {
     pedidos, 
     isLoading, 
     carregarPedidos, 
-    confirmarSeparacao 
+    confirmarSeparacao,
+    converterParaPadrao
   } = useExpedicaoStore();
 
   // Usar store UI para persistir filtros
@@ -31,12 +34,14 @@ const SeparacaoPedidos = () => {
     filtroTipoPedido,
     filtroData,
     filtroRepresentantes,
+    filtroProdutos,
     modoDataSeparacao,
     semanaSeparacao,
     setFiltroTexto,
     setFiltroTipoPedido,
     setFiltroData,
     setFiltroRepresentantes,
+    setFiltroProdutos,
     setModoDataSeparacao,
     setSemanaSeparacao
   } = useExpedicaoUiStore();
@@ -46,9 +51,11 @@ const SeparacaoPedidos = () => {
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [separacaoEmMassaOpen, setSeparacaoEmMassaOpen] = useState(false);
   const [gerarVendasEmMassaOpen, setGerarVendasEmMassaOpen] = useState(false);
+  const [aplicarPadraoOpen, setAplicarPadraoOpen] = useState(false);
   
   const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
   const { representantes } = useSupabaseRepresentantes();
+  const { proporcoes } = useSupabaseProporoesPadrao();
 
   useEffect(() => {
     carregarPedidos();
@@ -155,6 +162,31 @@ const SeparacaoPedidos = () => {
     setGerarVendasEmMassaOpen(true);
   };
 
+  const handleAbrirAplicarPadrao = () => {
+    const alterados = pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado');
+    if (alterados.length === 0) {
+      toast.error("Não há pedidos Alterados nos filtros atuais.");
+      return;
+    }
+    setAplicarPadraoOpen(true);
+  };
+
+  const handleAplicarPadraoEmMassa = async (pedidoIds: string[]) => {
+    // Identificar quais têm venda GC para reenviar a composição
+    const pedidosComVenda = pedidosFiltrados.filter(
+      p => pedidoIds.includes(p.id) && p.gestaoclick_venda_id
+    );
+    await converterParaPadrao(pedidoIds);
+    for (const p of pedidosComVenda) {
+      try {
+        await atualizarVendaGC(p.id, p.cliente_id, p.gestaoclick_venda_id!);
+      } catch (e) {
+        console.error('Falha ao atualizar venda GC após converter para padrão', p.id, e);
+      }
+    }
+    await carregarPedidos();
+  };
+
   const handleConfirmarSeparacaoEmMassa = async (pedidoIds: string[]) => {
     for (const pedidoId of pedidoIds) {
       await confirmarSeparacao(pedidoId);
@@ -178,6 +210,11 @@ const SeparacaoPedidos = () => {
   );
 
   const pedidosFiltrados = useMemo(() => {
+    // Set de produto_ids cobertos pela proporção padrão atual
+    const produtosNaProporcao = new Set(
+      proporcoes.filter(p => p.ativo && p.percentual > 0).map(p => p.produto_id)
+    );
+
     return pedidosParaSeparacao.filter(pedido => {
       const matchTexto = !filtroTexto || 
         pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
@@ -203,9 +240,25 @@ const SeparacaoPedidos = () => {
         (incluiSemRepresentante && !pedido.representante_id) ||
         (pedido.representante_id && idsReais.includes(pedido.representante_id));
 
-      return matchTexto && matchTipoPedido && matchData && matchRepresentante;
+      // Filtro por produto (OR entre os selecionados)
+      let matchProduto = true;
+      if (filtroProdutos.length > 0) {
+        if (pedido.tipo_pedido === 'Alterado') {
+          const itens = (pedido.itens_personalizados as any[]) || [];
+          matchProduto = filtroProdutos.some(prodId =>
+            itens.some((it: any) =>
+              (it.produto_id === prodId) && Number(it.quantidade) > 0
+            )
+          );
+        } else {
+          // Padrão: bate se algum dos produtos selecionados está na proporção atual
+          matchProduto = filtroProdutos.some(prodId => produtosNaProporcao.has(prodId));
+        }
+      }
+
+      return matchTexto && matchTipoPedido && matchData && matchRepresentante && matchProduto;
     });
-  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes]);
+  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, filtroProdutos, proporcoes]);
 
   if (isLoading) {
     return (
@@ -224,6 +277,7 @@ const SeparacaoPedidos = () => {
         <SeparacaoActionsCard
           onSepararEmMassa={handleAbrirSeparacaoEmMassa}
           onGerarVendas={handleAbrirGerarVendasEmMassa}
+          onAplicarPadrao={handleAbrirAplicarPadrao}
           onAtualizar={() => carregarPedidos()}
           isLoading={isLoading}
           pedidosFiltrados={pedidosFiltrados}
@@ -245,12 +299,14 @@ const SeparacaoPedidos = () => {
         filtroTipoPedido={filtroTipoPedido}
         filtroData={filtroData}
         filtroRepresentantes={filtroRepresentantes}
+        filtroProdutos={filtroProdutos}
         totalFiltrados={pedidosFiltrados.length}
         totalGeral={pedidosParaSeparacao.length}
         onFiltroTextoChange={setFiltroTexto}
         onFiltroTipoPedidoChange={setFiltroTipoPedido}
         onFiltroDataChange={setFiltroData}
         onFiltroRepresentantesChange={setFiltroRepresentantes}
+        onFiltroProdutosChange={setFiltroProdutos}
         modoData={modoDataSeparacao}
         semanaSelecionada={semanaSelecionada}
         onModoDataChange={setModoDataSeparacao}
@@ -319,6 +375,13 @@ const SeparacaoPedidos = () => {
         pedidosDisponiveis={pedidosFiltrados}
         onConfirm={handleGerarVendasEmMassa}
         loading={loadingGC}
+      />
+
+      <AplicarPadraoEmMassaDialog
+        open={aplicarPadraoOpen}
+        onOpenChange={setAplicarPadraoOpen}
+        pedidosDisponiveis={pedidosFiltrados}
+        onConfirm={handleAplicarPadraoEmMassa}
       />
     </div>
   );
