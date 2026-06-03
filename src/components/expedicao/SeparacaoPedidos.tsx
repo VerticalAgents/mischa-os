@@ -260,6 +260,51 @@ const SeparacaoPedidos = () => {
     });
   }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, filtroProdutos, proporcoes]);
 
+  // IDs de produtos presentes nos pedidos visíveis (ignorando o filtro de produto),
+  // para popular o dropdown apenas com produtos relevantes à expedição atual.
+  const produtosDisponiveisIds = useMemo(() => {
+    const produtosNaProporcao = new Set(
+      proporcoes.filter(p => p.ativo && p.percentual > 0).map(p => p.produto_id)
+    );
+    const ids = new Set<string>();
+    const escopo = pedidosParaSeparacao.filter(pedido => {
+      const matchTexto = !filtroTexto ||
+        pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+        pedido.id.toLowerCase().includes(filtroTexto.toLowerCase());
+      const matchTipoPedido = filtroTipoPedido === "todos" ||
+        (filtroTipoPedido === "padrao" && pedido.tipo_pedido === 'Padrão') ||
+        (filtroTipoPedido === "alterado" && pedido.tipo_pedido === 'Alterado');
+      let matchData = true;
+      if (modoDataSeparacao === 'dia') {
+        matchData = !filtroData || format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
+      } else {
+        const dataPedido = new Date(pedido.data_prevista_entrega);
+        matchData = dataPedido >= inicioSemana && dataPedido <= fimSemana;
+      }
+      const incluiSemRepresentante = filtroRepresentantes.includes(-1);
+      const idsReais = filtroRepresentantes.filter(id => id !== -1);
+      const matchRepresentante = filtroRepresentantes.length === 0 ||
+        (incluiSemRepresentante && !pedido.representante_id) ||
+        (pedido.representante_id && idsReais.includes(pedido.representante_id));
+      return matchTexto && matchTipoPedido && matchData && matchRepresentante;
+    });
+    let temPadrao = false;
+    for (const pedido of escopo) {
+      if (pedido.tipo_pedido === 'Alterado') {
+        const itens = (pedido.itens_personalizados as any[]) || [];
+        for (const it of itens) {
+          if (it?.produto_id && Number(it.quantidade) > 0) ids.add(it.produto_id);
+        }
+      } else {
+        temPadrao = true;
+      }
+    }
+    if (temPadrao) {
+      produtosNaProporcao.forEach(id => ids.add(id));
+    }
+    return Array.from(ids);
+  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, proporcoes]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -300,6 +345,7 @@ const SeparacaoPedidos = () => {
         filtroData={filtroData}
         filtroRepresentantes={filtroRepresentantes}
         filtroProdutos={filtroProdutos}
+        produtosDisponiveisIds={produtosDisponiveisIds}
         totalFiltrados={pedidosFiltrados.length}
         totalGeral={pedidosParaSeparacao.length}
         onFiltroTextoChange={setFiltroTexto}
