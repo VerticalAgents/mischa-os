@@ -4,6 +4,8 @@ import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { calcularQuantidadesPadrao } from "@/utils/proporcoesPadrao";
 
 interface TrocaPendente {
   produto_id?: string;
@@ -33,6 +35,26 @@ export const PrintingActions = ({
 }: PrintingActionsProps) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [modalListasAberto, setModalListasAberto] = useState(false);
+  const { proporcoes } = useSupabaseProporoesPadrao();
+
+  const buildProdutosParaExibir = (pedido: any): any[] => {
+    const produtos = pedido.itens_personalizados || [];
+    const produtosFiltrados = produtos.filter((item: any) => {
+      const quantidade = item.quantidade || item.quantidade_sabor || 0;
+      return quantidade > 0;
+    });
+    if (produtosFiltrados.length > 0) return produtosFiltrados;
+
+    // Fallback: usar proporção padrão calculada
+    const calculados = calcularQuantidadesPadrao(pedido.quantidade_total, proporcoes);
+    if (calculados.length > 0) {
+      return calculados.map(c => ({
+        nome: c.produto_nome,
+        quantidade: c.quantidade,
+      }));
+    }
+    return [{ nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }];
+  };
 
   const getListaAtual = () => {
     if (activeSubTab === "padrao") {
