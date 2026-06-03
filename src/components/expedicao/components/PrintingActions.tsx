@@ -271,14 +271,7 @@ export const PrintingActions = ({
     const totalColunas = 5 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
 
     const renderPedidoRow = (pedido: any) => {
-      const produtos = pedido.itens_personalizados || [];
-      const produtosFiltrados = produtos.filter((item: any) => {
-        const quantidade = item.quantidade || item.quantidade_sabor || 0;
-        return quantidade > 0;
-      });
-      const produtosParaExibir = produtosFiltrados.length > 0 ? produtosFiltrados : [
-        { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
-      ];
+      const produtosParaExibir = buildProdutosParaExibir(pedido);
       
       let produtosHtml = '<div class="produtos-lista">';
       produtosParaExibir.forEach((item: any) => {
