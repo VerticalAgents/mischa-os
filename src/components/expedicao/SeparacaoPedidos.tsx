@@ -17,6 +17,7 @@ import { AplicarPadraoEmMassaDialog } from "./components/AplicarPadraoEmMassaDia
 import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { toast } from "sonner";
 
 const SeparacaoPedidos = () => {
@@ -56,6 +57,23 @@ const SeparacaoPedidos = () => {
   const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
   const { representantes } = useSupabaseRepresentantes();
   const { proporcoes } = useSupabaseProporoesPadrao();
+  const { produtos } = useSupabaseProdutos();
+
+  // Mapa nome normalizado -> id, para casar itens_personalizados que só têm `produto` (nome).
+  const nomeParaId = useMemo(() => {
+    const m = new Map<string, string>();
+    const norm = (s: string) => (s || '').toString().trim().toLowerCase();
+    produtos.forEach(p => { if (p?.nome && p?.id) m.set(norm(p.nome), p.id); });
+    return m;
+  }, [produtos]);
+
+  const normalize = (s: string) => (s || '').toString().trim().toLowerCase();
+  const getItemProdutoId = (it: any): string | undefined => {
+    if (it?.produto_id) return it.produto_id;
+    const nome = it?.produto || it?.nome || it?.produto_nome;
+    if (!nome) return undefined;
+    return nomeParaId.get(normalize(nome));
+  };
 
   useEffect(() => {
     carregarPedidos();
@@ -247,7 +265,7 @@ const SeparacaoPedidos = () => {
           const itens = (pedido.itens_personalizados as any[]) || [];
           matchProduto = filtroProdutos.some(prodId =>
             itens.some((it: any) =>
-              (it.produto_id === prodId) && Number(it.quantidade) > 0
+              getItemProdutoId(it) === prodId && Number(it.quantidade) > 0
             )
           );
         } else {
@@ -258,7 +276,7 @@ const SeparacaoPedidos = () => {
 
       return matchTexto && matchTipoPedido && matchData && matchRepresentante && matchProduto;
     });
-  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, filtroProdutos, proporcoes]);
+  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, filtroProdutos, proporcoes, nomeParaId]);
 
   // IDs de produtos presentes nos pedidos visíveis (ignorando o filtro de produto),
   // para popular o dropdown apenas com produtos relevantes à expedição atual.
@@ -293,7 +311,10 @@ const SeparacaoPedidos = () => {
       if (pedido.tipo_pedido === 'Alterado') {
         const itens = (pedido.itens_personalizados as any[]) || [];
         for (const it of itens) {
-          if (it?.produto_id && Number(it.quantidade) > 0) ids.add(it.produto_id);
+          if (Number(it?.quantidade) > 0) {
+            const pid = getItemProdutoId(it);
+            if (pid) ids.add(pid);
+          }
         }
       } else {
         temPadrao = true;
@@ -303,7 +324,7 @@ const SeparacaoPedidos = () => {
       produtosNaProporcao.forEach(id => ids.add(id));
     }
     return Array.from(ids);
-  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, proporcoes]);
+  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, proporcoes, nomeParaId]);
 
   if (isLoading) {
     return (
