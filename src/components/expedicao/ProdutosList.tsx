@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
-import { calcularQuantidadesPadrao } from "@/utils/proporcoesPadrao";
+import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
 
 interface ProdutosListProps {
   pedido: {
@@ -21,8 +21,11 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
 
   const isAlterado = pedido.tipo_pedido === "Alterado";
 
-  // Filtrar itens personalizados que têm quantidade maior que 0
-  const itensComQuantidade = pedido.itens_personalizados?.filter(item => item.quantidade > 0) || [];
+  // Filtrar itens personalizados que têm quantidade maior que 0 e ordenar pela ordem_categoria
+  const itensComQuantidade = useMemo(() => {
+    const filtrados = pedido.itens_personalizados?.filter(item => item.quantidade > 0) || [];
+    return ordenarItensPorOrdemCategoria(filtrados, proporcoes);
+  }, [pedido.itens_personalizados, proporcoes]);
 
   // Para pedidos Padrão, calcular composição a partir das proporções vigentes
   const itensPadraoCalculados = useMemo(() => {
