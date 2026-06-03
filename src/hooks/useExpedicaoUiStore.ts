@@ -7,6 +7,7 @@ interface ExpedicaoUiState {
   filtroTipoPedido: string;
   filtroData: string;
   filtroRepresentantes: number[];
+  filtroProdutos: string[];
   
   // Tab ativa na Expedição
   activeTab: string;
@@ -27,6 +28,7 @@ interface ExpedicaoUiState {
   setFiltroTipoPedido: (tipo: string) => void;
   setFiltroData: (data: string) => void;
   setFiltroRepresentantes: (ids: number[]) => void;
+  setFiltroProdutos: (ids: string[]) => void;
   setActiveTab: (tab: string) => void;
   setEntregasTab: (tab: string) => void;
   setSemanaAtrasados: (data: Date) => void;
@@ -44,6 +46,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       filtroTipoPedido: "todos",
       filtroData: new Date().toISOString().split('T')[0],
       filtroRepresentantes: [],
+      filtroProdutos: [],
       activeTab: "resumo",
       entregasTab: "hoje",
       semanaAtrasados: new Date().toISOString(),
@@ -56,6 +59,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       setFiltroTipoPedido: (tipo) => set({ filtroTipoPedido: tipo }),
       setFiltroData: (data) => set({ filtroData: data }),
       setFiltroRepresentantes: (ids) => set({ filtroRepresentantes: ids }),
+      setFiltroProdutos: (ids) => set({ filtroProdutos: ids }),
       setActiveTab: (tab) => set({ activeTab: tab }),
       setEntregasTab: (tab) => set({ entregasTab: tab }),
       setSemanaAtrasados: (data) => set({ semanaAtrasados: data.toISOString() }),
@@ -67,6 +71,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
         filtroTipoPedido: "todos",
         filtroData: new Date().toISOString().split('T')[0],
         filtroRepresentantes: [],
+        filtroProdutos: [],
         semanaAtrasados: new Date().toISOString(),
         modoVisualizacaoAtrasados: 'semana',
         modoDataSeparacao: 'dia',
@@ -75,7 +80,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
     }),
     {
       name: 'expedicao-ui-state',
-      version: 4,
+      version: 5,
     }
   )
 );

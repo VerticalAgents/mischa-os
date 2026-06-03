@@ -1,12 +1,13 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Send, RefreshCw, Settings2 } from "lucide-react";
+import { CheckCircle2, Send, RefreshCw, Settings2, Wand2 } from "lucide-react";
 import { PrintingActions } from "./PrintingActions";
 
 interface SeparacaoActionsCardProps {
   onSepararEmMassa: () => void;
   onGerarVendas: () => void;
+  onAplicarPadrao: () => void;
   onAtualizar: () => void;
   isLoading: boolean;
   pedidosFiltrados: any[];
@@ -17,6 +18,7 @@ interface SeparacaoActionsCardProps {
 export const SeparacaoActionsCard = ({
   onSepararEmMassa,
   onGerarVendas,
+  onAplicarPadrao,
   onAtualizar,
   isLoading,
   pedidosFiltrados,
@@ -54,7 +56,16 @@ export const SeparacaoActionsCard = ({
             <Send className="h-4 w-4" />
             Gerar Vendas
           </Button>
-          
+
+          <Button
+            onClick={onAplicarPadrao}
+            variant="outline"
+            className="w-full justify-start gap-2"
+          >
+            <Wand2 className="h-4 w-4" />
+            Aplicar Proporção Padrão
+          </Button>
+
           <PrintingActions
             activeSubTab="todos"
             pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
