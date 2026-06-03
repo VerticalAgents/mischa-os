@@ -330,6 +330,17 @@ const SeparacaoPedidos = () => {
     return Array.from(ids);
   }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, proporcoes, nomeParaId]);
 
+  // Total dentro do escopo da data (sem demais filtros), usado como "total geral" do contador
+  const totalNoEscopoData = useMemo(() => {
+    return pedidosParaSeparacao.filter(pedido => {
+      if (modoDataSeparacao === 'dia') {
+        return !filtroData || format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
+      }
+      const dataPedido = new Date(pedido.data_prevista_entrega);
+      return dataPedido >= inicioSemana && dataPedido <= fimSemana;
+    }).length;
+  }, [pedidosParaSeparacao, filtroData, modoDataSeparacao, inicioSemana, fimSemana]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -373,7 +384,7 @@ const SeparacaoPedidos = () => {
         filtroProdutosModo={filtroProdutosModo}
         produtosDisponiveisIds={produtosDisponiveisIds}
         totalFiltrados={pedidosFiltrados.length}
-        totalGeral={pedidosParaSeparacao.length}
+        totalGeral={totalNoEscopoData}
         onFiltroTextoChange={setFiltroTexto}
         onFiltroTipoPedidoChange={setFiltroTipoPedido}
         onFiltroDataChange={setFiltroData}
