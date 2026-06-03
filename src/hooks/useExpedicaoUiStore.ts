@@ -8,6 +8,7 @@ interface ExpedicaoUiState {
   filtroData: string;
   filtroRepresentantes: number[];
   filtroProdutos: string[];
+  filtroProdutosModo: 'incluir' | 'excluir';
   
   // Tab ativa na Expedição
   activeTab: string;
@@ -29,6 +30,7 @@ interface ExpedicaoUiState {
   setFiltroData: (data: string) => void;
   setFiltroRepresentantes: (ids: number[]) => void;
   setFiltroProdutos: (ids: string[]) => void;
+  setFiltroProdutosModo: (modo: 'incluir' | 'excluir') => void;
   setActiveTab: (tab: string) => void;
   setEntregasTab: (tab: string) => void;
   setSemanaAtrasados: (data: Date) => void;
@@ -47,6 +49,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       filtroData: new Date().toISOString().split('T')[0],
       filtroRepresentantes: [],
       filtroProdutos: [],
+      filtroProdutosModo: 'incluir',
       activeTab: "resumo",
       entregasTab: "hoje",
       semanaAtrasados: new Date().toISOString(),
@@ -60,6 +63,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       setFiltroData: (data) => set({ filtroData: data }),
       setFiltroRepresentantes: (ids) => set({ filtroRepresentantes: ids }),
       setFiltroProdutos: (ids) => set({ filtroProdutos: ids }),
+      setFiltroProdutosModo: (modo) => set({ filtroProdutosModo: modo }),
       setActiveTab: (tab) => set({ activeTab: tab }),
       setEntregasTab: (tab) => set({ entregasTab: tab }),
       setSemanaAtrasados: (data) => set({ semanaAtrasados: data.toISOString() }),
@@ -72,6 +76,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
         filtroData: new Date().toISOString().split('T')[0],
         filtroRepresentantes: [],
         filtroProdutos: [],
+        filtroProdutosModo: 'incluir',
         semanaAtrasados: new Date().toISOString(),
         modoVisualizacaoAtrasados: 'semana',
         modoDataSeparacao: 'dia',
@@ -80,7 +85,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
     }),
     {
       name: 'expedicao-ui-state',
-      version: 5,
+      version: 6,
     }
   )
 );

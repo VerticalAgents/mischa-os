@@ -36,6 +36,7 @@ const SeparacaoPedidos = () => {
     filtroData,
     filtroRepresentantes,
     filtroProdutos,
+    filtroProdutosModo,
     modoDataSeparacao,
     semanaSeparacao,
     setFiltroTexto,
@@ -43,6 +44,7 @@ const SeparacaoPedidos = () => {
     setFiltroData,
     setFiltroRepresentantes,
     setFiltroProdutos,
+    setFiltroProdutosModo,
     setModoDataSeparacao,
     setSemanaSeparacao
   } = useExpedicaoUiStore();
@@ -261,22 +263,24 @@ const SeparacaoPedidos = () => {
       // Filtro por produto (OR entre os selecionados)
       let matchProduto = true;
       if (filtroProdutos.length > 0) {
+        let contem = false;
         if (pedido.tipo_pedido === 'Alterado') {
           const itens = (pedido.itens_personalizados as any[]) || [];
-          matchProduto = filtroProdutos.some(prodId =>
+          contem = filtroProdutos.some(prodId =>
             itens.some((it: any) =>
               getItemProdutoId(it) === prodId && Number(it.quantidade) > 0
             )
           );
         } else {
           // Padrão: bate se algum dos produtos selecionados está na proporção atual
-          matchProduto = filtroProdutos.some(prodId => produtosNaProporcao.has(prodId));
+          contem = filtroProdutos.some(prodId => produtosNaProporcao.has(prodId));
         }
+        matchProduto = filtroProdutosModo === 'excluir' ? !contem : contem;
       }
 
       return matchTexto && matchTipoPedido && matchData && matchRepresentante && matchProduto;
     });
-  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, filtroProdutos, proporcoes, nomeParaId]);
+  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes, filtroProdutos, filtroProdutosModo, proporcoes, nomeParaId]);
 
   // IDs de produtos presentes nos pedidos visíveis (ignorando o filtro de produto),
   // para popular o dropdown apenas com produtos relevantes à expedição atual.
@@ -366,6 +370,7 @@ const SeparacaoPedidos = () => {
         filtroData={filtroData}
         filtroRepresentantes={filtroRepresentantes}
         filtroProdutos={filtroProdutos}
+        filtroProdutosModo={filtroProdutosModo}
         produtosDisponiveisIds={produtosDisponiveisIds}
         totalFiltrados={pedidosFiltrados.length}
         totalGeral={pedidosParaSeparacao.length}
@@ -374,6 +379,7 @@ const SeparacaoPedidos = () => {
         onFiltroDataChange={setFiltroData}
         onFiltroRepresentantesChange={setFiltroRepresentantes}
         onFiltroProdutosChange={setFiltroProdutos}
+        onFiltroProdutosModoChange={setFiltroProdutosModo}
         modoData={modoDataSeparacao}
         semanaSelecionada={semanaSelecionada}
         onModoDataChange={setModoDataSeparacao}
