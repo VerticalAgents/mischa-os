@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
-import { calcularQuantidadesPadrao } from "@/utils/proporcoesPadrao";
+import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
 
 interface TrocaPendente {
   produto_id?: string;
@@ -43,7 +43,9 @@ export const PrintingActions = ({
       const quantidade = item.quantidade || item.quantidade_sabor || 0;
       return quantidade > 0;
     });
-    if (produtosFiltrados.length > 0) return produtosFiltrados;
+    if (produtosFiltrados.length > 0) {
+      return ordenarItensPorOrdemCategoria(produtosFiltrados, proporcoes);
+    }
 
     // Fallback: usar proporção padrão calculada
     const calculados = calcularQuantidadesPadrao(pedido.quantidade_total, proporcoes);
