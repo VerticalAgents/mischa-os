@@ -1,9 +1,11 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { calcularQuantidadesPadrao } from "@/utils/proporcoesPadrao";
 
 interface ProdutosListProps {
   pedido: {
@@ -15,11 +17,18 @@ interface ProdutosListProps {
 
 export default function ProdutosList({ pedido }: ProdutosListProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { proporcoes } = useSupabaseProporoesPadrao();
 
   const isAlterado = pedido.tipo_pedido === "Alterado";
 
   // Filtrar itens personalizados que têm quantidade maior que 0
   const itensComQuantidade = pedido.itens_personalizados?.filter(item => item.quantidade > 0) || [];
+
+  // Para pedidos Padrão, calcular composição a partir das proporções vigentes
+  const itensPadraoCalculados = useMemo(() => {
+    if (isAlterado) return [];
+    return calcularQuantidadesPadrao(pedido.quantidade_total, proporcoes);
+  }, [isAlterado, pedido.quantidade_total, proporcoes]);
 
   return (
     <div className="space-y-2">
@@ -58,6 +67,21 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
                     <ProdutoNomeDisplay 
                       produtoId={item.produto_id || 'custom'} 
                       nomeFallback={item.produto || item.nome} 
+                    />
+                  </div>
+                  <span className="font-medium text-blue-700">
+                    {item.quantidade} un.
+                  </span>
+                </div>
+              ))
+            ) : !isAlterado && itensPadraoCalculados.length > 0 ? (
+              itensPadraoCalculados.map((item) => (
+                <div key={item.produto_id} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                    <ProdutoNomeDisplay
+                      produtoId={item.produto_id}
+                      nomeFallback={item.produto_nome}
                     />
                   </div>
                   <span className="font-medium text-blue-700">
