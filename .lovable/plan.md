@@ -1,30 +1,64 @@
-## Objetivo
+# Melhorias na aba Separação de Pedidos
 
-1. Trocar a exportação XLSX por **PDF aberto em nova aba** (visualização no navegador, sem download forçado).
-2. Adicionar um campo **"Margem de segurança (%)"** ao lado da seleção de cobertura, aplicando esse acréscimo no cálculo do necessário/a comprar/custo.
+Três entregas independentes na aba **Expedição → Separação**.
 
-## Mudanças
+---
 
-### `src/hooks/useListaComprasAutomatica.ts`
-- `gerar(coberturaDias, margemPct = 0)` passa a aceitar a margem.
-- Aplicar margem no `necessario`: `necessario = medioSemanal * (cobertura/7) * (1 + margem/100)`.
-- `aComprar`, `custoTotal` e `totalCompra` recalculam naturalmente em cima disso.
-- Expor `margemUsada` no retorno (pra usar no PDF/cabeçalho).
+## 1. Filtro por produto nos agendamentos
 
-### `src/components/estoque/tabs/NecessidadeInsumosTab.tsx`
-- Novo estado `margem` (number, default 0) com um `<Input type="number" min=0 max=100>` ao lado dos botões de cobertura, com label "Margem de segurança (%)".
-- `handleGerar` passa `margem` para `gerar`.
-- Substituir `handleExportar` (XLSX) por `handleExportarPDF` usando **jsPDF + jspdf-autotable** (já no projeto se disponível; senão `bun add jspdf jspdf-autotable`):
-  - Gerar o PDF em memória, `doc.output('bloburl')`, abrir com `window.open(url, '_blank')`.
-  - Cabeçalho: título "Lista de Compras", data, cobertura `Xd`, margem `Y%`, total estimado.
-  - Tabela: Insumo, Consumo/semana, Estoque, Necessário, A comprar, Custo total.
-  - Ícone do botão muda para `FileText` e label "Abrir PDF".
+Novo filtro multi-seleção em `SeparacaoFilters` (junto da linha de Busca/Tipo/Representante) para mostrar só pedidos que contêm determinado(s) produto(s).
 
-### Detalhes técnicos
-- Verificar se `jspdf` já existe no projeto (`utils/exportProducaoAgendadaPDF.ts` provavelmente já usa). Reusar a mesma lib pra manter consistência.
-- A margem só afeta o cálculo a partir do clique em "Gerar lista" (mesma UX dos botões de cobertura).
-- Popup blockers: como `window.open` é disparado dentro de um onClick síncrono (gerando o PDF antes), funciona normalmente.
+Regras de matching:
+- **Pedido Alterado**: bate se `itens_personalizados` contém o produto selecionado com `quantidade > 0`.
+- **Pedido Padrão**: bate se o produto selecionado tem percentual > 0 nas **proporções padrão** atuais (porque pedido padrão recebe esse produto automaticamente).
+- Multi-seleção em modo OR (mostra pedido que contém **qualquer** dos produtos marcados).
 
-## Não muda
-- Lógica de janela de 28 dias, rendimentos, produtos ignorados.
-- Layout da tabela na tela.
+Estado persistido em `useExpedicaoUiStore` como `filtroProdutos: string[]` (ids de `produtos_finais`).
+
+---
+
+## 2. Botão de ação em massa: "Aplicar proporção padrão"
+
+Novo botão no `SeparacaoActionsCard` (abaixo de "Separar em Massa"/"Gerar Vendas"), abre um dialog no mesmo padrão dos outros em-massa.
+
+Comportamento:
+- Lista somente pedidos **Alterado** dentro dos filtros atuais (elegíveis).
+- Checkbox por pedido + "selecionar todos".
+- Ao confirmar: para cada pedido selecionado, atualiza no Supabase `tipo_pedido = 'Padrão'` e limpa `itens_personalizados` (null). `quantidade_total` permanece.
+- Se o pedido já tem `gestaoclick_venda_id`, dispara `atualizarVendaGC` para reenviar a composição (igual ao fluxo de salvar agendamento editado).
+- Recarrega pedidos ao final.
+
+Reutiliza `useAcaoEmMassaDialog` + componente novo `AplicarPadraoEmMassaDialog` espelhando os dialogs existentes.
+
+---
+
+## 3. Quantidades reais por produto em pedidos Padrão
+
+Hoje pedidos Padrão mostram "Produtos padrão conforme configuração" / "Distribuição Padrão". Trocar pela quebra real calculada a partir das proporções vigentes × `quantidade_total`.
+
+Locais a alterar:
+- **Accordion "Ver produtos"** (`ProdutosList.tsx`): quando `tipo_pedido === 'Padrão'`, calcular via `obterProporcoesParaPedido(quantidade_total)` e listar `produto_nome × quantidade` igual aos Alterados.
+- **Lista de impressão** (`PrintingActions.tsx`, tanto a versão tabela quanto a versão etiquetas): substituir o fallback `{ nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }` pela mesma quebra calculada.
+
+Implementação:
+- Criar hook `useProporcoesAtuais()` (ou reusar `useSupabaseProporoesPadrao`) para carregar `proporcoes` uma única vez no nível do `SeparacaoPedidos` e passar adiante.
+- Função utilitária `calcularQuantidadesPadrao(quantidadeTotal, proporcoes)` síncrona (já temos lógica análoga em `obterProporcoesParaPedido`; extrair para `src/utils/proporcoesPadrao.ts` para uso síncrono no print e no accordion).
+- Se proporções não somam 100% ou não estão configuradas: manter o fallback atual ("Distribuição Padrão") para não quebrar.
+
+---
+
+## Arquivos afetados
+
+```text
+src/components/expedicao/SeparacaoPedidos.tsx          (filtro produto + handler em massa)
+src/components/expedicao/components/SeparacaoFilters.tsx (novo seletor de produto)
+src/components/expedicao/components/SeparacaoActionsCard.tsx (novo botão)
+src/components/expedicao/components/AplicarPadraoEmMassaDialog.tsx (novo)
+src/components/expedicao/components/PrintingActions.tsx (usar quebra real)
+src/components/expedicao/ProdutosList.tsx              (usar quebra real)
+src/hooks/useExpedicaoUiStore.ts                       (filtroProdutos)
+src/hooks/useExpedicaoStore.ts                         (action: converterParaPadrao(pedidoIds))
+src/utils/proporcoesPadrao.ts                          (novo: cálculo síncrono)
+```
+
+Sem mudanças de schema — apenas UPDATE em `pedidos_expedicao` (campos já existentes `tipo_pedido` e `itens_personalizados`).
