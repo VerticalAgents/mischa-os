@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Search, Filter, Calendar, CalendarDays } from "lucide-react";
 import { RepresentantesFilter } from "./RepresentantesFilter";
+import { ProdutosFilter } from "./ProdutosFilter";
 import { WeekNavigator } from "./WeekNavigator";
 import { Badge } from "@/components/ui/badge";
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, isSameWeek } from "date-fns";
@@ -13,12 +14,14 @@ interface SeparacaoFiltersProps {
   filtroTipoPedido: string;
   filtroData: string;
   filtroRepresentantes: number[];
+  filtroProdutos: string[];
   totalFiltrados: number;
   totalGeral: number;
   onFiltroTextoChange: (value: string) => void;
   onFiltroTipoPedidoChange: (value: string) => void;
   onFiltroDataChange: (value: string) => void;
   onFiltroRepresentantesChange: (ids: number[]) => void;
+  onFiltroProdutosChange: (ids: string[]) => void;
   // Props para modo semana
   modoData: 'dia' | 'semana';
   semanaSelecionada: Date;
@@ -31,12 +34,14 @@ export const SeparacaoFilters = ({
   filtroTipoPedido,
   filtroData,
   filtroRepresentantes,
+  filtroProdutos,
   totalFiltrados,
   totalGeral,
   onFiltroTextoChange,
   onFiltroTipoPedidoChange,
   onFiltroDataChange,
   onFiltroRepresentantesChange,
+  onFiltroProdutosChange,
   modoData,
   semanaSelecionada,
   onModoDataChange,
@@ -46,6 +51,7 @@ export const SeparacaoFilters = ({
     filtroTexto && "texto",
     filtroTipoPedido !== "todos" && "tipo",
     filtroRepresentantes.length > 0 && "representante",
+    filtroProdutos.length > 0 && "produto",
   ].filter(Boolean).length;
 
   const ehSemanaAtual = isSameWeek(semanaSelecionada, new Date(), { weekStartsOn: 0 });
@@ -83,7 +89,7 @@ export const SeparacaoFilters = ({
       </div>
 
       {/* Linha 1: Busca, Tipo, Representante */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Busca por texto */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -111,6 +117,12 @@ export const SeparacaoFilters = ({
         <RepresentantesFilter
           selectedIds={filtroRepresentantes}
           onSelectionChange={onFiltroRepresentantesChange}
+        />
+
+        {/* Filtro por Produto */}
+        <ProdutosFilter
+          selectedIds={filtroProdutos}
+          onSelectionChange={onFiltroProdutosChange}
         />
       </div>
 
