@@ -15,6 +15,7 @@ interface SeparacaoFiltersProps {
   filtroData: string;
   filtroRepresentantes: number[];
   filtroProdutos: string[];
+  produtosDisponiveisIds?: string[];
   totalFiltrados: number;
   totalGeral: number;
   onFiltroTextoChange: (value: string) => void;
@@ -35,6 +36,7 @@ export const SeparacaoFilters = ({
   filtroData,
   filtroRepresentantes,
   filtroProdutos,
+  produtosDisponiveisIds,
   totalFiltrados,
   totalGeral,
   onFiltroTextoChange,
@@ -123,6 +125,7 @@ export const SeparacaoFilters = ({
         <ProdutosFilter
           selectedIds={filtroProdutos}
           onSelectionChange={onFiltroProdutosChange}
+          allowedIds={produtosDisponiveisIds}
         />
       </div>
 
