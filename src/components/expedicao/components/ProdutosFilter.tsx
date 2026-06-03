@@ -9,18 +9,23 @@ import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 interface ProdutosFilterProps {
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
+  allowedIds?: string[];
   className?: string;
 }
 
 export const ProdutosFilter = ({
   selectedIds,
   onSelectionChange,
+  allowedIds,
   className,
 }: ProdutosFilterProps) => {
   const { produtos } = useSupabaseProdutos();
   const [open, setOpen] = React.useState(false);
 
-  const produtosAtivos = produtos.filter((p) => p.ativo);
+  const allowedSet = allowedIds ? new Set(allowedIds) : null;
+  const produtosAtivos = produtos.filter(
+    (p) => p.ativo && (!allowedSet || allowedSet.has(p.id))
+  );
 
   const handleToggle = (id: string) => {
     if (selectedIds.includes(id)) {
