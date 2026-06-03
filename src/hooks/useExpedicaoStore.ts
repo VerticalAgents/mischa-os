@@ -1188,6 +1188,40 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         }));
         
         return resultado;
+      },
+
+      converterParaPadrao: async (pedidoIds: string[]) => {
+        if (!pedidoIds || pedidoIds.length === 0) return;
+        try {
+          // Atualização otimista
+          set(state => ({
+            pedidos: state.pedidos.map(p =>
+              pedidoIds.includes(p.id)
+                ? { ...p, tipo_pedido: 'Padrão', itens_personalizados: null }
+                : p
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
+          }));
+
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ tipo_pedido: 'Padrão', itens_personalizados: null })
+            .in('id', pedidoIds);
+
+          if (error) throw error;
+
+          toast.success(
+            pedidoIds.length === 1
+              ? 'Pedido convertido para Padrão'
+              : `${pedidoIds.length} pedidos convertidos para Padrão`
+          );
+
+          await get().recarregarSilencioso();
+        } catch (error: any) {
+          console.error('Erro ao converter pedidos para Padrão:', error);
+          toast.error('Erro ao aplicar proporção padrão');
+          await get().carregarPedidos();
+        }
       }
     }),
     { name: 'expedicao-store' }
