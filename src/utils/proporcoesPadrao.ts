@@ -49,3 +49,27 @@ export function calcularQuantidadesPadrao(
       percentual: Number(p.percentual),
     }));
 }
+
+/**
+ * Ordena itens personalizados pela ordem_categoria do produto.
+ * Itens sem ordem definida (ou produto não encontrado) vão para o final,
+ * ordenados alfabeticamente pelo nome.
+ */
+export function ordenarItensPorOrdemCategoria<T extends { produto_id?: string; produto?: string; nome?: string }>(
+  itens: T[],
+  proporcoes: ProporcaoPadrao[]
+): T[] {
+  const ordemMap = new Map<string, number>();
+  proporcoes.forEach(p => {
+    if (p.ordem_categoria != null) ordemMap.set(p.produto_id, p.ordem_categoria);
+  });
+  const getNome = (it: T) => (it.nome || it.produto || '') as string;
+  return [...itens].sort((a, b) => {
+    const ao = a.produto_id ? ordemMap.get(a.produto_id) : undefined;
+    const bo = b.produto_id ? ordemMap.get(b.produto_id) : undefined;
+    if (ao != null && bo == null) return -1;
+    if (ao == null && bo != null) return 1;
+    if (ao != null && bo != null && ao !== bo) return ao - bo;
+    return getNome(a).localeCompare(getNome(b));
+  });
+}
