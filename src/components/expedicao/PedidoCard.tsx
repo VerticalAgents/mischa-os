@@ -263,7 +263,9 @@ const PedidoCard = ({
           
           <div className="flex items-center gap-2">
             <TipoPedidoBadge tipo={pedido.tipo_pedido} />
-            {pedido.trocas_pendentes && pedido.trocas_pendentes.length > 0 && (
+            {pedido.trocas_pendentes && pedido.trocas_pendentes.length > 0 && (() => {
+              const totalTrocas = pedido.trocas_pendentes.reduce((s, t) => s + (Number(t.quantidade) || 0), 0);
+              return (
               <Badge
                 variant="outline"
                 className="bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1"
@@ -272,9 +274,10 @@ const PedidoCard = ({
                   .join('\n')}
               >
                 <RefreshCw className="h-3 w-3" />
-                {pedido.trocas_pendentes.length} {pedido.trocas_pendentes.length === 1 ? 'troca' : 'trocas'}
+                {totalTrocas} {totalTrocas === 1 ? 'troca' : 'trocas'}
               </Badge>
-            )}
+              );
+            })()}
             {pedido.observacoes_agendamento && (
               <Badge
                 variant="outline"
