@@ -128,7 +128,7 @@ export default function AgendamentoEditModal({
           if (agendamentoAtual) {
             const { data: agendamentoDb } = await supabase
               .from('agendamentos_clientes')
-              .select('observacoes_agendamento, trocas_pendentes')
+              .select('observacoes_agendamento, trocas_pendentes, bonificacoes_pendentes')
               .eq('cliente_id', agendamento.cliente.id)
               .single();
             
@@ -140,6 +140,13 @@ export default function AgendamentoEditModal({
               setTrocasPendentes(trocas as unknown as TrocaPendente[]);
             } else {
               setTrocasPendentes([]);
+            }
+
+            const bonificacoes = (agendamentoDb as any)?.bonificacoes_pendentes;
+            if (bonificacoes && Array.isArray(bonificacoes)) {
+              setBonificacoesPendentes(bonificacoes as unknown as BonificacaoPendente[]);
+            } else {
+              setBonificacoesPendentes([]);
             }
           }
         } catch (error) {
