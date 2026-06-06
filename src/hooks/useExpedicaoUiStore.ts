@@ -23,6 +23,11 @@ interface ExpedicaoUiState {
   // Modo de data na Separação: 'dia' ou 'semana'
   modoDataSeparacao: 'dia' | 'semana';
   semanaSeparacao: string; // ISO date
+
+  // Resumo da Expedição (independente da Separação)
+  modoDataResumo: 'dia' | 'semana';
+  dataResumo: string; // YYYY-MM-DD
+  semanaResumo: string; // ISO date
   
   // Ações
   setFiltroTexto: (texto: string) => void;
@@ -37,6 +42,9 @@ interface ExpedicaoUiState {
   setModoVisualizacaoAtrasados: (modo: 'semana' | 'todos') => void;
   setModoDataSeparacao: (modo: 'dia' | 'semana') => void;
   setSemanaSeparacao: (data: Date) => void;
+  setModoDataResumo: (modo: 'dia' | 'semana') => void;
+  setDataResumo: (data: string) => void;
+  setSemanaResumo: (data: Date) => void;
   clearFilters: () => void;
 }
 
@@ -56,6 +64,9 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       modoVisualizacaoAtrasados: 'semana',
       modoDataSeparacao: 'dia',
       semanaSeparacao: new Date().toISOString(),
+      modoDataResumo: 'dia',
+      dataResumo: new Date().toISOString().split('T')[0],
+      semanaResumo: new Date().toISOString(),
       
       // Ações
       setFiltroTexto: (texto) => set({ filtroTexto: texto }),
@@ -70,6 +81,9 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       setModoVisualizacaoAtrasados: (modo) => set({ modoVisualizacaoAtrasados: modo }),
       setModoDataSeparacao: (modo) => set({ modoDataSeparacao: modo }),
       setSemanaSeparacao: (data) => set({ semanaSeparacao: data.toISOString() }),
+      setModoDataResumo: (modo) => set({ modoDataResumo: modo }),
+      setDataResumo: (data) => set({ dataResumo: data }),
+      setSemanaResumo: (data) => set({ semanaResumo: data.toISOString() }),
       clearFilters: () => set({ 
         filtroTexto: "",
         filtroTipoPedido: "todos",
@@ -80,12 +94,15 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
         semanaAtrasados: new Date().toISOString(),
         modoVisualizacaoAtrasados: 'semana',
         modoDataSeparacao: 'dia',
-        semanaSeparacao: new Date().toISOString()
+        semanaSeparacao: new Date().toISOString(),
+        modoDataResumo: 'dia',
+        dataResumo: new Date().toISOString().split('T')[0],
+        semanaResumo: new Date().toISOString()
       }),
     }),
     {
       name: 'expedicao-ui-state',
-      version: 6,
+      version: 7,
     }
   )
 );
