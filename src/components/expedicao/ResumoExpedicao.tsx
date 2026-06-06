@@ -43,6 +43,14 @@ const ResumoExpedicao = () => {
     carregarPedidos();
   }, [carregarPedidos]);
 
+  // Sempre que entrar na aba, resetar filtro para a semana atual
+  useEffect(() => {
+    const hoje = new Date();
+    setModoDataResumo('semana');
+    setSemanaResumo(format(startOfWeek(hoje, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const semanaSelecionada = useMemo(() => {
     try { return parseISO(semanaResumo); } catch { return new Date(); }
   }, [semanaResumo]);
