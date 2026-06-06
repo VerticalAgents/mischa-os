@@ -469,14 +469,14 @@ export default function AgendamentoEditModal({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-4">
-                  <Label htmlFor="quantidade">Quantidade Total</Label>
+                <Label htmlFor="quantidade" className="flex items-center justify-between gap-4">
+                  <span>Quantidade Total</span>
                   {hasValidationError && (
-                    <p className="text-sm text-red-500">
+                    <span className="text-sm text-red-500 font-normal">
                       Soma deve bater ({somaQuantidadesProdutos})
-                    </p>
+                    </span>
                   )}
-                </div>
+                </Label>
                 <Input
                   id="quantidade"
                   type="number"
