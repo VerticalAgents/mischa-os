@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Gift } from "lucide-react";
 
 interface ProdutosListProps {
   pedido: {
@@ -14,6 +14,7 @@ interface ProdutosListProps {
     quantidade_total: number;
     itens_personalizados?: any[];
     trocas_pendentes?: Array<{ produto_id?: string; produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
+    bonificacoes_pendentes?: Array<{ produto_id?: string; produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
 }
 
