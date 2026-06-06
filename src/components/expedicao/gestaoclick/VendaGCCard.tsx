@@ -57,7 +57,16 @@ export function VendaGCCard({
             <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                {format(parseISO(venda.data_proxima_reposicao), "dd/MM/yyyy", { locale: ptBR })}
+                {(() => {
+                  if (!venda.data_proxima_reposicao) return "—";
+                  try {
+                    const d = parseISO(venda.data_proxima_reposicao);
+                    if (isNaN(d.getTime())) return "—";
+                    return format(d, "dd/MM/yyyy", { locale: ptBR });
+                  } catch {
+                    return "—";
+                  }
+                })()}
               </span>
               <span className="flex items-center gap-1">
                 <CreditCard className="h-3.5 w-3.5" />
