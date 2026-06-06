@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
+import { RefreshCw } from "lucide-react";
 
 interface ProdutosListProps {
   pedido: {
     tipo_pedido: string;
     quantidade_total: number;
     itens_personalizados?: any[];
+    trocas_pendentes?: Array<{ produto_id?: string; produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
 }
 
@@ -32,6 +34,15 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
     if (isAlterado) return [];
     return calcularQuantidadesPadrao(pedido.quantidade_total, proporcoes);
   }, [isAlterado, pedido.quantidade_total, proporcoes]);
+
+  const trocasOrdenadas = useMemo(() => {
+    const trocas = pedido.trocas_pendentes || [];
+    if (trocas.length === 0) return [];
+    return ordenarItensPorOrdemCategoria(
+      trocas.map(t => ({ ...t, nome: t.produto_nome })),
+      proporcoes
+    );
+  }, [pedido.trocas_pendentes, proporcoes]);
 
   return (
     <div className="space-y-2">
@@ -105,6 +116,31 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
               <span>{pedido.quantidade_total} unidades</span>
             </div>
           </div>
+
+          {trocasOrdenadas.length > 0 && (
+            <div className="border-t border-amber-300 mt-3 pt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw className="h-3.5 w-3.5 text-amber-700" />
+                <h4 className="font-medium text-amber-800 text-sm">Trocas pendentes</h4>
+              </div>
+              <div className="space-y-1">
+                {trocasOrdenadas.map((troca: any, index: number) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></div>
+                      <span className="text-amber-900">{troca.produto_nome}</span>
+                      {(troca.motivo_nome || troca.motivo) && (
+                        <span className="text-xs text-amber-700 italic">
+                          ({troca.motivo_nome || troca.motivo})
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-amber-800">{troca.quantidade} un.</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

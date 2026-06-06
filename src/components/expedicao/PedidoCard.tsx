@@ -33,6 +33,7 @@ interface PedidoCardProps {
     gestaoclick_venda_id?: string;
     gestaoclick_sincronizado_em?: string;
     observacoes_agendamento?: string;
+    observacoes_gerais?: string;
     trocas_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
   onMarcarSeparado?: () => void;
@@ -285,7 +286,17 @@ const PedidoCard = ({
                 title={pedido.observacoes_agendamento}
               >
                 <MessageSquare className="h-3 w-3" />
-                Obs.
+                Obs. temp.
+              </Badge>
+            )}
+            {pedido.observacoes_gerais && (
+              <Badge
+                variant="outline"
+                className="bg-slate-50 text-slate-700 border-slate-300 flex items-center gap-1"
+                title={pedido.observacoes_gerais}
+              >
+                <MessageSquare className="h-3 w-3" />
+                Obs. geral
               </Badge>
             )}
             {ehSeparacaoAntecipada && (
