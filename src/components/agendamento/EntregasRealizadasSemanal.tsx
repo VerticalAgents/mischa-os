@@ -179,41 +179,42 @@ export default function EntregasRealizadasSemanal({
       percentualEntregue: percentual
     };
   }, [quantidadesPorProduto, quantidadeSemanaAnterior]);
-  return <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+  return <Card className="overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 px-5 pt-5 pb-1">
+        <div>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Produtos Entregues
-          </CardTitle>
-          {quantidadeSemanaAnterior > 0 && (
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
-              <span className="text-xs text-muted-foreground">Sem. anterior:</span>
-              <span className="text-sm font-semibold text-foreground">{quantidadeSemanaAnterior}</span>
-              <TrendingUp className="h-3 w-3 text-green-600" />
-              <span className="text-sm font-medium text-green-600">
-                {percentualEntregue.toFixed(0)}%
-              </span>
-            </div>
-          )}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">Realizadas na semana selecionada</p>
         </div>
-      </CardHeader>
+        {quantidadeSemanaAnterior > 0 && (
+          <div className="flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Sem. anterior</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{quantidadeSemanaAnterior}</span>
+            <TrendingUp className="h-3 w-3 text-emerald-600" />
+            <span className="text-sm font-semibold tabular-nums text-emerald-600">
+              {percentualEntregue.toFixed(0)}%
+            </span>
+          </div>
+        )}
+      </div>
 
-      <CardContent>
+      <CardContent className="pt-4">
         {loading ? <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div> : quantidadeTotal === 0 ? <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
             <Package className="h-4 w-4 opacity-50" />
             <p>Nenhuma entrega realizada nesta semana</p>
           </div> : (
-            <div className="flex items-baseline justify-between gap-3 bg-green-50 dark:bg-green-950/20 px-3 py-2 md:px-4 md:py-3 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="flex items-baseline justify-between gap-3">
               <div className="flex items-baseline gap-1.5 min-w-0">
-                <span className="text-3xl md:text-4xl font-bold text-green-600 leading-none">{quantidadeTotal}</span>
-                <span className="text-base md:text-lg font-medium text-green-600/70">un.</span>
+                <span className="text-4xl font-bold tabular-nums text-foreground leading-none">{quantidadeTotal}</span>
+                <span className="text-sm text-muted-foreground">unidades</span>
               </div>
-              <Badge variant="secondary" className="shrink-0 bg-green-200 text-green-900 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200">
+              <span className="shrink-0 text-xs text-muted-foreground">
                 {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
-              </Badge>
+              </span>
             </div>
           )}
       </CardContent>
