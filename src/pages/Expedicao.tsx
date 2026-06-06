@@ -149,53 +149,7 @@ export default function Expedicao() {
           </TabsContent>
           
           <TabsContent value="despacho" className="space-y-4" forceMount={activeTab === "despacho" ? true : undefined}>
-            {activeTab === "despacho" && (
-              <Tabs value={entregasTab} onValueChange={handleEntregasTabChange} className="space-y-4">
-                {/* Mobile: grid sub-tabs */}
-                <div className="grid grid-cols-2 gap-2 lg:hidden">
-                  {[
-                    { id: "hoje", label: "🟢 Entregas de Hoje" },
-                    { id: "atrasadas", label: "🟡 Entregas Pendentes" },
-                    { id: "antecipada", label: "🔵 Separação Antecipada" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleEntregasTabChange(tab.id)}
-                      className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                        entregasTab === tab.id
-                          ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <TabsList className="hidden lg:inline-flex w-full border-b bg-white">
-                  <TabsTrigger value="hoje" className="data-[state=active]:bg-green-500/10 data-[state=active]:text-green-700">
-                    🟢 Entregas de Hoje
-                  </TabsTrigger>
-                  <TabsTrigger value="atrasadas" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-700">
-                    🟡 Entregas Pendentes
-                  </TabsTrigger>
-                  <TabsTrigger value="antecipada" className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-700">
-                    🔵 Separação Antecipada
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="hoje" forceMount={entregasTab === "hoje" ? true : undefined}>
-                  {entregasTab === "hoje" && <Despacho tipoFiltro="hoje" />}
-                </TabsContent>
-                
-                <TabsContent value="atrasadas" forceMount={entregasTab === "atrasadas" ? true : undefined}>
-                  {entregasTab === "atrasadas" && <Despacho tipoFiltro="atrasadas" />}
-                </TabsContent>
-
-                <TabsContent value="antecipada" forceMount={entregasTab === "antecipada" ? true : undefined}>
-                  {entregasTab === "antecipada" && <Despacho tipoFiltro="antecipada" />}
-                </TabsContent>
-              </Tabs>
-            )}
+            {activeTab === "despacho" && <Despacho />}
           </TabsContent>
 
           <TabsContent value="organizacao" className="space-y-4" forceMount={activeTab === "organizacao" ? true : undefined}>
