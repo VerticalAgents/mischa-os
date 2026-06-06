@@ -1,10 +1,9 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Truck, CalendarRange, Clock, Layers } from "lucide-react";
+import { Search, Truck, CalendarRange, Clock, Layers } from "lucide-react";
 import { RepresentantesFilter } from "./RepresentantesFilter";
 import { TipoLogisticaFilter } from "./TipoLogisticaFilter";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Preset = 'hoje' | 'semana' | 'atrasados' | 'todos';
