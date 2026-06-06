@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Send, RefreshCw, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -202,6 +202,17 @@ const PedidoCard = ({
 
   const temVendaGC = !!pedido.gestaoclick_venda_id;
 
+  // Badge "Separação Antecipada": pedido Separado para entrega futura
+  const ehSeparacaoAntecipada = (() => {
+    if (pedido.substatus_pedido !== 'Separado') return false;
+    if (!pedido.data_prevista_entrega) return false;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataEntrega = new Date(pedido.data_prevista_entrega);
+    dataEntrega.setHours(0, 0, 0, 0);
+    return dataEntrega.getTime() > hoje.getTime();
+  })();
+
   return (
     <Card className="mb-4 shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -238,6 +249,16 @@ const PedidoCard = ({
           
           <div className="flex items-center gap-2">
             <TipoPedidoBadge tipo={pedido.tipo_pedido} />
+            {ehSeparacaoAntecipada && (
+              <Badge
+                variant="outline"
+                className="bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1"
+                title={`Separado para entrega em ${format(pedido.data_prevista_entrega, "dd/MM", { locale: ptBR })}`}
+              >
+                <Clock3 className="h-3 w-3" />
+                Antecipada
+              </Badge>
+            )}
             {pedido.substatus_pedido && (
               <Badge variant={
                 pedido.substatus_pedido === 'Separado' ? 'default' : 
