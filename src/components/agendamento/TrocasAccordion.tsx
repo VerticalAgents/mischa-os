@@ -20,7 +20,7 @@ export default function TrocasAccordion({ trocasPendentes, onTrocasPendentesChan
   const isOpen = temTrocas || open;
 
   return (
-    <div className="border rounded-md">
+    <div className={`border rounded-md ${temTrocas ? "border-destructive/50 bg-destructive/5" : ""}`}>
       <Button
         type="button"
         variant="ghost"
@@ -29,9 +29,9 @@ export default function TrocasAccordion({ trocasPendentes, onTrocasPendentesChan
         className="w-full justify-between h-auto px-3 py-2 hover:bg-muted/50 disabled:opacity-100 disabled:cursor-default"
       >
         <div className="flex items-center gap-2">
-          <RefreshCw className="h-4 w-4 text-amber-600" />
-          <Label className="text-sm font-medium cursor-pointer">Trocas a Realizar</Label>
-          <span className="text-xs text-amber-600">(temporárias)</span>
+          <RefreshCw className={`h-4 w-4 ${temTrocas ? "text-destructive" : "text-amber-600"}`} />
+          <Label className={`text-sm font-medium cursor-pointer ${temTrocas ? "text-destructive" : ""}`}>Trocas a Realizar</Label>
+          <span className={`text-xs ${temTrocas ? "text-destructive/80" : "text-amber-600"}`}>(temporárias)</span>
           {temTrocas && (
             <span className="text-xs text-muted-foreground ml-1">
               · {trocasPendentes.length} {trocasPendentes.length === 1 ? "item" : "itens"}
