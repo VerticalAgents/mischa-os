@@ -48,6 +48,7 @@ export const usePedidoConverter = () => {
       gestaoclick_venda_id: pedidoExpedicao.gestaoclick_venda_id,
       gestaoclick_sincronizado_em: pedidoExpedicao.gestaoclick_sincronizado_em,
       observacoes_agendamento: pedidoExpedicao.observacoes_agendamento,
+      observacoes_gerais: pedidoExpedicao.observacoes_gerais,
       trocas_pendentes: pedidoExpedicao.trocas_pendentes
     };
   };
