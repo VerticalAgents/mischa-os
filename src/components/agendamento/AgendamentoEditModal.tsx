@@ -306,7 +306,8 @@ export default function AgendamentoEditModal({
         .from('agendamentos_clientes')
         .update({
           observacoes_agendamento: observacoesAgendamento || null,
-          trocas_pendentes: trocasPendentes.length > 0 ? JSON.parse(JSON.stringify(trocasPendentes)) : []
+          trocas_pendentes: trocasPendentes.length > 0 ? JSON.parse(JSON.stringify(trocasPendentes)) : [],
+          bonificacoes_pendentes: bonificacoesPendentes.length > 0 ? JSON.parse(JSON.stringify(bonificacoesPendentes)) : []
         })
         .eq('cliente_id', agendamento.cliente.id);
 
