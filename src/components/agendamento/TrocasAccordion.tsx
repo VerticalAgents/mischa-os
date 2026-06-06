@@ -7,9 +7,10 @@ import TrocasPendentesEditor, { TrocaPendente } from "./TrocasPendentesEditor";
 interface Props {
   trocasPendentes: TrocaPendente[];
   onTrocasPendentesChange: (trocas: TrocaPendente[]) => void;
+  categoriasHabilitadas?: number[];
 }
 
-export default function TrocasAccordion({ trocasPendentes, onTrocasPendentesChange }: Props) {
+export default function TrocasAccordion({ trocasPendentes, onTrocasPendentesChange, categoriasHabilitadas }: Props) {
   const temTrocas = trocasPendentes.length > 0;
   const [open, setOpen] = useState(temTrocas);
 
@@ -41,7 +42,7 @@ export default function TrocasAccordion({ trocasPendentes, onTrocasPendentesChan
       </Button>
       {isOpen && (
         <div className="px-3 pb-3 pt-1">
-          <TrocasPendentesEditor value={trocasPendentes} onChange={onTrocasPendentesChange} />
+          <TrocasPendentesEditor value={trocasPendentes} onChange={onTrocasPendentesChange} categoriasHabilitadas={categoriasHabilitadas} />
         </div>
       )}
     </div>

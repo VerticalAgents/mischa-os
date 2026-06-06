@@ -7,9 +7,10 @@ import BonificacoesPendentesEditor, { BonificacaoPendente } from "./Bonificacoes
 interface Props {
   bonificacoesPendentes: BonificacaoPendente[];
   onBonificacoesPendentesChange: (bonificacoes: BonificacaoPendente[]) => void;
+  categoriasHabilitadas?: number[];
 }
 
-export default function BonificacoesAccordion({ bonificacoesPendentes, onBonificacoesPendentesChange }: Props) {
+export default function BonificacoesAccordion({ bonificacoesPendentes, onBonificacoesPendentesChange, categoriasHabilitadas }: Props) {
   const temBonificacoes = bonificacoesPendentes.length > 0;
   const [open, setOpen] = useState(temBonificacoes);
 
@@ -41,7 +42,7 @@ export default function BonificacoesAccordion({ bonificacoesPendentes, onBonific
       </Button>
       {isOpen && (
         <div className="px-3 pb-3 pt-1">
-          <BonificacoesPendentesEditor value={bonificacoesPendentes} onChange={onBonificacoesPendentesChange} />
+          <BonificacoesPendentesEditor value={bonificacoesPendentes} onChange={onBonificacoesPendentesChange} categoriasHabilitadas={categoriasHabilitadas} />
         </div>
       )}
     </div>

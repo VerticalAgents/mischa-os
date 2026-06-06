@@ -508,11 +508,13 @@ export default function AgendamentoEditModal({
               <TrocasAccordion
                 trocasPendentes={trocasPendentes}
                 onTrocasPendentesChange={setTrocasPendentes}
+                categoriasHabilitadas={agendamento.cliente.categoriasHabilitadas}
               />
 
               <BonificacoesAccordion
                 bonificacoesPendentes={bonificacoesPendentes}
                 onBonificacoesPendentesChange={setBonificacoesPendentes}
+                categoriasHabilitadas={agendamento.cliente.categoriasHabilitadas}
               />
 
               <ObservacoesAgendamentoSection

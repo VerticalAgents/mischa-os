@@ -18,13 +18,20 @@ export interface TrocaPendente {
 interface TrocasPendentesEditorProps {
   value: TrocaPendente[];
   onChange: (trocas: TrocaPendente[]) => void;
+  categoriasHabilitadas?: number[];
 }
 
-export default function TrocasPendentesEditor({ value, onChange }: TrocasPendentesEditorProps) {
+export default function TrocasPendentesEditor({ value, onChange, categoriasHabilitadas }: TrocasPendentesEditorProps) {
   const { motivos, loading: loadingMotivos } = useMotivosTroca();
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
 
-  const produtosAtivos = produtos.filter((p) => p.ativo);
+  const produtosAtivos = produtos.filter((p) => {
+    if (!p.ativo) return false;
+    if (categoriasHabilitadas && categoriasHabilitadas.length > 0) {
+      return categoriasHabilitadas.includes(p.categoria_id ?? -1);
+    }
+    return true;
+  });
   const trocas = value ?? [];
 
   const atualizarTroca = (index: number, patch: Partial<TrocaPendente>) => {
