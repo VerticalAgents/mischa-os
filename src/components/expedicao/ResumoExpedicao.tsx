@@ -5,10 +5,10 @@ import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   RefreshCw, Package, Calendar, CalendarDays, ClipboardList, CheckCircle2,
-  Truck, PackageCheck, AlertTriangle, Map as MapIcon, Layers
+  Truck, PackageCheck, Map as MapIcon, Layers
 } from "lucide-react";
 import {
   format, startOfWeek, endOfWeek, startOfDay, endOfDay, parseISO,
@@ -208,23 +208,23 @@ const ResumoExpedicao = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex rounded-md border overflow-hidden">
-            <Button
-              variant={modoDataResumo === 'dia' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setModoDataResumo('dia')}
-              className="rounded-none border-0 px-3"
-            >
-              <Calendar className="h-4 w-4 mr-1" /> Dia
-            </Button>
-            <Button
-              variant={modoDataResumo === 'semana' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setModoDataResumo('semana')}
-              className="rounded-none border-0 px-3"
-            >
-              <CalendarDays className="h-4 w-4 mr-1" /> Semana
-            </Button>
+          <div className="inline-flex bg-muted/40 rounded-md p-0.5">
+            {(['dia', 'semana'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setModoDataResumo(m)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-[13px] font-medium transition-colors",
+                  modoDataResumo === m
+                    ? "bg-background text-amber-600 shadow-sm"
+                    : "text-foreground/60 hover:text-foreground"
+                )}
+              >
+                {m === 'dia' ? <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} /> : <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} />}
+                {m === 'dia' ? 'Dia' : 'Semana'}
+              </button>
+            ))}
           </div>
 
           {modoDataResumo === 'dia' ? (
@@ -295,15 +295,15 @@ const ResumoExpedicao = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ResumoQuantidadeProdutos pedidos={pedidosPendentes} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+        <Card className="overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-amber-500" />
               Alertas & Destaques
-            </CardTitle>
-            <CardDescription>Itens que merecem atenção</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">Itens que merecem atenção</p>
+          </div>
+          <CardContent className="px-2 pb-3 space-y-0.5 pt-3">
             <AlertaItem
               cor="red"
               titulo="Pedidos atrasados"
@@ -338,17 +338,17 @@ const ResumoExpedicao = () => {
 
       {/* Distribuição por dia (semana) */}
       {modoDataResumo === 'semana' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-primary" />
+        <Card className="overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-amber-500" />
               Distribuição por dia
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
               Total: {pedidosNoPeriodo.length} pedidos · {totalUnidadesPeriodo} unidades
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <CardContent className="pt-4">
             <div className="grid grid-cols-7 gap-2">
               {distribuicaoPorDia.map(({ dia, pedidos, unidades }) => {
                 const altura = (unidades / maxUnidadesDia) * 100;
@@ -385,15 +385,15 @@ const ResumoExpedicao = () => {
       )}
 
       {/* Distribuição por logística */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapIcon className="h-5 w-5 text-primary" />
+      <Card className="overflow-hidden">
+        <div className="px-5 pt-5 pb-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-amber-500" />
             Distribuição por logística
-          </CardTitle>
-          <CardDescription>Como os pedidos do período serão entregues</CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">Como os pedidos do período serão entregues</p>
+        </div>
+        <CardContent className="pt-4">
           {distribuicaoPorLogistica.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6 italic">
               Sem pedidos no período selecionado.
@@ -435,11 +435,11 @@ const ResumoExpedicao = () => {
 
 // ---------- Sub-components ----------
 
-const toneClasses: Record<string, { bg: string; text: string; ring: string }> = {
-  amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', ring: 'ring-amber-200 dark:ring-amber-900' },
-  blue: { bg: 'bg-blue-50 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-400', ring: 'ring-blue-200 dark:ring-blue-900' },
-  indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', ring: 'ring-indigo-200 dark:ring-indigo-900' },
-  green: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-900' },
+const toneDot: Record<string, string> = {
+  amber: 'bg-amber-500',
+  blue: 'bg-blue-500',
+  indigo: 'bg-indigo-500',
+  green: 'bg-emerald-500',
 };
 
 interface StatusFunilCardProps {
@@ -447,34 +447,37 @@ interface StatusFunilCardProps {
   icone: React.ReactNode;
   pedidos: number;
   unidades: number;
-  tone: keyof typeof toneClasses;
+  tone: keyof typeof toneDot;
   onClick?: () => void;
   delta?: number | null;
 }
 
 const StatusFunilCard = ({ titulo, icone, pedidos, unidades, tone, onClick, delta }: StatusFunilCardProps) => {
-  const c = toneClasses[tone];
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "text-left rounded-lg p-4 ring-1 transition-all hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary",
-        c.bg, c.ring,
+        "text-left rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40",
       )}
     >
-      <div className={cn("flex items-center justify-between mb-2", c.text)}>
-        <span className="text-sm font-medium">{titulo}</span>
-        {icone}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={cn("h-1.5 w-1.5 rounded-full", toneDot[tone])} />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            {titulo}
+          </span>
+        </div>
+        <span className="text-muted-foreground/60">{icone}</span>
       </div>
-      <div className={cn("text-3xl font-bold", c.text)}>{pedidos}</div>
+      <div className="text-3xl font-bold tabular-nums text-foreground">{pedidos}</div>
       <div className="flex items-center justify-between mt-1">
         <span className="text-xs text-muted-foreground">
           {pedidos === 1 ? 'pedido' : 'pedidos'} · {unidades} un
         </span>
         {delta !== null && delta !== undefined && (
           <span className={cn(
-            "text-xs font-semibold",
+            "text-xs font-semibold tabular-nums",
             delta >= 0 ? "text-emerald-600" : "text-red-600"
           )}>
             {delta >= 0 ? '+' : ''}{delta}%
@@ -485,10 +488,10 @@ const StatusFunilCard = ({ titulo, icone, pedidos, unidades, tone, onClick, delt
   );
 };
 
-const alertaCores: Record<string, string> = {
-  red: 'border-red-200 bg-red-50 dark:bg-red-950/20',
-  amber: 'border-amber-200 bg-amber-50 dark:bg-amber-950/20',
-  muted: 'border-border bg-muted/40',
+const alertaDot: Record<string, string> = {
+  red: 'bg-red-500',
+  amber: 'bg-amber-500',
+  muted: 'bg-muted-foreground/40',
 };
 
 interface AlertaItemProps {
@@ -502,16 +505,24 @@ interface AlertaItemProps {
 
 const AlertaItem = ({ cor, titulo, descricao, valor, actionLabel, onAction }: AlertaItemProps) => {
   return (
-    <div className={cn("border rounded-lg p-3 flex items-start gap-3", alertaCores[cor])}>
+    <div className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-muted/40 transition-colors">
+      <span className={cn("mt-1.5 h-1.5 w-1.5 rounded-full shrink-0", alertaDot[cor])} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">{titulo}</span>
-          <Badge variant={valor > 0 ? 'default' : 'secondary'}>{valor}</Badge>
+          <span className="text-sm font-semibold text-foreground">{titulo}</span>
+          <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+            {valor}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{descricao}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{descricao}</p>
       </div>
       {actionLabel && (
-        <Button variant="outline" size="sm" onClick={onAction}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onAction}
+          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-7 px-2 text-xs font-medium"
+        >
           {actionLabel}
         </Button>
       )}
