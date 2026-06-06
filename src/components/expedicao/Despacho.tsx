@@ -267,7 +267,11 @@ export const Despacho = () => {
   };
 
   // Handler para confirmar entrega em massa com data
-  const handleConfirmarEntregaEmMassa = async (pedidoIds: string[], dataEntrega: Date) => {
+  const handleConfirmarEntregaEmMassa = async (
+    pedidoIds: string[],
+    dataEntrega: Date | null,
+    usarDataAgendamento: boolean
+  ) => {
     try {
       const pedidosSelecionados = pedidosFiltrados.filter(p => pedidoIds.includes(String(p.id)));
       const pedidosParaEntrega = pedidosSelecionados.map(pedido => ({
@@ -276,10 +280,15 @@ export const Despacho = () => {
         cliente_nome: pedido.cliente_nome,
         quantidade_total: Number(pedido.quantidade_total),
         tipo_pedido: pedido.tipo_pedido,
-        itens_personalizados: pedido.itens_personalizados
+        itens_personalizados: pedido.itens_personalizados,
+        data_prevista_entrega: pedido.data_prevista_entrega
       }));
 
-      const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega, dataEntrega);
+      const sucesso = await confirmarEntregaEmMassaHook(
+        pedidosParaEntrega,
+        dataEntrega,
+        { usarDataAgendamento }
+      );
       if (sucesso) {
         pedidosSelecionados.forEach(pedido => {
           removerPedidoDaLista(String(pedido.id));
