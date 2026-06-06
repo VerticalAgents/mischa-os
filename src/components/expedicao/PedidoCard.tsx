@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Send, RefreshCw, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3 } from "lucide-react";
+import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +32,8 @@ interface PedidoCardProps {
     itens_personalizados?: any;
     gestaoclick_venda_id?: string;
     gestaoclick_sincronizado_em?: string;
+    observacoes_agendamento?: string;
+    trocas_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
@@ -261,6 +263,28 @@ const PedidoCard = ({
           
           <div className="flex items-center gap-2">
             <TipoPedidoBadge tipo={pedido.tipo_pedido} />
+            {pedido.trocas_pendentes && pedido.trocas_pendentes.length > 0 && (
+              <Badge
+                variant="outline"
+                className="bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1"
+                title={pedido.trocas_pendentes
+                  .map(t => `${t.quantidade}x ${t.produto_nome}${(t.motivo_nome || t.motivo) ? ` (${t.motivo_nome || t.motivo})` : ''}`)
+                  .join('\n')}
+              >
+                <RefreshCw className="h-3 w-3" />
+                {pedido.trocas_pendentes.length} {pedido.trocas_pendentes.length === 1 ? 'troca' : 'trocas'}
+              </Badge>
+            )}
+            {pedido.observacoes_agendamento && (
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-800 border-blue-300 flex items-center gap-1"
+                title={pedido.observacoes_agendamento}
+              >
+                <MessageSquare className="h-3 w-3" />
+                Obs.
+              </Badge>
+            )}
             {ehSeparacaoAntecipada && (
               <Badge
                 variant="outline"
