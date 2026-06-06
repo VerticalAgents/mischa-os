@@ -1002,23 +1002,30 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </TooltipProvider>
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { label: "Total Sem.", value: totalUnidadesSemana, color: "text-purple-600", Icon: Package },
-            { label: "Confirmados", value: indicadoresSemana.confirmados, color: "text-green-600", Icon: CheckCircle },
-            { label: "Previstos", value: indicadoresSemana.previstos, color: "text-amber-600", Icon: Clock },
-            { label: "Entregues", value: indicadoresSemana.entregasRealizadas, color: "text-green-600", Icon: Truck },
-          ].map(({ label, value, color, Icon }) => (
-            <Card key={label} className="p-2.5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total Sem.", value: totalUnidadesSemana, dot: "bg-purple-500", Icon: Package, suffix: "un" },
+          { label: "Confirmados", value: indicadoresSemana.confirmados, dot: "bg-emerald-500", Icon: CheckCircle, suffix: "ped" },
+          { label: "Previstos", value: indicadoresSemana.previstos, dot: "bg-amber-500", Icon: Clock, suffix: "ped" },
+          { label: "Entregues", value: indicadoresSemana.entregasRealizadas, dot: "bg-blue-500", Icon: Truck, suffix: "ped" },
+        ].map(({ label, value, dot, Icon, suffix }) => (
+          <div
+            key={label}
+            className="rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Icon className={`h-4 w-4 shrink-0 ${color}`} />
-                <div className="min-w-0 flex-1">
-                  <div className={`text-lg font-bold leading-tight ${color}`}>{value}</div>
-                  <div className="text-[10px] text-muted-foreground leading-tight truncate">{label}</div>
-                </div>
+                <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {label}
+                </span>
               </div>
-            </Card>
-          ))}
+              <Icon className="h-4 w-4 text-muted-foreground/60" />
+            </div>
+            <div className="text-3xl font-bold tabular-nums text-foreground leading-none">{value}</div>
+            <div className="text-xs text-muted-foreground mt-1.5">{suffix}</div>
+          </div>
+        ))}
       </div>
 
       {/* Resumo de Produtos da Semana */}
