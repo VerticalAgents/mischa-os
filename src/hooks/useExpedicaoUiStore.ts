@@ -28,6 +28,9 @@ interface ExpedicaoUiState {
   modoDataResumo: 'dia' | 'semana';
   dataResumo: string; // YYYY-MM-DD
   semanaResumo: string; // ISO date
+
+  // Preset da aba Despacho
+  presetDespacho: 'hoje' | 'semana' | 'atrasados' | 'todos';
   
   // Ações
   setFiltroTexto: (texto: string) => void;
@@ -45,6 +48,7 @@ interface ExpedicaoUiState {
   setModoDataResumo: (modo: 'dia' | 'semana') => void;
   setDataResumo: (data: string) => void;
   setSemanaResumo: (data: Date) => void;
+  setPresetDespacho: (preset: 'hoje' | 'semana' | 'atrasados' | 'todos') => void;
   clearFilters: () => void;
 }
 
@@ -67,6 +71,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       modoDataResumo: 'dia',
       dataResumo: new Date().toISOString().split('T')[0],
       semanaResumo: new Date().toISOString(),
+      presetDespacho: 'hoje',
       
       // Ações
       setFiltroTexto: (texto) => set({ filtroTexto: texto }),
@@ -84,6 +89,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       setModoDataResumo: (modo) => set({ modoDataResumo: modo }),
       setDataResumo: (data) => set({ dataResumo: data }),
       setSemanaResumo: (data) => set({ semanaResumo: data.toISOString() }),
+      setPresetDespacho: (preset) => set({ presetDespacho: preset }),
       clearFilters: () => set({ 
         filtroTexto: "",
         filtroTipoPedido: "todos",
@@ -97,12 +103,13 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
         semanaSeparacao: new Date().toISOString(),
         modoDataResumo: 'dia',
         dataResumo: new Date().toISOString().split('T')[0],
-        semanaResumo: new Date().toISOString()
+        semanaResumo: new Date().toISOString(),
+        presetDespacho: 'hoje'
       }),
     }),
     {
       name: 'expedicao-ui-state',
-      version: 7,
+      version: 8,
     }
   )
 );
