@@ -320,7 +320,7 @@ const PedidoCard = ({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-1">
           {!showDespachoActions && !showRetornarParaSeparacaoButton && (
             <>
               {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
