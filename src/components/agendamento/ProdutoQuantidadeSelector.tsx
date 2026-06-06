@@ -320,8 +320,8 @@ export default function ProdutoQuantidadeSelector({
         });
 
         return (
-          <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 sm:items-end p-3 sm:p-4 border rounded-lg">
-            <div className="space-y-2">
+          <div key={index} className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg">
+            <div className="space-y-2 flex-1 min-w-0">
               <Label htmlFor={`produto-${index}`}>Produto</Label>
               <Select
                 value={item.produto}
@@ -339,7 +339,7 @@ export default function ProdutoQuantidadeSelector({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full sm:w-24">
               <Label htmlFor={`quantidade-${index}`}>Quantidade</Label>
               <Input
                 id={`quantidade-${index}`}
@@ -349,14 +349,17 @@ export default function ProdutoQuantidadeSelector({
                 onChange={(e) => atualizarProduto(index, 'quantidade', e.target.value)}
               />
             </div>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={() => removerProduto(index)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex justify-end sm:block">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => removerProduto(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
       })}
