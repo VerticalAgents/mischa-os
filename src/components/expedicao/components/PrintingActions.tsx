@@ -242,7 +242,6 @@ export const PrintingActions = ({
               <tr>
                 <th style="width: ${colWidths.cliente};">Cliente</th>
                 <th style="width: ${colWidths.data};">Data</th>
-                <th style="width: ${colWidths.tipo};">Tipo</th>
                 <th style="width: ${colWidths.produtos};">Produtos</th>
                 <th style="width: ${colWidths.total};">Total</th>
                 ${temAlgumaObservacao ? `<th style="width: ${colWidths.obs};">Observações</th>` : ''}
@@ -269,7 +268,7 @@ export const PrintingActions = ({
       return a.localeCompare(b);
     });
 
-    const totalColunas = 5 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
+    const totalColunas = 4 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
 
     const renderPedidoRow = (pedido: any) => {
       const produtosParaExibir = buildProdutosParaExibir(pedido);
@@ -346,9 +345,11 @@ export const PrintingActions = ({
             ${razaoSocialDiferente ? `<br/><span style="font-size: 9px; color: #555;">${pedido.cliente_razao_social}</span>` : ''}
           </td>
           <td>${formatDate(new Date(pedido.data_prevista_entrega))}</td>
-          <td>${pedido.tipo_pedido}</td>
           <td>${produtosHtml}</td>
-          <td style="text-align: center; font-weight: bold;">${pedido.quantidade_total}</td>
+          <td style="text-align: center; font-weight: bold;">
+            ${pedido.quantidade_total}
+            ${pedido.tipo_pedido ? `<div style="font-size: 9px; font-weight: normal; color: #555; margin-top: 2px;">${pedido.tipo_pedido}</div>` : ''}
+          </td>
           ${observacoesHtml}
           ${trocasHtml}
         </tr>
