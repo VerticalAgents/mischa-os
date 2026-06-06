@@ -137,16 +137,20 @@ export const ResumoQuantidadeProdutos = ({
   });
 
   // Loading state
+  const HeaderEyebrow = (
+    <div className="px-5 pt-5 pb-1">
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+        <span className="w-1 h-1 rounded-full bg-amber-500" />
+        Produtos Necessários
+      </h3>
+    </div>
+  );
+
   if (loadingEstoque || calculando) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            Produtos Necessários
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Card className={`${className} overflow-hidden`}>
+        {HeaderEyebrow}
+        <CardContent className="pt-4">
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Calculando quantidades...</span>
@@ -158,14 +162,9 @@ export const ResumoQuantidadeProdutos = ({
 
   if (produtosComQuantidade.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            Produtos Necessários
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Card className={`${className} overflow-hidden`}>
+        {HeaderEyebrow}
+        <CardContent className="pt-4">
           <div className="text-center py-8">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">Nenhum pedido para separação</p>
@@ -176,29 +175,27 @@ export const ResumoQuantidadeProdutos = ({
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              Produtos Necessários
-            </CardTitle>
-            <CardDescription className="text-left">
-              Quantidades para pedidos agendados
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <Card className={`${className} overflow-hidden`}>
+      <div className="px-5 pt-5 pb-1">
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+          <span className="w-1 h-1 rounded-full bg-amber-500" />
+          Produtos Necessários
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">Quantidades para pedidos agendados</p>
+      </div>
+      <CardContent className="pt-4">
         <div className="space-y-4">
           {/* Total Geral */}
-          <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalGeral}</p>
-            <Badge className="mt-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200">
-              {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'}
-            </Badge>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+              Quantidade Total Necessária
+            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-4xl font-bold tabular-nums text-foreground">{totalGeral}</p>
+              <span className="text-xs text-muted-foreground">
+                {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'}
+              </span>
+            </div>
           </div>
 
           {/* Alerta de estoque insuficiente */}
