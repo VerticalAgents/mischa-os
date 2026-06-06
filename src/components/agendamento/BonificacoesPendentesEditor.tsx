@@ -18,13 +18,20 @@ export interface BonificacaoPendente {
 interface BonificacoesPendentesEditorProps {
   value: BonificacaoPendente[];
   onChange: (bonificacoes: BonificacaoPendente[]) => void;
+  categoriasHabilitadas?: number[];
 }
 
-export default function BonificacoesPendentesEditor({ value, onChange }: BonificacoesPendentesEditorProps) {
+export default function BonificacoesPendentesEditor({ value, onChange, categoriasHabilitadas }: BonificacoesPendentesEditorProps) {
   const { motivos, loading: loadingMotivos } = useMotivosBonificacao();
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
 
-  const produtosAtivos = produtos.filter((p) => p.ativo);
+  const produtosAtivos = produtos.filter((p) => {
+    if (!p.ativo) return false;
+    if (categoriasHabilitadas && categoriasHabilitadas.length > 0) {
+      return categoriasHabilitadas.includes(p.categoria_id ?? -1);
+    }
+    return true;
+  });
   const bonificacoes = value ?? [];
 
   const atualizar = (index: number, patch: Partial<BonificacaoPendente>) => {
