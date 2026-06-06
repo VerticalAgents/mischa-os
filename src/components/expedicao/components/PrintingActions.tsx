@@ -372,7 +372,7 @@ export const PrintingActions = ({
     
     // Adicionar resumo total
     const totalGeral = listaAtual.reduce((sum, pedido) => sum + pedido.quantidade_total, 0);
-    const colspanTotal = 4;
+    const colspanTotal = 3;
     const colspanVazio = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
     
     printContent += `
