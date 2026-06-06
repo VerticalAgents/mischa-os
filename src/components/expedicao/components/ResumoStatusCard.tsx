@@ -28,14 +28,14 @@ export const ResumoStatusCard = ({ preset, pedidos }: ResumoStatusCardProps) => 
     : "Todas as Entregas";
 
   return (
-    <Card className="h-full border-border/60 shadow-none">
-      <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+    <Card className="h-full overflow-hidden">
+      <div className="px-5 pt-5 pb-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+          <span className="w-1 h-1 rounded-full bg-amber-500" />
           {titulo}
         </h3>
       </div>
-      <div className="px-4 pb-4 space-y-4">
+      <div className="px-5 pb-5 space-y-4">
         {/* Destaque do total */}
         <div>
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
@@ -55,7 +55,7 @@ export const ResumoStatusCard = ({ preset, pedidos }: ResumoStatusCardProps) => 
         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-foreground/70">
-              <Package className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+              <Package className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
               <span className="text-[13px] font-medium">Separados</span>
             </div>
             <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -64,7 +64,7 @@ export const ResumoStatusCard = ({ preset, pedidos }: ResumoStatusCardProps) => 
           </div>
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-foreground/70">
-              <Truck className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+              <Truck className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
               <span className="text-[13px] font-medium">Despachados</span>
             </div>
             <span className="text-sm font-semibold tabular-nums text-foreground">
