@@ -4,7 +4,6 @@ import { Settings, Truck, Package, Download, MapPin, RefreshCw } from "lucide-re
 import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 interface DespachoActionsCardProps {
-  tipoFiltro: "hoje" | "atrasadas" | "antecipada";
   onDespacharEmMassa: () => void;
   onEntregarEmMassa: () => void;
   onDownloadCSV: () => void;
@@ -16,7 +15,6 @@ interface DespachoActionsCardProps {
 }
 
 export const DespachoActionsCard = ({
-  tipoFiltro,
   onDespacharEmMassa,
   onEntregarEmMassa,
   onDownloadCSV,
@@ -27,7 +25,7 @@ export const DespachoActionsCard = ({
   isLoading
 }: DespachoActionsCardProps) => {
   const { canEdit } = useEditPermission();
-  const mostrarAcoesDespacho = tipoFiltro !== "antecipada";
+  const mostrarAcoesDespacho = true;
 
   return (
     <Card className="h-full">
