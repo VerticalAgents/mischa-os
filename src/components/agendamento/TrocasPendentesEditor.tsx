@@ -106,17 +106,6 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
             </Select>
           </div>
 
-          <div className="space-y-2 w-full sm:w-24">
-            <Label htmlFor={`troca-qtd-${index}`}>Quantidade</Label>
-            <Input
-              id={`troca-qtd-${index}`}
-              type="number"
-              min={1}
-              value={troca.quantidade || 1}
-              onChange={(e) => handleQuantidadeChange(index, e.target.value)}
-            />
-          </div>
-
           <div className="space-y-2 w-full sm:w-56">
             <Label htmlFor={`troca-motivo-${index}`}>Motivo (opcional)</Label>
             <Select
@@ -134,6 +123,17 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2 w-full sm:w-24">
+            <Label htmlFor={`troca-qtd-${index}`}>Quantidade</Label>
+            <Input
+              id={`troca-qtd-${index}`}
+              type="number"
+              min={1}
+              value={troca.quantidade || 1}
+              onChange={(e) => handleQuantidadeChange(index, e.target.value)}
+            />
           </div>
 
           <div className="flex justify-end sm:block">
