@@ -1,29 +1,34 @@
 ## Objetivo
 
-No dialog "Entregar em Massa" (aba Despacho), permitir confirmar a entrega de cada pedido usando a **própria data de agendamento (`data_prevista_entrega`)**, em vez de obrigar uma data única para todos.
+Refinar a área de **Observações e Trocas** do modal de agendamento:
+
+1. Tornar a seção **colapsável** (oculta por padrão) ao final do modal.
+2. Garantir que `observacoes_agendamento` seja **limpa** após confirmação da entrega.
+3. Corrigir UX/persistência das **trocas pendentes** (hoje, se o usuário não clicar no "+", a seleção é perdida ao salvar).
+4. Registrar as trocas pendentes no histórico (`trocas`) ao confirmar a entrega, conforme o aviso já diz.
 
 ## Mudanças
 
-### 1. `EntregaEmMassaDialog.tsx`
-- Adicionar um toggle/switch no topo: **"Usar a data de agendamento de cada pedido"** (ligado por padrão, já que é o caso mais comum).
-- Quando **ligado**: oculta o seletor de "Data de Entrega" único e mostra um aviso curto ("Cada pedido será entregue na sua data agendada: 03/06, 05/06, etc.").
-- Quando **desligado**: mostra o seletor de data atual (comportamento existente) aplicado a todos os pedidos.
-- Em cada linha da lista de pedidos, manter a data exibida (`03/06`) para o usuário ver qual data será usada.
-- Mudar a assinatura de `onConfirm` para aceitar opcionalmente "usar data do agendamento":
-  - `onConfirm(pedidoIds: string[], dataEntrega: Date | null, usarDataAgendamento: boolean)`
+### 1. UI — `AgendamentoEditModal.tsx` + `ObservacoesAgendamentoSection.tsx`
+- Envolver `<ObservacoesAgendamentoSection>` em um `<Collapsible>` (componente shadcn já existente) no final do modal:
+  - Trigger: botão discreto com chevron — "Observações e Trocas" (mostra badge "•" se houver conteúdo: obs. gerais, obs. agendamento ou trocas).
+  - Collapsed por padrão.
+- Manter o conteúdo interno como está.
 
-### 2. `Despacho.tsx` — `handleConfirmarEntregaEmMassa`
-- Repassar a nova flag e, quando `usarDataAgendamento === true`, incluir `data_prevista_entrega` de cada pedido no payload enviado ao hook.
+### 2. UX — `TrocasPendentesEditor.tsx`
+- Expor um helper `commitPendingTroca()` (via `useImperativeHandle` com `forwardRef`, ou via `onChange` automático sempre que `novaTroca` ficar completo) para que a troca em edição (produto + motivo + qtd preenchidos) seja automaticamente persistida em `value` antes do save.
+- Abordagem mais simples e robusta: **adicionar automaticamente** a troca à lista assim que `produto_id` e `motivo_id` estiverem preenchidos (efeito ao mudar qualquer um dos três), limpando o form interno. Assim o "+" deixa de existir/é redundante. Mantém botão remover por linha.
 
-### 3. `useConfirmacaoEntrega.ts` — `confirmarEntregaEmMassa`
-- Aceitar opção `{ usarDataAgendamento?: boolean }` além do `dataEntrega` opcional.
-- No loop que chama `process_entrega_safe`, calcular `p_data_entrega` por pedido:
-  - Se `usarDataAgendamento` → usar `pedido.data_prevista_entrega.toISOString()`.
-  - Senão → usar `dataEntrega.toISOString()` (comportamento atual).
-  - Se nenhum disponível → `null` (servidor usa default).
-- Adicionar `data_prevista_entrega?: Date | string` ao tipo `PedidoEntrega` consumido pela função.
+### 3. Backend — migração que atualiza `process_entrega_safe`
+Atualizar a versão com 3 parâmetros (`p_agendamento_id, p_observacao, p_data_entrega`) para:
+- Antes de zerar, ler `observacoes_agendamento` e `trocas_pendentes` do agendamento.
+- Após o `INSERT` em `historico_entregas` (já temos `v_historico_id`), inserir cada item de `trocas_pendentes` em `public.trocas` com `cliente_id`, `historico_entrega_id = v_historico_id`, `produto_id`, `produto_nome`, `quantidade`, `motivo_id`, `motivo_nome`, `data_troca = v_data_entrega_efetiva`.
+- Concatenar `observacoes_agendamento` na `observacao` do `historico_entregas` (se houver), para não perder a informação.
+- No `UPDATE` final do agendamento (ambos os ramos: com e sem reagendamento), também **setar** `observacoes_agendamento = NULL` e `trocas_pendentes = '[]'::jsonb`.
+
+Não há mudança de schema nem RLS — apenas substituição da função.
 
 ### Detalhes técnicos
-- Nenhuma mudança em RPC/banco: `process_entrega_safe` já aceita `p_data_entrega` por chamada.
-- Manter validações de estoque consolidado como estão.
-- UI: usar `Switch` do shadcn já existente; manter design minimalista atual do dialog.
+- Manter a versão de 2 parâmetros existente intacta (compat).
+- A lista de trocas que vem no `historico_entregas.observacao` continua sem mudar; trocas vão para a tabela própria.
+- Frontend não precisa mais mexer em zerar campos após entrega — fica tudo no RPC.
