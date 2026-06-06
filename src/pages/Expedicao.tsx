@@ -89,13 +89,13 @@ export default function Expedicao() {
           {/* Mobile: grid 2 colunas */}
           <div className="grid grid-cols-2 gap-2 lg:hidden">
             {[
-              { id: "resumo", label: "Resumo" },
-              { id: "dashboard", label: "Dashboard" },
-              { id: "separacao", label: "Separação de Pedidos" },
-              { id: "gestaoclick", label: "Emissão de Documentos" },
-              { id: "despacho", label: "Despacho de Pedidos" },
+              { id: "resumo", label: "Dashboard" },
+              { id: "separacao", label: "Separação" },
+              { id: "gestaoclick", label: "Documentos" },
+              { id: "despacho", label: "Despacho" },
               { id: "organizacao", label: "Organização" },
-              { id: "rota", label: "Rota de Entrega" },
+              { id: "rota", label: "Rota" },
+              { id: "dashboard", label: "Histórico" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -112,13 +112,13 @@ export default function Expedicao() {
           </div>
           {/* Desktop: TabsList horizontal */}
           <TabsList className="hidden lg:inline-flex">
-            <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
-            <TabsTrigger value="gestaoclick">Emissão de Documentos</TabsTrigger>
-            <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
+            <TabsTrigger value="resumo">Dashboard</TabsTrigger>
+            <TabsTrigger value="separacao">Separação</TabsTrigger>
+            <TabsTrigger value="gestaoclick">Documentos</TabsTrigger>
+            <TabsTrigger value="despacho">Despacho</TabsTrigger>
             <TabsTrigger value="organizacao">Organização</TabsTrigger>
-            <TabsTrigger value="rota">Rota de Entrega</TabsTrigger>
+            <TabsTrigger value="rota">Rota</TabsTrigger>
+            <TabsTrigger value="dashboard">Histórico</TabsTrigger>
           </TabsList>
           
           <TabsContent value="resumo" className="space-y-4" forceMount={activeTab === "resumo" ? true : undefined}>
