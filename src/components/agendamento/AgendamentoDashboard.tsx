@@ -32,6 +32,7 @@ import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequen
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConfirmationScore } from "@/hooks/useConfirmationScore";
 import ConfirmationScoreBadge from "@/components/agendamento/ConfirmationScoreBadge";
+import { cn } from "@/lib/utils";
 
 // Componente para indicadores visuais de entrega
 const IndicadoresEntrega = ({ 
@@ -1001,23 +1002,30 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </TooltipProvider>
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { label: "Total Sem.", value: totalUnidadesSemana, color: "text-purple-600", Icon: Package },
-            { label: "Confirmados", value: indicadoresSemana.confirmados, color: "text-green-600", Icon: CheckCircle },
-            { label: "Previstos", value: indicadoresSemana.previstos, color: "text-amber-600", Icon: Clock },
-            { label: "Entregues", value: indicadoresSemana.entregasRealizadas, color: "text-green-600", Icon: Truck },
-          ].map(({ label, value, color, Icon }) => (
-            <Card key={label} className="p-2.5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total Sem.", value: totalUnidadesSemana, dot: "bg-purple-500", Icon: Package, suffix: "un" },
+          { label: "Confirmados", value: indicadoresSemana.confirmados, dot: "bg-emerald-500", Icon: CheckCircle, suffix: "ped" },
+          { label: "Previstos", value: indicadoresSemana.previstos, dot: "bg-amber-500", Icon: Clock, suffix: "ped" },
+          { label: "Entregues", value: indicadoresSemana.entregasRealizadas, dot: "bg-blue-500", Icon: Truck, suffix: "ped" },
+        ].map(({ label, value, dot, Icon, suffix }) => (
+          <div
+            key={label}
+            className="rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Icon className={`h-4 w-4 shrink-0 ${color}`} />
-                <div className="min-w-0 flex-1">
-                  <div className={`text-lg font-bold leading-tight ${color}`}>{value}</div>
-                  <div className="text-[10px] text-muted-foreground leading-tight truncate">{label}</div>
-                </div>
+                <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {label}
+                </span>
               </div>
-            </Card>
-          ))}
+              <Icon className="h-4 w-4 text-muted-foreground/60" />
+            </div>
+            <div className="text-3xl font-bold tabular-nums text-foreground leading-none">{value}</div>
+            <div className="text-xs text-muted-foreground mt-1.5">{suffix}</div>
+          </div>
+        ))}
       </div>
 
       {/* Resumo de Produtos da Semana */}
@@ -1047,17 +1055,18 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       {dadosGraficoStatus.length > 0 && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico de Status */}
-        <Card>
-          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 space-y-0">
-            <div className="space-y-1">
-              <CardTitle className="text-base md:text-lg">
+        <Card className="overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 px-5 pt-5 pb-1">
+            <div>
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                 {modoGraficos === 'representantes' ? 'Unidades por Representante' : 'Distribuição por Status'}
-              </CardTitle>
-              <CardDescription className="text-left text-xs md:text-sm">
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
                 {modoGraficos === 'representantes'
                   ? 'Confirmadas + previstas prováveis por representante'
                   : 'Volume de unidades por status'}
-              </CardDescription>
+              </p>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
               <Label htmlFor="toggle-graficos" className="text-xs text-muted-foreground">
@@ -1068,9 +1077,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                 checked={modoGraficos === 'representantes'}
                 onCheckedChange={(checked) => setModoGraficos(checked ? 'representantes' : 'status')}
               />
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-4 w-4 text-muted-foreground/60" />
             </div>
-          </CardHeader>
+          </div>
           <CardContent>
             <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -1132,13 +1141,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         </Card>
 
         {/* Gráfico Semanal */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base md:text-lg">Agendamentos por Dia da Semana</CardTitle>
-            <CardDescription className="text-left text-xs md:text-sm">
-              {'Volume de unidades ao longo da semana'}
-            </CardDescription>
-          </CardHeader>
+        <Card className="overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Agendamentos por Dia da Semana
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">Volume de unidades ao longo da semana</p>
+          </div>
           <CardContent>
             <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -1274,14 +1284,26 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       )}
 
       {/* Calendário Semanal */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Calendário Semanal</CardTitle>
-          <CardDescription className="text-left">Visão dos agendamentos por dia da semana selecionada - Clique em um dia para ver os detalhes</CardDescription>
-        </CardHeader>
+      <Card className="overflow-hidden">
+        <div className="px-5 pt-5 pb-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            Calendário Semanal
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Visão dos agendamentos por dia — clique em um dia para ver os detalhes
+          </p>
+        </div>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex flex-col gap-2 md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
+            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={cn(
+              "p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/40 flex flex-col gap-2 md:text-center",
+              dia.isToday
+                ? "border-amber-500/60 bg-amber-50/40 dark:bg-amber-500/5"
+                : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado)
+                  ? "border-foreground/40 bg-muted/40"
+                  : "border-border/60"
+            )} onClick={() => handleDiaClick(dia.dataCompleta)}>
                 {/* Mobile linha 1: dia da semana esq | data num dir. Desktop: empilhado/centralizado */}
                 <div className="flex items-center justify-between gap-2 md:flex-col md:gap-1 md:justify-center">
                   <div className="font-medium text-sm whitespace-nowrap md:mb-1">{dia.diaSemana}</div>
@@ -1314,37 +1336,36 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </Card>
 
       {/* Agendamentos do Dia Selecionado */}
-      {diaSelecionado && <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle>Agendamentos para {format(diaSelecionado, "dd 'de' MMMM 'de' yyyy", {
-                  locale: ptBR
-                })}</CardTitle>
-                <CardDescription className="text-left">
-                  {agendamentosDiaSelecionado.length === 0 && entregasDiaSelecionado.length === 0
-                    ? "Nenhum agendamento ou entrega encontrado para este dia"
-                    : [
-                        agendamentosDiaSelecionado.length > 0 ? `${agendamentosDiaSelecionado.length} agendamento(s)` : null,
-                        entregasDiaSelecionado.length > 0 ? `${entregasDiaSelecionado.length} entrega(s) realizada(s)` : null
-                      ].filter(Boolean).join(' e ')}
-                </CardDescription>
-              </div>
-              {agendamentosDiaSelecionado.length > 0 && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setModalReagendarAberto(true)}
-                  disabled={agendamentosDiaSelecionado.length === 0 || !canEdit}
-                  title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                  className="flex items-center gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  Reagendar em Massa
-                </Button>
-              )}
+      {diaSelecionado && <Card className="overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 px-5 pt-5 pb-1">
+            <div>
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Agendamentos para {format(diaSelecionado, "dd 'de' MMMM", { locale: ptBR })}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                {agendamentosDiaSelecionado.length === 0 && entregasDiaSelecionado.length === 0
+                  ? "Nenhum agendamento ou entrega encontrado para este dia"
+                  : [
+                      agendamentosDiaSelecionado.length > 0 ? `${agendamentosDiaSelecionado.length} agendamento(s)` : null,
+                      entregasDiaSelecionado.length > 0 ? `${entregasDiaSelecionado.length} entrega(s) realizada(s)` : null
+                    ].filter(Boolean).join(' e ')}
+              </p>
             </div>
-          </CardHeader>
+            {agendamentosDiaSelecionado.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setModalReagendarAberto(true)}
+                disabled={agendamentosDiaSelecionado.length === 0 || !canEdit}
+                title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
+                className="self-start sm:self-auto text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-8 px-3 text-xs font-medium"
+              >
+                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                Reagendar em Massa
+              </Button>
+            )}
+          </div>
           <CardContent>
             {(agendamentosDiaSelecionado.length > 0 || entregasDiaSelecionado.length > 0) ? <div className="space-y-3">
                 {(() => {
