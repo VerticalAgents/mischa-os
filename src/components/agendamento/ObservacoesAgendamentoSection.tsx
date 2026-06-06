@@ -17,10 +17,7 @@ export default function ObservacoesAgendamentoSection({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium">📝 Observações Gerais</Label>
-          <span className="text-xs text-muted-foreground">(permanentes)</span>
-        </div>
+        <Label className="text-sm font-medium">📝 Observações Gerais</Label>
         <Textarea
           value={observacoesGerais}
           onChange={(e) => onObservacoesGeraisChange(e.target.value)}
@@ -31,10 +28,7 @@ export default function ObservacoesAgendamentoSection({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label className="text-sm font-medium">📋 Observações deste Agendamento</Label>
-          <span className="text-xs text-amber-600">(temporárias)</span>
-        </div>
+        <Label className="text-sm font-medium">📋 Observações deste Agendamento</Label>
         <Textarea
           value={observacoesAgendamento}
           onChange={(e) => onObservacoesAgendamentoChange(e.target.value)}

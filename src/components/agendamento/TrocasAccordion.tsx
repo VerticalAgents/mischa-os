@@ -31,7 +31,6 @@ export default function TrocasAccordion({ trocasPendentes, onTrocasPendentesChan
         <div className="flex items-center gap-2">
           <RefreshCw className={`h-4 w-4 ${temTrocas ? "text-destructive" : "text-amber-600"}`} />
           <Label className={`text-sm font-medium cursor-pointer ${temTrocas ? "text-destructive" : ""}`}>Trocas a Realizar</Label>
-          <span className={`text-xs ${temTrocas ? "text-destructive/80" : "text-amber-600"}`}>(temporárias)</span>
           {temTrocas && (
             <span className="text-xs text-muted-foreground ml-1">
               · {trocasPendentes.length} {trocasPendentes.length === 1 ? "item" : "itens"}
