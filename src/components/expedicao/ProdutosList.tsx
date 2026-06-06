@@ -126,10 +126,12 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
               <span>{pedido.quantidade_total} unidades</span>
             </div>
           </div>
+        </div>
+      )}
 
-          {trocasOrdenadas.length > 0 && (
-            <div className="border-t border-amber-300 mt-3 pt-2">
-              <div className="flex items-center gap-2 mb-2">
+      {isExpanded && trocasOrdenadas.length > 0 && (
+        <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 ml-6 mt-2">
+          <div className="flex items-center gap-2 mb-2">
                 <RefreshCw className="h-3.5 w-3.5 text-amber-700" />
                 <h4 className="font-medium text-amber-800 text-sm">Trocas pendentes</h4>
               </div>
@@ -149,12 +151,12 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+        </div>
+      )}
 
-          {bonificacoesOrdenadas.length > 0 && (
-            <div className="border-t border-green-300 mt-3 pt-2">
-              <div className="flex items-center gap-2 mb-2">
+      {isExpanded && bonificacoesOrdenadas.length > 0 && (
+        <div className="bg-green-50 p-3 rounded-lg border border-green-200 ml-6 mt-2">
+          <div className="flex items-center gap-2 mb-2">
                 <Gift className="h-3.5 w-3.5 text-green-700" />
                 <h4 className="font-medium text-green-800 text-sm">Bonificações</h4>
               </div>
@@ -174,8 +176,6 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
         </div>
       )}
     </div>
