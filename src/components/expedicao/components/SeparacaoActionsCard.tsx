@@ -1,8 +1,8 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, Send, RefreshCw, Settings2, Wand2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { CheckCircle2, Send, RefreshCw, Wand2 } from "lucide-react";
 import { PrintingActions } from "./PrintingActions";
+import { cn } from "@/lib/utils";
 
 interface SeparacaoActionsCardProps {
   onSepararEmMassa: () => void;
@@ -25,67 +25,63 @@ export const SeparacaoActionsCard = ({
   representantes = [],
   className = ""
 }: SeparacaoActionsCardProps) => {
+  const itemBase =
+    "group flex items-center gap-3 w-full px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left disabled:opacity-40 disabled:cursor-not-allowed";
+  const itemIdle =
+    "text-foreground/70 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10";
+  const iconBase =
+    "h-4 w-4 shrink-0 text-muted-foreground group-hover:text-amber-500 transition-colors";
+
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-primary" />
-              Ações
-            </CardTitle>
-          </div>
+    <Card className={cn("overflow-hidden", className)}>
+      <div className="px-5 pt-5 pb-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+          <span className="w-1 h-1 rounded-full bg-amber-500" />
+          Ações
+        </h3>
+      </div>
+      <div className="px-2 pb-4 space-y-0.5">
+        <button type="button" onClick={onSepararEmMassa} className={cn(itemBase, itemIdle)}>
+          <CheckCircle2 className={iconBase} strokeWidth={1.5} />
+          Separar em Massa
+        </button>
+
+        <button type="button" onClick={onGerarVendas} className={cn(itemBase, itemIdle)}>
+          <Send className={iconBase} strokeWidth={1.5} />
+          Gerar Vendas
+        </button>
+
+        <button type="button" onClick={onAplicarPadrao} className={cn(itemBase, itemIdle)}>
+          <Wand2 className={iconBase} strokeWidth={1.5} />
+          Aplicar Proporção Padrão
+        </button>
+
+        <PrintingActions
+          activeSubTab="todos"
+          pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
+          pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
+          pedidosProximoDia={[]}
+          todosPedidos={pedidosFiltrados}
+          representantes={representantes}
+        />
+
+        <div className="py-2 px-3">
+          <div className="h-px w-full bg-border/60" />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <Button 
-            onClick={onSepararEmMassa} 
-            variant="outline"
-            className="w-full justify-start gap-2"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Separar em Massa
-          </Button>
-          
-          <Button 
-            onClick={onGerarVendas} 
-            variant="outline"
-            className="w-full justify-start gap-2"
-          >
-            <Send className="h-4 w-4" />
-            Gerar Vendas
-          </Button>
 
-          <Button
-            onClick={onAplicarPadrao}
-            variant="outline"
-            className="w-full justify-start gap-2"
-          >
-            <Wand2 className="h-4 w-4" />
-            Aplicar Proporção Padrão
-          </Button>
-
-          <PrintingActions
-            activeSubTab="todos"
-            pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
-            pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
-            pedidosProximoDia={[]}
-            todosPedidos={pedidosFiltrados}
-            representantes={representantes}
+        <button
+          type="button"
+          onClick={onAtualizar}
+          disabled={isLoading}
+          className={cn(itemBase, "text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10")}
+        >
+          <RefreshCw
+            className={cn("h-4 w-4 shrink-0 text-muted-foreground/70 group-hover:text-amber-500 transition-colors", isLoading && "animate-spin")}
+            strokeWidth={1.5}
           />
-          
-          <Button 
-            onClick={onAtualizar}
-            variant="outline"
-            className="w-full justify-start gap-2"
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-        </div>
-      </CardContent>
+          Atualizar
+        </button>
+      </div>
     </Card>
   );
 };
