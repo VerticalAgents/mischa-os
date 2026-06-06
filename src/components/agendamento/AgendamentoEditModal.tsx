@@ -28,6 +28,7 @@ import { TipoPedidoAgendamento } from "@/types";
 import ProdutoQuantidadeSelector from "./ProdutoQuantidadeSelector";
 import ObservacoesAgendamentoSection from "./ObservacoesAgendamentoSection";
 import { TrocaPendente } from "./TrocasPendentesEditor";
+import TrocasAccordion from "./TrocasAccordion";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -489,39 +490,21 @@ export default function AgendamentoEditModal({
             </div>
           )}
 
-          {/* Nova seção de observações e trocas (oculta para representantes) */}
+          {/* Observações + Trocas (oculto para representantes) */}
           {!isRep && (
-            <Collapsible className="border-t pt-3">
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="group flex w-full items-center justify-between rounded-md px-1 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <span className="flex items-center gap-2">
-                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    Observações e Trocas
-                    {(observacoesGerais?.trim() ||
-                      observacoesAgendamento?.trim() ||
-                      trocasPendentes.length > 0) && (
-                      <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
-                    )}
-                  </span>
-                  <span className="text-xs text-muted-foreground/70">
-                    {trocasPendentes.length > 0 ? `${trocasPendentes.length} troca${trocasPendentes.length > 1 ? 's' : ''}` : 'opcional'}
-                  </span>
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <ObservacoesAgendamentoSection
-                  observacoesGerais={observacoesGerais}
-                  onObservacoesGeraisChange={setObservacoesGerais}
-                  observacoesAgendamento={observacoesAgendamento}
-                  onObservacoesAgendamentoChange={setObservacoesAgendamento}
-                  trocasPendentes={trocasPendentes}
-                  onTrocasPendentesChange={setTrocasPendentes}
-                />
-              </CollapsibleContent>
-            </Collapsible>
+            <div className="border-t pt-4 space-y-4">
+              <ObservacoesAgendamentoSection
+                observacoesGerais={observacoesGerais}
+                onObservacoesGeraisChange={setObservacoesGerais}
+                observacoesAgendamento={observacoesAgendamento}
+                onObservacoesAgendamentoChange={setObservacoesAgendamento}
+              />
+
+              <TrocasAccordion
+                trocasPendentes={trocasPendentes}
+                onTrocasPendentesChange={setTrocasPendentes}
+              />
+            </div>
           )}
         </div>
 
