@@ -270,6 +270,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 observacoes_gerais: cliente?.observacoes || undefined,
                 observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
                 trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
+                bonificacoes_pendentes: Array.isArray(agendamento.bonificacoes_pendentes) ? agendamento.bonificacoes_pendentes : [],
                 emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
                 forma_pagamento: cliente?.forma_pagamento || 'PIX',
                 tipo_logistica: cliente?.tipo_logistica || undefined,
