@@ -17,6 +17,7 @@ interface PedidoEntrega {
   quantidade_total: number;
   tipo_pedido: string;
   itens_personalizados?: any;
+  data_prevista_entrega?: string | Date;
 }
 
 export const useConfirmacaoEntrega = () => {
@@ -179,7 +180,11 @@ export const useConfirmacaoEntrega = () => {
     }
   };
 
-  const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[], dataEntrega?: Date): Promise<boolean> => {
+  const confirmarEntregaEmMassa = async (
+    pedidos: PedidoEntrega[],
+    dataEntrega?: Date | null,
+    opts?: { usarDataAgendamento?: boolean }
+  ): Promise<boolean> => {
     setLoading(true);
     try {
       console.log('🚚 Iniciando confirmação de entregas em massa:', pedidos.length);
@@ -262,10 +267,20 @@ export const useConfirmacaoEntrega = () => {
       
       for (const { pedido } of pedidosComItens) {
         try {
+          let pDataEntrega: string | null = null;
+          if (opts?.usarDataAgendamento && pedido.data_prevista_entrega) {
+            const d = pedido.data_prevista_entrega instanceof Date
+              ? pedido.data_prevista_entrega
+              : new Date(pedido.data_prevista_entrega);
+            pDataEntrega = isNaN(d.getTime()) ? null : d.toISOString();
+          } else if (dataEntrega) {
+            pDataEntrega = dataEntrega.toISOString();
+          }
+
           const { error: procError } = await supabase.rpc('process_entrega_safe', {
             p_agendamento_id: pedido.id,
             p_observacao: null,
-            p_data_entrega: dataEntrega ? dataEntrega.toISOString() : null
+            p_data_entrega: pDataEntrega
           });
 
           if (procError) {

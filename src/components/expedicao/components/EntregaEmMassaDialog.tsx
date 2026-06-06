@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
 import { Package, Loader2, CalendarIcon } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,7 +34,7 @@ interface EntregaEmMassaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pedidosDisponiveis: PedidoExpedicao[];
-  onConfirm: (pedidoIds: string[], dataEntrega: Date) => Promise<void>;
+  onConfirm: (pedidoIds: string[], dataEntrega: Date | null, usarDataAgendamento: boolean) => Promise<void>;
 }
 
 export function EntregaEmMassaDialog({
@@ -44,6 +45,7 @@ export function EntregaEmMassaDialog({
 }: EntregaEmMassaDialogProps) {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [dataEntrega, setDataEntrega] = useState<Date>(new Date());
+  const [usarDataAgendamento, setUsarDataAgendamento] = useState(true);
   const [loading, setLoading] = useState(false);
 
   // Filtrar apenas pedidos "Despachado"
@@ -91,7 +93,11 @@ export function EntregaEmMassaDialog({
     
     setLoading(true);
     try {
-      await onConfirm(Array.from(selecionados), dataEntrega);
+      await onConfirm(
+        Array.from(selecionados),
+        usarDataAgendamento ? null : dataEntrega,
+        usarDataAgendamento
+      );
       handleOpenChange(false);
     } finally {
       setLoading(false);
@@ -122,9 +128,27 @@ export function EntregaEmMassaDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Seletor de data */}
+          {/* Toggle: usar data do agendamento */}
+          <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="usar-data-agendamento" className="cursor-pointer">
+                Usar a data de agendamento de cada pedido
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Cada pedido será entregue na sua própria data agendada.
+              </p>
+            </div>
+            <Switch
+              id="usar-data-agendamento"
+              checked={usarDataAgendamento}
+              onCheckedChange={setUsarDataAgendamento}
+            />
+          </div>
+
+          {/* Seletor de data (somente quando não usa data do agendamento) */}
+          {!usarDataAgendamento && (
           <div className="space-y-2">
-            <Label>Data de Entrega</Label>
+            <Label>Data de Entrega (aplicada a todos)</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -149,6 +173,7 @@ export function EntregaEmMassaDialog({
               </PopoverContent>
             </Popover>
           </div>
+          )}
 
           {/* Header com select all */}
           <div className="flex items-center justify-between border-b pb-3">
