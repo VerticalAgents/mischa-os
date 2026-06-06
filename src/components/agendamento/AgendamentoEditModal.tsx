@@ -493,16 +493,16 @@ export default function AgendamentoEditModal({
           {/* Observações + Trocas (oculto para representantes) */}
           {!isRep && (
             <div className="border-t pt-4 space-y-4">
+              <TrocasAccordion
+                trocasPendentes={trocasPendentes}
+                onTrocasPendentesChange={setTrocasPendentes}
+              />
+
               <ObservacoesAgendamentoSection
                 observacoesGerais={observacoesGerais}
                 onObservacoesGeraisChange={setObservacoesGerais}
                 observacoesAgendamento={observacoesAgendamento}
                 onObservacoesAgendamentoChange={setObservacoesAgendamento}
-              />
-
-              <TrocasAccordion
-                trocasPendentes={trocasPendentes}
-                onTrocasPendentesChange={setTrocasPendentes}
               />
             </div>
           )}
