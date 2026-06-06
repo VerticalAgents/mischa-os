@@ -9,8 +9,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, Save, CheckCircle2, Loader2 } from "lucide-react";
+import { CalendarIcon, Save, CheckCircle2, Loader2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -490,14 +491,37 @@ export default function AgendamentoEditModal({
 
           {/* Nova seção de observações e trocas (oculta para representantes) */}
           {!isRep && (
-            <ObservacoesAgendamentoSection
-              observacoesGerais={observacoesGerais}
-              onObservacoesGeraisChange={setObservacoesGerais}
-              observacoesAgendamento={observacoesAgendamento}
-              onObservacoesAgendamentoChange={setObservacoesAgendamento}
-              trocasPendentes={trocasPendentes}
-              onTrocasPendentesChange={setTrocasPendentes}
-            />
+            <Collapsible className="border-t pt-3">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between rounded-md px-1 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                    Observações e Trocas
+                    {(observacoesGerais?.trim() ||
+                      observacoesAgendamento?.trim() ||
+                      trocasPendentes.length > 0) && (
+                      <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground/70">
+                    {trocasPendentes.length > 0 ? `${trocasPendentes.length} troca${trocasPendentes.length > 1 ? 's' : ''}` : 'opcional'}
+                  </span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ObservacoesAgendamentoSection
+                  observacoesGerais={observacoesGerais}
+                  onObservacoesGeraisChange={setObservacoesGerais}
+                  observacoesAgendamento={observacoesAgendamento}
+                  onObservacoesAgendamentoChange={setObservacoesAgendamento}
+                  trocasPendentes={trocasPendentes}
+                  onTrocasPendentesChange={setTrocasPendentes}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
 
