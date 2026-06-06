@@ -263,6 +263,28 @@ const PedidoCard = ({
           
           <div className="flex items-center gap-2">
             <TipoPedidoBadge tipo={pedido.tipo_pedido} />
+            {pedido.trocas_pendentes && pedido.trocas_pendentes.length > 0 && (
+              <Badge
+                variant="outline"
+                className="bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1"
+                title={pedido.trocas_pendentes
+                  .map(t => `${t.quantidade}x ${t.produto_nome}${(t.motivo_nome || t.motivo) ? ` (${t.motivo_nome || t.motivo})` : ''}`)
+                  .join('\n')}
+              >
+                <RefreshCw className="h-3 w-3" />
+                {pedido.trocas_pendentes.length} {pedido.trocas_pendentes.length === 1 ? 'troca' : 'trocas'}
+              </Badge>
+            )}
+            {pedido.observacoes_agendamento && (
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-800 border-blue-300 flex items-center gap-1"
+                title={pedido.observacoes_agendamento}
+              >
+                <MessageSquare className="h-3 w-3" />
+                Obs.
+              </Badge>
+            )}
             {ehSeparacaoAntecipada && (
               <Badge
                 variant="outline"
