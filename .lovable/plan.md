@@ -1,106 +1,76 @@
+# Refatoração da aba Despacho
+
 ## Objetivo
-Transformar a aba **Resumo da Expedição** em um painel de visão geral que o operador bate o olho e entende, no DIA ou na SEMANA selecionada, o status completo da expedição.
 
----
+Substituir as 3 sub-abas atuais (Entregas de Hoje / Entregas Pendentes / Separação Antecipada) por **presets de período** unificados, com filtros consistentes com a aba Separação, e transformar "antecipada" em um **badge visual** no card.
 
-## 1. Filtro de período (novo)
-Mesma UX da aba Separação:
-- Toggle **Dia / Semana** (reaproveitar estado `modoDataSeparacao` e `semanaSeparacao` do `useExpedicaoUiStore` ou criar par próprio `modoDataResumo` / `dataResumo` para não interferir com a Separação).
-- Date picker do dia OU navegador de semana (◀ Semana de DD/MM a DD/MM ▶).
-- Botão "Hoje" / "Semana atual".
+## Estado atual
 
-Decisão: **criar estado próprio** (`modoDataResumo`, `dataResumo`) para o usuário poder olhar um período no Resumo sem mexer no filtro da Separação.
+- `src/components/expedicao/Despacho.tsx` recebe prop `tipoFiltro: "hoje" | "atrasadas" | "antecipada"` vinda das 3 sub-abas em `EntregasTab` (ou equivalente no `Expedicao.tsx`)
+- Cada sub-aba renderiza o mesmo componente com filtro diferente vindo do `useExpedicaoStore` (`getPedidosParaDespacho`, `getPedidosAtrasados`, `getPedidosSeparadosAntecipados`)
+- Já existe `WeekNavigator` usado quando `tipoFiltro === "atrasadas"` e modo `'semana'`
+- Já existe `filtroRepresentantes` e `filtroTipoLogistica` no UI store
 
----
+## Mudanças propostas
 
-## 2. Layout novo
+### 1. Remover sub-abas, adicionar barra de presets
+
+Na aba **Despacho**, no topo (acima dos cards Resumo/Ações), uma barra única de presets:
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ Header: título + filtro Dia/Semana + botão Atualizar        │
-├──────────────────────────────────────────────────────────────┤
-│ FUNIL DE STATUS (card largo, 4 colunas)                     │
-│  Pendente │ Separado │ Despachado │ Entregue                │
-│   12      │    5     │     3      │    20                   │
-│  + barra de progresso visual do funil                       │
-├──────────────────────────────────────────────────────────────┤
-│ PRODUTOS A SEPARAR  │  ALERTAS & DESTAQUES                 │
-│ (lista de sabores   │  - X pedidos atrasados                │
-│  com qtd agregada   │  - Y pedidos sem rota                 │
-│  do que falta       │  - Z pedidos grandes (>N un)          │
-│  separar no período)│  - Próxima janela de entrega          │
-├──────────────────────────────────────────────────────────────┤
-│ DISTRIBUIÇÃO POR DIA (só no modo Semana)                    │
-│  Mini-barras Seg-Dom com qtd pedidos/unidades por dia       │
-├──────────────────────────────────────────────────────────────┤
-│ DISTRIBUIÇÃO POR ROTA / LOGÍSTICA                           │
-│  Lista compacta: Rota A — 5 pedidos / 120 un                │
-└──────────────────────────────────────────────────────────────┘
+[ Hoje ] [ Esta semana ] [ Atrasados ] [ Todos ]    [filtros: rep, logística, status, busca]
 ```
 
----
+- **Hoje** → entregas com `data_prevista_entrega = hoje` (não entregues)
+- **Esta semana** → entregas da semana atual (dom-sáb), não entregues
+- **Atrasados** → `data_prevista_entrega < hoje` e ainda não entregues
+- **Todos** → tudo que está em fluxo de despacho (qualquer data, não entregue)
 
-## 3. Cards detalhados
+Estado salvo no `useExpedicaoUiStore`: `presetDespacho: 'hoje' | 'semana' | 'atrasados' | 'todos'` (default `'hoje'`).
 
-### 3.1 Funil de Status (substitui "Produto em Expedição")
-4 mini-cards lado a lado, cada um com ícone, nº de pedidos e total de unidades:
-- **Pendente separação** (status do dia/semana sem `substatus_pedido` ou `Pendente`)
-- **Separado**
-- **Despachado**
-- **Entregue** (vem do `historico_entregas` ou pedidos finalizados no período)
+### 2. Badge "Separação Antecipada" no PedidoCard
 
-Cada card é clicável → leva à aba correspondente já filtrada pelo mesmo período.
+- No `PedidoCard`, quando `substatus_pedido === 'Separado'` **E** `data_prevista_entrega > hoje` → exibir badge âmbar/azul "Separação Antecipada" no header do card.
+- Isso elimina a necessidade da sub-aba dedicada — o pedido antecipado aparece naturalmente quando o usuário filtra "Esta semana" ou "Todos".
 
-### 3.2 Produtos a Separar (refatorar `ProdutosNecessarios`)
-- Mesma lógica de agregação atual, **mas só considera pedidos do período filtrado e que ainda não estão Separado/Despachado**.
-- Lista por sabor com quantidade: "Brownie Meio Amargo — 48 un", ordenada decrescente.
-- Total geral em destaque no topo.
-- Se vazio: "Tudo separado! ✓"
+### 3. Filtro de status do pedido
 
-### 3.3 Alertas & Destaques (novo — sugestões minhas)
-Pequenos badges acionáveis:
-- **Atrasados**: pedidos com `data_prevista_entrega` < hoje e ainda não despachados.
-- **Sem rota**: pedidos sem `rota_id` / logística no período.
-- **Grandes**: pedidos acima de X unidades (destaque para o separador priorizar).
-- **NF/Boleto pendente**: pedidos despachados sem documento emitido (se aplicável).
+Adicionar select de status (já existe `filtroTipo` parcialmente) com opções claras:
+`Todos · Agendado · Separado · Despachado`
 
-### 3.4 Distribuição por Dia (só modo Semana)
-Mini gráfico de barras Seg→Dom mostrando qtd de pedidos e unidades por dia → ajuda o operador a antecipar picos de trabalho.
+### 4. Adaptar ResumoStatusCard e DespachoActionsCard
 
-### 3.5 Distribuição por Rota/Logística
-Lista compacta: para cada rota/tipo de logística do período, mostrar nº de pedidos e unidades. Ajuda a planejar carregamento.
+- `ResumoStatusCard` passa a receber o preset ativo e mostra contagens por status do conjunto filtrado.
+- `DespachoActionsCard` mantém ações, mas habilita/desabilita botões conforme há pedidos no preset (ex: "Despachar em Massa" só ativo se houver Separados no filtro atual).
 
----
+### 5. Limpeza
 
-## 4. Remoções
-- Cards "Pedidos Separados" e "Pedidos Despachados" (com lista detalhada) → removidos. Acesso já existe nas abas dedicadas.
-- Modal `DetalheProdutosModal` deixa de ser usado aqui (continua em outras abas).
+- Remover do `EntregasTab` (ou wrapper que monta as 3 sub-abas) as `Tabs/TabsList/TabsTrigger`.
+- Manter as 3 funções do store (`getPedidosParaDespacho`, `getPedidosAtrasados`, `getPedidosSeparadosAntecipados`) — ainda úteis internamente como helpers de seleção.
+- A lógica de "antecipada" deixa de existir como filtro de aba, vira só badge no card.
 
----
+## Detalhes técnicos
 
-## 5. Sugestões extras pro operador (a confirmar)
-1. **Próxima entrega prevista** — hora/janela do próximo despacho (se houver campo).
-2. **Resumo de embalagens** — total de caixas/sacolas estimadas com base nos sabores.
-3. **Botão "Imprimir resumo do dia"** — PDF com lista de produtos a separar + pedidos.
-4. **Comparativo vs semana anterior** — mini delta "+15% vs semana passada" nas unidades totais.
-5. **Tempo médio de separação** — quanto tempo um pedido fica em "Pendente" até "Separado" (a partir do histórico).
+**Arquivos a tocar:**
+- `src/components/expedicao/Despacho.tsx` — remover prop `tipoFiltro`, usar `presetDespacho` do store
+- `src/pages/Expedicao.tsx` (ou wrapper das sub-abas) — remover `Tabs` interno e renderizar `<Despacho />` direto
+- `src/components/expedicao/PedidoCard.tsx` — adicionar badge "Separação Antecipada" condicional
+- `src/components/expedicao/components/DespachoFilters.tsx` — adicionar barra de presets + select de status
+- `src/components/expedicao/components/ResumoStatusCard.tsx` — adaptar título/conteúdo ao preset
+- `src/components/expedicao/components/DespachoActionsCard.tsx` — ajustar habilitação dos botões
+- `src/hooks/useExpedicaoUiStore.ts` — adicionar `presetDespacho` + setter, bump `version`
 
----
+**Filtros (aplicados em cascata sobre `pedidos` do store):**
+1. Filtro do preset (hoje/semana/atrasados/todos) sobre `data_prevista_entrega`
+2. Excluir já entregues (`substatus !== 'Entregue'`)
+3. Filtros de busca, status, representante, logística
 
-## Arquivos a alterar
-- `src/components/expedicao/ResumoExpedicao.tsx` — reescrita do layout.
-- `src/components/expedicao/components/ProdutosNecessarios.tsx` — aceitar lista de pedidos pendentes filtrados e agrupar por sabor (não mais total único).
-- **Novos** componentes em `src/components/expedicao/components/`:
-  - `ResumoPeriodoFilter.tsx` (toggle dia/semana + navegação)
-  - `FunilStatusCards.tsx` (4 cards de status)
-  - `AlertasExpedicao.tsx` (badges acionáveis)
-  - `DistribuicaoPorDia.tsx` (mini-bars semanais)
-  - `DistribuicaoPorRota.tsx` (lista de rotas)
-- `src/hooks/useExpedicaoUiStore.ts` — adicionar `modoDataResumo` e `dataResumo`.
+**Badge antecipada:**
+- Cor: âmbar (`bg-amber-100 text-amber-800` via token) para não conflitar com badges de status
+- Tooltip: "Separado para entrega em DD/MM"
 
----
+## Fora de escopo
 
-## Perguntas antes de implementar
-1. Confirma os 4 status do funil: **Pendente / Separado / Despachado / Entregue**? Ou usa só 3 (sem Entregue)?
-2. Quais dos 5 widgets extras (seção 5) quer já no primeiro corte? Sugiro: **Próxima entrega**, **Imprimir resumo do dia** e **Comparativo vs semana anterior**.
-3. O filtro do Resumo deve ser **independente** da Separação (minha sugestão) ou **compartilhado** (mexer num muda o outro)?
+- Filtro por rota de entrega (pode ser feito depois)
+- Mudanças no fluxo de despacho/entrega em massa
+- Mudanças nas outras abas (Separação, Documentos, Rota, Histórico, Dashboard)
