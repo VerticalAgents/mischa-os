@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   RefreshCw, Package, Calendar, CalendarDays, ClipboardList, CheckCircle2,
-  Truck, PackageCheck, AlertTriangle, Map, Layers
+  Truck, PackageCheck, AlertTriangle, Map as MapIcon, Layers
 } from "lucide-react";
 import {
   format, startOfWeek, endOfWeek, startOfDay, endOfDay, parseISO,
@@ -380,7 +380,7 @@ const ResumoExpedicao = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Map className="h-5 w-5 text-primary" />
+            <MapIcon className="h-5 w-5 text-primary" />
             Distribuição por logística
           </CardTitle>
           <CardDescription>Como os pedidos do período serão entregues</CardDescription>
