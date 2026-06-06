@@ -1055,17 +1055,18 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       {dadosGraficoStatus.length > 0 && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico de Status */}
-        <Card>
-          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 space-y-0">
-            <div className="space-y-1">
-              <CardTitle className="text-base md:text-lg">
+        <Card className="overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 px-5 pt-5 pb-1">
+            <div>
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                 {modoGraficos === 'representantes' ? 'Unidades por Representante' : 'Distribuição por Status'}
-              </CardTitle>
-              <CardDescription className="text-left text-xs md:text-sm">
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
                 {modoGraficos === 'representantes'
                   ? 'Confirmadas + previstas prováveis por representante'
                   : 'Volume de unidades por status'}
-              </CardDescription>
+              </p>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
               <Label htmlFor="toggle-graficos" className="text-xs text-muted-foreground">
@@ -1076,9 +1077,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                 checked={modoGraficos === 'representantes'}
                 onCheckedChange={(checked) => setModoGraficos(checked ? 'representantes' : 'status')}
               />
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-4 w-4 text-muted-foreground/60" />
             </div>
-          </CardHeader>
+          </div>
           <CardContent>
             <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -1140,13 +1141,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         </Card>
 
         {/* Gráfico Semanal */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base md:text-lg">Agendamentos por Dia da Semana</CardTitle>
-            <CardDescription className="text-left text-xs md:text-sm">
-              {'Volume de unidades ao longo da semana'}
-            </CardDescription>
-          </CardHeader>
+        <Card className="overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Agendamentos por Dia da Semana
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">Volume de unidades ao longo da semana</p>
+          </div>
           <CardContent>
             <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
