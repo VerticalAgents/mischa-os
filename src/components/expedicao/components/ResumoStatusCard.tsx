@@ -1,6 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Package, Truck, Clock, CheckCircle, CalendarRange, Layers } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Package, Truck } from "lucide-react";
 
 interface PedidoExpedicao {
   id: string;
@@ -22,83 +21,58 @@ export const ResumoStatusCard = ({ preset, pedidos }: ResumoStatusCardProps) => 
   const totalUnidades = pedidos.reduce((acc, p) => acc + (p.quantidade_total || 0), 0);
   const totalPedidos = pedidos.length;
 
-  const getConfiguracao = () => {
-    switch (preset) {
-      case "hoje":
-        return {
-          titulo: "Entregas de Hoje",
-          icone: <Truck className="h-5 w-5" />,
-          corDestaque: "text-green-600",
-          bgDestaque: "bg-green-50"
-        };
-      case "semana":
-        return {
-          titulo: "Entregas da Semana",
-          icone: <CalendarRange className="h-5 w-5" />,
-          corDestaque: "text-blue-600",
-          bgDestaque: "bg-blue-50"
-        };
-      case "atrasados":
-        return {
-          titulo: "Entregas Atrasadas",
-          icone: <Clock className="h-5 w-5" />,
-          corDestaque: "text-red-600",
-          bgDestaque: "bg-red-50"
-        };
-      case "todos":
-        return {
-          titulo: "Todas as Entregas",
-          icone: <Layers className="h-5 w-5" />,
-          corDestaque: "text-foreground",
-          bgDestaque: "bg-muted/50"
-        };
-    }
-  };
-
-  const config = getConfiguracao();
+  const titulo =
+    preset === "hoje" ? "Entregas de Hoje"
+    : preset === "semana" ? "Entregas da Semana"
+    : preset === "atrasados" ? "Entregas Atrasadas"
+    : "Todas as Entregas";
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          {config.icone}
-          {config.titulo}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Bloco de destaque com total */}
-        <div className={`p-4 rounded-lg ${config.bgDestaque}`}>
-          <p className="text-sm text-muted-foreground mb-1">Quantidade Total</p>
-          <p className={`text-4xl font-bold ${config.corDestaque}`}>
-            {totalUnidades}
+    <Card className="h-full border-border/60 shadow-none">
+      <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          {titulo}
+        </h3>
+      </div>
+      <div className="px-4 pb-4 space-y-4">
+        {/* Destaque do total */}
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+            Quantidade Total
           </p>
-          <Badge variant="secondary" className="mt-2">
-            {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
-          </Badge>
+          <div className="flex items-baseline gap-2">
+            <p className="text-4xl font-bold tabular-nums text-foreground">
+              {totalUnidades}
+            </p>
+            <span className="text-xs text-muted-foreground">
+              {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
+            </span>
+          </div>
         </div>
 
-        {/* Grid com status */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Separados</span>
+        {/* Status separados/despachados */}
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2 text-foreground/70">
+              <Package className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+              <span className="text-[13px] font-medium">Separados</span>
             </div>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+            <span className="text-sm font-semibold tabular-nums text-foreground">
               {pedidosSeparados.length}
-            </Badge>
+            </span>
           </div>
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Despachados</span>
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2 text-foreground/70">
+              <Truck className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+              <span className="text-[13px] font-medium">Despachados</span>
             </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
+            <span className="text-sm font-semibold tabular-nums text-foreground">
               {pedidosDespachados.length}
-            </Badge>
+            </span>
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 };

@@ -32,16 +32,33 @@ export const SeparacaoTabs = ({
       onValueChange={setActiveSubTab}
       className="w-full"
     >
-      <TabsList className="mb-4">
-        <TabsTrigger value="todos">Todos os Pedidos ({todosPedidos.length})</TabsTrigger>
-        <TabsTrigger value="padrao" className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-green-500"></span> Pedidos Padrão ({pedidosPadrao.length})
+      <TabsList className="mb-4 h-auto p-0 bg-transparent border-b border-border/60 rounded-none w-full justify-start gap-1">
+        <TabsTrigger
+          value="todos"
+          className="rounded-none border-b-2 border-transparent bg-transparent px-3 py-2 text-[13px] font-medium text-foreground/60 shadow-none data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground -mb-px"
+        >
+          Todos os Pedidos <span className="ml-1 text-muted-foreground tabular-nums">({todosPedidos.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="alterados" className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-red-500"></span> Pedidos Alterados ({pedidosAlterados.length})
+        <TabsTrigger
+          value="padrao"
+          className="rounded-none border-b-2 border-transparent bg-transparent px-3 py-2 text-[13px] font-medium text-foreground/60 shadow-none data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground -mb-px flex items-center gap-1.5"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+          Padrão <span className="ml-1 text-muted-foreground tabular-nums">({pedidosPadrao.length})</span>
         </TabsTrigger>
-        <TabsTrigger value="proximos" className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações ({pedidosProximoDia.length})
+        <TabsTrigger
+          value="alterados"
+          className="rounded-none border-b-2 border-transparent bg-transparent px-3 py-2 text-[13px] font-medium text-foreground/60 shadow-none data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground -mb-px flex items-center gap-1.5"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+          Alterados <span className="ml-1 text-muted-foreground tabular-nums">({pedidosAlterados.length})</span>
+        </TabsTrigger>
+        <TabsTrigger
+          value="proximos"
+          className="rounded-none border-b-2 border-transparent bg-transparent px-3 py-2 text-[13px] font-medium text-foreground/60 shadow-none data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground -mb-px flex items-center gap-1.5"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          Próximas <span className="ml-1 text-muted-foreground tabular-nums">({pedidosProximoDia.length})</span>
         </TabsTrigger>
       </TabsList>
       
