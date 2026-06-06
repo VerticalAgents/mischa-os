@@ -96,7 +96,6 @@ export default function Expedicao() {
               { id: "despacho", label: "Despacho de Pedidos" },
               { id: "organizacao", label: "Organização" },
               { id: "rota", label: "Rota de Entrega" },
-              { id: "historico", label: "Histórico de Entregas" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -120,7 +119,6 @@ export default function Expedicao() {
             <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
             <TabsTrigger value="organizacao">Organização</TabsTrigger>
             <TabsTrigger value="rota">Rota de Entrega</TabsTrigger>
-            <TabsTrigger value="historico">Histórico de Entregas</TabsTrigger>
           </TabsList>
           
           <TabsContent value="resumo" className="space-y-4" forceMount={activeTab === "resumo" ? true : undefined}>
@@ -128,7 +126,14 @@ export default function Expedicao() {
           </TabsContent>
 
           <TabsContent value="dashboard" className="space-y-4" forceMount={activeTab === "dashboard" ? true : undefined}>
-            {activeTab === "dashboard" && <DashboardEntregasAnalytics />}
+            {activeTab === "dashboard" && (
+              <>
+                <DashboardEntregasAnalytics />
+                <div className="pt-6">
+                  <HistoricoEntregas />
+                </div>
+              </>
+            )}
           </TabsContent>
           
           <TabsContent value="separacao" className="space-y-4" forceMount={activeTab === "separacao" ? true : undefined}>
@@ -199,10 +204,6 @@ export default function Expedicao() {
           
           <TabsContent value="rota" className="space-y-4" forceMount={activeTab === "rota" ? true : undefined}>
             {activeTab === "rota" && <RotaEntrega />}
-          </TabsContent>
-          
-          <TabsContent value="historico" className="space-y-4" forceMount={activeTab === "historico" ? true : undefined}>
-            {activeTab === "historico" && <HistoricoEntregas />}
           </TabsContent>
         </Tabs>
       </div>
