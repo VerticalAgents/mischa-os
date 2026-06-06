@@ -1296,7 +1296,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         </div>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex flex-col gap-2 md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
+            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={cn(
+              "p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/40 flex flex-col gap-2 md:text-center",
+              dia.isToday
+                ? "border-amber-500/60 bg-amber-50/40 dark:bg-amber-500/5"
+                : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado)
+                  ? "border-foreground/40 bg-muted/40"
+                  : "border-border/60"
+            )} onClick={() => handleDiaClick(dia.dataCompleta)}>
                 {/* Mobile linha 1: dia da semana esq | data num dir. Desktop: empilhado/centralizado */}
                 <div className="flex items-center justify-between gap-2 md:flex-col md:gap-1 md:justify-center">
                   <div className="font-medium text-sm whitespace-nowrap md:mb-1">{dia.diaSemana}</div>
