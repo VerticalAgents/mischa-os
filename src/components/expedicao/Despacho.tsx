@@ -86,11 +86,24 @@ export const Despacho = () => {
 
   // Base: pedidos em fluxo de despacho (Separado ou Despachado), não entregues
   const pedidosBase = useMemo(() => {
-    return pedidos.filter(
+    const base = pedidos.filter(
       (p) =>
         p.status_agendamento === 'Agendado' &&
         (p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado')
     );
+    console.log('🩺 [Despacho] pedidos no store:', pedidos.length);
+    console.log('🩺 [Despacho] amostra (todos os pedidos):',
+      pedidos.map((p: any) => ({
+        id: p.id,
+        cliente: p.cliente_nome,
+        status: p.status_agendamento,
+        substatus: p.substatus_pedido,
+        data: p.data_prevista_entrega,
+        dataTipo: Object.prototype.toString.call(p.data_prevista_entrega),
+      }))
+    );
+    console.log('🩺 [Despacho] pedidosBase (Agendado + Separado/Despachado):', base.length, base.map((p: any) => ({ id: p.id, cliente: p.cliente_nome, substatus: p.substatus_pedido, data: p.data_prevista_entrega })));
+    return base;
   }, [pedidos]);
 
   // Aplicar filtro de preset + filtros gerais
@@ -98,6 +111,7 @@ export const Despacho = () => {
     let resultado = pedidosBase;
     const hoje = startOfDay(new Date());
     const hojeStr = format(hoje, 'yyyy-MM-dd');
+    console.log('🩺 [Despacho] preset ativo:', presetDespacho, '| hoje:', hojeStr);
 
     // Filtro por preset de período
     if (presetDespacho === 'hoje') {
@@ -114,12 +128,18 @@ export const Despacho = () => {
         return d >= inicio && d <= fim;
       });
     } else if (presetDespacho === 'atrasados') {
+      const debug: any[] = [];
       resultado = resultado.filter((p) => {
         if (!p.data_prevista_entrega) return false;
-        return isBefore(startOfDay(new Date(p.data_prevista_entrega)), hoje);
+        const d = startOfDay(new Date(p.data_prevista_entrega));
+        const passa = isBefore(d, hoje);
+        debug.push({ id: p.id, cliente: p.cliente_nome, dataOriginal: p.data_prevista_entrega, dataComparada: d.toISOString(), passa });
+        return passa;
       });
+      console.log('🩺 [Despacho] debug filtro atrasados:', debug);
     }
     // 'todos' não filtra por data
+    console.log('🩺 [Despacho] após preset:', resultado.length);
 
     // Filtro por texto (cliente ou ID)
     if (filtroTexto.trim()) {

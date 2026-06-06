@@ -1,76 +1,52 @@
-# Refatoração da aba Despacho
+## Problema
 
-## Objetivo
+O banco tem 30 pedidos atrasados válidos (`status_agendamento='Agendado'`, `substatus='Separado'`, datas 03/06 e 05/06), confirmados via SQL. Eles aparecem no app publicado, mas no editor o filtro **Atrasados** mostra 0 e até o preset **Todos** não inclui esses 30 registros — apenas alguns futuros.
 
-Substituir as 3 sub-abas atuais (Entregas de Hoje / Entregas Pendentes / Separação Antecipada) por **presets de período** unificados, com filtros consistentes com a aba Separação, e transformar "antecipada" em um **badge visual** no card.
+A lógica em `Despacho.tsx` (filtro `pedidosBase` + preset `atrasados`) é equivalente à antiga `getPedidosAtrasados`. Como o filtro parece correto, preciso instrumentar o código para identificar onde os 30 registros estão sendo perdidos antes de propor a correção definitiva.
 
-## Estado atual
+## Etapa 1 — Diagnóstico (adicionar logs temporários)
 
-- `src/components/expedicao/Despacho.tsx` recebe prop `tipoFiltro: "hoje" | "atrasadas" | "antecipada"` vinda das 3 sub-abas em `EntregasTab` (ou equivalente no `Expedicao.tsx`)
-- Cada sub-aba renderiza o mesmo componente com filtro diferente vindo do `useExpedicaoStore` (`getPedidosParaDespacho`, `getPedidosAtrasados`, `getPedidosSeparadosAntecipados`)
-- Já existe `WeekNavigator` usado quando `tipoFiltro === "atrasadas"` e modo `'semana'`
-- Já existe `filtroRepresentantes` e `filtroTipoLogistica` no UI store
+Em `src/components/expedicao/Despacho.tsx`, dentro do `useMemo` que calcula `pedidosBase` e `pedidosFiltrados`, adicionar logs detalhados:
 
-## Mudanças propostas
+- Total de `pedidos` recebidos do store
+- Lista compacta: `{ id, cliente, status_agendamento, substatus_pedido, data_prevista_entrega }` para todos os pedidos
+- Total após filtro base (Agendado + Separado/Despachado)
+- Total após cada etapa do preset (hoje/semana/atrasados/todos)
+- Valor de `hoje` e datas comparadas no filtro `atrasados`
 
-### 1. Remover sub-abas, adicionar barra de presets
+Logs prefixados com `🩺 [Despacho]` para fácil identificação no console.
 
-Na aba **Despacho**, no topo (acima dos cards Resumo/Ações), uma barra única de presets:
+## Etapa 2 — Validar com o usuário
 
-```text
-[ Hoje ] [ Esta semana ] [ Atrasados ] [ Todos ]    [filtros: rep, logística, status, busca]
-```
+Após adicionar os logs, pedir ao usuário para:
+1. Atualizar a página do editor (Ctrl+F5)
+2. Abrir a aba Despacho → clicar em **Todos** → depois em **Atrasados**
+3. Copiar os logs prefixados com 🩺 do console
 
-- **Hoje** → entregas com `data_prevista_entrega = hoje` (não entregues)
-- **Esta semana** → entregas da semana atual (dom-sáb), não entregues
-- **Atrasados** → `data_prevista_entrega < hoje` e ainda não entregues
-- **Todos** → tudo que está em fluxo de despacho (qualquer data, não entregue)
+Com base nos logs vou identificar a causa exata (provavelmente uma destas):
+- a) `pedidos` no store está incompleto (problema em `carregarPedidos`/RLS/throttle de cache)
+- b) Alguma transformação está mudando `status_agendamento` ou `substatus_pedido` para esses 30
+- c) `data_prevista_entrega` está chegando como `null`/objeto inválido para esses registros
+- d) Comparação de datas tem problema com fuso horário
 
-Estado salvo no `useExpedicaoUiStore`: `presetDespacho: 'hoje' | 'semana' | 'atrasados' | 'todos'` (default `'hoje'`).
+## Etapa 3 — Aplicar a correção apropriada
 
-### 2. Badge "Separação Antecipada" no PedidoCard
+Com a causa identificada, aplicar o fix mínimo necessário. Hipóteses prováveis e suas correções:
 
-- No `PedidoCard`, quando `substatus_pedido === 'Separado'` **E** `data_prevista_entrega > hoje` → exibir badge âmbar/azul "Separação Antecipada" no header do card.
-- Isso elimina a necessidade da sub-aba dedicada — o pedido antecipado aparece naturalmente quando o usuário filtra "Esta semana" ou "Todos".
+- **Se (a)**: forçar `recarregarSilencioso()` ao montar Despacho ou ajustar throttle do `carregamentoEmAndamento`.
+- **Se (c) ou (d)**: trocar `new Date(p.data_prevista_entrega)` por `parseDataSegura(...)` (mesma função usada no resto do store) e exportá-la para uso compartilhado.
 
-### 3. Filtro de status do pedido
+## Etapa 4 — Remover logs de diagnóstico
 
-Adicionar select de status (já existe `filtroTipo` parcialmente) com opções claras:
-`Todos · Agendado · Separado · Despachado`
+Após confirmar o fix, remover os logs `🩺 [Despacho]` adicionados na Etapa 1.
 
-### 4. Adaptar ResumoStatusCard e DespachoActionsCard
+## Arquivos a tocar
 
-- `ResumoStatusCard` passa a receber o preset ativo e mostra contagens por status do conjunto filtrado.
-- `DespachoActionsCard` mantém ações, mas habilita/desabilita botões conforme há pedidos no preset (ex: "Despachar em Massa" só ativo se houver Separados no filtro atual).
-
-### 5. Limpeza
-
-- Remover do `EntregasTab` (ou wrapper que monta as 3 sub-abas) as `Tabs/TabsList/TabsTrigger`.
-- Manter as 3 funções do store (`getPedidosParaDespacho`, `getPedidosAtrasados`, `getPedidosSeparadosAntecipados`) — ainda úteis internamente como helpers de seleção.
-- A lógica de "antecipada" deixa de existir como filtro de aba, vira só badge no card.
-
-## Detalhes técnicos
-
-**Arquivos a tocar:**
-- `src/components/expedicao/Despacho.tsx` — remover prop `tipoFiltro`, usar `presetDespacho` do store
-- `src/pages/Expedicao.tsx` (ou wrapper das sub-abas) — remover `Tabs` interno e renderizar `<Despacho />` direto
-- `src/components/expedicao/PedidoCard.tsx` — adicionar badge "Separação Antecipada" condicional
-- `src/components/expedicao/components/DespachoFilters.tsx` — adicionar barra de presets + select de status
-- `src/components/expedicao/components/ResumoStatusCard.tsx` — adaptar título/conteúdo ao preset
-- `src/components/expedicao/components/DespachoActionsCard.tsx` — ajustar habilitação dos botões
-- `src/hooks/useExpedicaoUiStore.ts` — adicionar `presetDespacho` + setter, bump `version`
-
-**Filtros (aplicados em cascata sobre `pedidos` do store):**
-1. Filtro do preset (hoje/semana/atrasados/todos) sobre `data_prevista_entrega`
-2. Excluir já entregues (`substatus !== 'Entregue'`)
-3. Filtros de busca, status, representante, logística
-
-**Badge antecipada:**
-- Cor: âmbar (`bg-amber-100 text-amber-800` via token) para não conflitar com badges de status
-- Tooltip: "Separado para entrega em DD/MM"
+- `src/components/expedicao/Despacho.tsx` (logs + possível fix de parsing)
+- Possivelmente `src/hooks/useExpedicaoStore.ts` (exportar `parseDataSegura` ou ajustar throttle)
 
 ## Fora de escopo
 
-- Filtro por rota de entrega (pode ser feito depois)
-- Mudanças no fluxo de despacho/entrega em massa
-- Mudanças nas outras abas (Separação, Documentos, Rota, Histórico, Dashboard)
+- Mudanças visuais ou de outros filtros
+- Refatoração de outras abas (Separação, Documentos, Histórico, Rota)
+- Alteração de schema/RLS no Supabase
