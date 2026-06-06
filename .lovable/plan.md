@@ -1,32 +1,50 @@
-## Problema
+## Objetivo
 
-No `AgendamentoEditModal`, às vezes aparece "Nenhum produto disponível para as categorias habilitadas deste cliente" mesmo quando o cliente tem categorias configuradas.
+Trocas e bonificações pendentes de cada agendamento passam a **(a)** debitar estoque na confirmação da entrega e **(b)** somar nos cards "Produtos Necessários" da Separação e do PCP, alinhando o cálculo de necessidades com o que de fato sai do estoque.
 
-**Causa raiz:** `ProdutoQuantidadeSelector` (e os editores de Trocas/Bonificações) decide mostrar a mensagem com base em `produtosFiltrados.length === 0`, sem considerar:
+## Causa raiz
 
-1. **`produtos` ainda carregando** — `useSupabaseProdutos` expõe um `loading` que hoje é ignorado. Enquanto produtos não chegam, `produtosFiltrados` é `[]` e a mensagem aparece indevidamente.
-2. **Cliente ainda não hidratado no store** — quando a prop `categoriasHabilitadas` não vem (ou vem vazia momentaneamente), o componente faz fallback para `getClientePorId(clienteId)?.categoriasHabilitadas ?? []`. Se o `useClienteStore` ainda não populou aquele cliente, `habilitadas` fica `[]` e a mensagem dispara.
-
-Resultado: condição de corrida que mostra o aviso até a próxima re-renderização.
+- `compute_entrega_itens_v2` (Postgres) só considera `itens_personalizados`/proporções padrão.
+- `process_entrega_safe` registra trocas/bonificações em tabelas próprias, mas não cria movimentação de saída.
+- `useQuantidadesSeparadas` (expedição) e `ProjecaoProducaoTab` (PCP) reusam a mesma lógica e portanto também ignoram trocas/bonificações.
 
 ## Mudanças
 
-### 1. `src/components/agendamento/ProdutoQuantidadeSelector.tsx`
-- Consumir `loading` de `useSupabaseProdutos`.
-- Substituir o bloco único de mensagem (linhas ~300-309) por três estados:
-  - `loading` ou `produtos.length === 0` → "Carregando produtos…" (texto neutro, sem alarme).
-  - `!loading && habilitadas.length === 0` → "Configure as categorias do cliente primeiro."
-  - `!loading && habilitadas.length > 0 && produtosFiltrados.length === 0` → "Nenhum produto ativo nas categorias habilitadas deste cliente."
-  - `produtosDisponiveis.length === 0 && value.length > 0` → mantém o aviso âmbar atual.
+### 1. Nova função SQL `compute_entrega_itens_completo(p_agendamento_id)`
+Retorna `(produto_id, produto_nome, quantidade)` agregando:
+- Itens regulares vindos de `compute_entrega_itens_v2`.
+- `trocas_pendentes` do agendamento, agrupado por `produto_id` quando presente; se a troca só tiver `produto_nome`, resolve por `lower(nome)` em `produtos_finais`.
+- `bonificacoes_pendentes`, mesma regra das trocas.
+- `SUM(quantidade)` por `produto_id`, ignorando itens sem produto resolvido ou quantidade ≤ 0.
 
-### 2. `src/components/agendamento/TrocasPendentesEditor.tsx` e `BonificacoesPendentesEditor.tsx`
-- Mesmo tratamento: usar `loading` do hook de produtos para não filtrar/desabilitar prematuramente, e só mostrar mensagens de "sem produtos" após o carregamento concluir.
+Grants idênticos aos de `compute_entrega_itens_v2`.
 
-### 3. Sem mudanças no backend/RLS
-A correção é puramente de UI/estado de carregamento — os dados existem, só estão sendo lidos cedo demais.
+### 2. Atualizar `process_entrega_safe`
+- Validação de saldo: trocar o loop atual por um loop sobre `compute_entrega_itens_completo`.
+- Inserção em `movimentacoes_estoque_produtos`: usar `compute_entrega_itens_completo` no `SELECT`, com observação preservando o nome do cliente (sem mudar o formato da observação textual já enviada para o histórico).
+- `historico_entregas.itens` continua refletindo apenas os itens regulares (`compute_entrega_itens_v2`) para não duplicar o consumo em relatórios de giro/faturamento que já tratam trocas/bonificações separadamente.
+- Demais blocos (resumo textual, inserts em `trocas`/`bonificacoes`, reagendamento) permanecem.
+
+### 3. Frontend — Card "Produtos Necessários" da Separação
+- `src/hooks/useQuantidadesSeparadas.ts`: após calcular os itens regulares por pedido, somar `pedido.trocas_pendentes` e `pedido.bonificacoes_pendentes` na mesma chave de produto (por nome, já que o card agrega por nome).
+- Garantir que o tipo dos pedidos passados (em `ProdutosEmExpedicao.tsx` e onde mais o hook é usado) inclua esses campos — eles já são carregados pelo `useExpedicaoStore`.
+
+### 4. Frontend — Card "Produtos Necessários" do PCP
+- `src/components/pcp/ProjecaoProducaoTab.tsx`: trocar a chamada `supabase.rpc('compute_entrega_itens_v2', …)` por `compute_entrega_itens_completo` nas duas listas (confirmados e previstos), para que a projeção semanal já inclua trocas/bonificações pendentes.
+
+### 5. Sem mudanças
+- Tabelas `trocas` e `bonificacoes` continuam como log auxiliar.
+- Observação textual e fluxo de reagendamento ficam iguais.
+- Relatórios financeiros/giro (que já leem `trocas`/`bonificacoes` separadamente) não são tocados.
 
 ## Validação
 
-- Abrir o modal de edição de um agendamento de cliente com categorias habilitadas várias vezes seguidas: nunca deve aparecer a mensagem falsa; ao invés disso, deve aparecer brevemente "Carregando produtos…".
-- Cliente realmente sem categorias: continua mostrando a orientação para configurar categorias.
-- Trocas e Bonificações: lista de produtos enche corretamente sem mensagem incorreta.
+1. Criar agendamento com itens regulares + 1 troca + 1 bonificação.
+2. Antes de confirmar:
+   - Card "Produtos Necessários" na Separação deve mostrar a soma dos três.
+   - Card "Produtos Necessários" no PCP deve mostrar a soma dos três.
+3. Confirmar entrega:
+   - `movimentacoes_estoque_produtos` deve ter saídas iguais à soma dos três por produto.
+   - `historico_entregas.itens` continua apenas com os itens regulares.
+   - `trocas`/`bonificacoes` registradas como já são hoje.
+4. Tentar confirmar com saldo insuficiente apenas no produto da troca/bonificação: deve bloquear com "Saldo insuficiente".
