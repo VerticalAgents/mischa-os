@@ -151,6 +151,31 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
               </div>
             </div>
           )}
+
+          {bonificacoesOrdenadas.length > 0 && (
+            <div className="border-t border-green-300 mt-3 pt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Gift className="h-3.5 w-3.5 text-green-700" />
+                <h4 className="font-medium text-green-800 text-sm">Bonificações</h4>
+              </div>
+              <div className="space-y-1">
+                {bonificacoesOrdenadas.map((bonif: any, index: number) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                      <span className="text-green-900">{bonif.produto_nome}</span>
+                      {(bonif.motivo_nome || bonif.motivo) && (
+                        <span className="text-xs text-green-700 italic">
+                          ({bonif.motivo_nome || bonif.motivo})
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-green-800">{bonif.quantidade} un.</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
