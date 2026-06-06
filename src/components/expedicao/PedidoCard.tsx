@@ -213,34 +213,46 @@ const PedidoCard = ({
     return dataEntrega.getTime() > hoje.getTime();
   })();
 
+  // Cor da borda lateral baseada na data prevista de entrega
+  const corBordaStatus = (() => {
+    if (!pedido.data_prevista_entrega) return "border-l-muted-foreground/30";
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataEntrega = new Date(pedido.data_prevista_entrega);
+    dataEntrega.setHours(0, 0, 0, 0);
+    if (dataEntrega.getTime() < hoje.getTime()) return "border-l-red-500"; // atrasado
+    if (dataEntrega.getTime() === hoje.getTime()) return "border-l-amber-500"; // hoje
+    return "border-l-blue-500"; // futuro
+  })();
+
   return (
-    <Card className="mb-4 shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
+    <Card className={cn("mb-2 shadow-sm border-l-4 hover:shadow-md transition-shadow", corBordaStatus)}>
+      <CardHeader className="pb-2 pt-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <User className="h-5 w-5 text-blue-600" />
+          <div className="flex items-center gap-2.5">
+            <User className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-900">{pedido.cliente_nome}</h3>
+                <h3 className="font-semibold text-base text-foreground leading-tight">{pedido.cliente_nome}</h3>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-6 w-6 opacity-60 hover:opacity-100"
+                  className="p-1 h-5 w-5 opacity-50 hover:opacity-100"
                   onClick={handleRedirectToCliente}
                   title="Ver informações do cliente"
                 >
                   <ExternalLink className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                 <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-3 w-3" strokeWidth={1.75} />
                   {format(pedido.data_prevista_entrega, "dd/MM/yyyy", {
                     locale: ptBR
                   })}
                 </div>
                 <div className="flex items-center gap-1">
-                  <Package className="h-4 w-4" />
+                  <Package className="h-3 w-3" strokeWidth={1.75} />
                   {pedido.quantidade_total} unidades
                 </div>
               </div>
@@ -274,17 +286,17 @@ const PedidoCard = ({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2 pt-0 pb-3">
         {pedido.cliente_endereco && (
-          <div className="flex items-start gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" strokeWidth={1.75} />
             <span className="text-left">{pedido.cliente_endereco}</span>
           </div>
         )}
 
         {pedido.cliente_telefone && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Phone className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Phone className="h-3 w-3" strokeWidth={1.75} />
             <span>{pedido.cliente_telefone}</span>
           </div>
         )}
