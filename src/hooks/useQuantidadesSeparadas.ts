@@ -44,6 +44,18 @@ export const useQuantidadesSeparadas = (pedidosSeparados: any[], pedidosDespacha
           }
         }
       }
+
+      // Somar trocas e bonificações pendentes (também saem do estoque)
+      const extras: any[] = [
+        ...(Array.isArray(pedido.trocas_pendentes) ? pedido.trocas_pendentes : []),
+        ...(Array.isArray(pedido.bonificacoes_pendentes) ? pedido.bonificacoes_pendentes : []),
+      ];
+      extras.forEach((item: any) => {
+        const nomeProduto = item?.produto_nome || item?.produto || item?.nome;
+        const qtd = Number(item?.quantidade ?? 0);
+        if (!nomeProduto || !qtd || qtd <= 0) return;
+        quantidadesPorProduto[nomeProduto] = (quantidadesPorProduto[nomeProduto] || 0) + qtd;
+      });
     }
     
     return quantidadesPorProduto;
