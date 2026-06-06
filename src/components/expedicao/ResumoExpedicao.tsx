@@ -47,7 +47,7 @@ const ResumoExpedicao = () => {
   useEffect(() => {
     const hoje = new Date();
     setModoDataResumo('semana');
-    setSemanaResumo(format(startOfWeek(hoje, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+    setSemanaResumo(startOfWeek(hoje, { weekStartsOn: 0 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
