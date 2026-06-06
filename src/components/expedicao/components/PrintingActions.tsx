@@ -161,6 +161,8 @@ export const PrintingActions = ({
             .troca-item { margin-bottom: 3px; padding: 2px 4px; background-color: #fef3c7; border-left: 2px solid #d97706; }
             .troca-produto { font-weight: bold; }
             .troca-motivo { color: #92400e; font-style: italic; font-size: 8px; }
+            .check-cell { width: 28px; text-align: center; vertical-align: middle; }
+            .check-box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #333; border-radius: 2px; }
             .bonif-lista { font-size: 9px; line-height: 1.2; }
             .bonif-item { margin-bottom: 3px; padding: 2px 4px; background-color: #dcfce7; border-left: 2px solid #16a34a; }
             .bonif-produto { font-weight: bold; }
@@ -250,6 +252,7 @@ export const PrintingActions = ({
           <table>
             <thead>
               <tr>
+                <th style="width: 28px;"></th>
                 <th style="width: ${colWidths.cliente};">Cliente</th>
                 <th style="width: ${colWidths.data};">Data</th>
                 <th style="width: ${colWidths.produtos};">Produtos</th>
@@ -279,7 +282,7 @@ export const PrintingActions = ({
       return a.localeCompare(b);
     });
 
-    const totalColunas = 4 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0) + (temAlgumaBonificacao ? 1 : 0);
+    const totalColunas = 5 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0) + (temAlgumaBonificacao ? 1 : 0);
 
     const renderPedidoRow = (pedido: any) => {
       const produtosParaExibir = buildProdutosParaExibir(pedido);
@@ -376,6 +379,7 @@ export const PrintingActions = ({
       
       return `
         <tr>
+          <td class="check-cell"><span class="check-box"></span></td>
           <td>
             <strong>${pedido.cliente_nome}</strong>
             ${razaoSocialDiferente ? `<br/><span style="font-size: 9px; color: #555;">${pedido.cliente_razao_social}</span>` : ''}
@@ -409,7 +413,7 @@ export const PrintingActions = ({
     
     // Adicionar resumo total
     const totalGeral = listaAtual.reduce((sum, pedido) => sum + pedido.quantidade_total, 0);
-    const colspanTotal = 3;
+    const colspanTotal = 4;
     const colspanVazio = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0) + (temAlgumaBonificacao ? 1 : 0);
     
     printContent += `
