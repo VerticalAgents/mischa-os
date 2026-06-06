@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, Truck, Clock, CheckCircle } from "lucide-react";
+import { Package, Truck, Clock, CheckCircle, CalendarRange, Layers } from "lucide-react";
 
 interface PedidoExpedicao {
   id: string;
@@ -11,11 +11,11 @@ interface PedidoExpedicao {
 }
 
 interface ResumoStatusCardProps {
-  tipo: "hoje" | "pendentes" | "antecipada";
+  preset: 'hoje' | 'semana' | 'atrasados' | 'todos';
   pedidos: PedidoExpedicao[];
 }
 
-export const ResumoStatusCard = ({ tipo, pedidos }: ResumoStatusCardProps) => {
+export const ResumoStatusCard = ({ preset, pedidos }: ResumoStatusCardProps) => {
   const pedidosSeparados = pedidos.filter(p => p.substatus_pedido === 'Separado');
   const pedidosDespachados = pedidos.filter(p => p.substatus_pedido === 'Despachado');
   
@@ -23,7 +23,7 @@ export const ResumoStatusCard = ({ tipo, pedidos }: ResumoStatusCardProps) => {
   const totalPedidos = pedidos.length;
 
   const getConfiguracao = () => {
-    switch (tipo) {
+    switch (preset) {
       case "hoje":
         return {
           titulo: "Entregas de Hoje",
@@ -31,19 +31,26 @@ export const ResumoStatusCard = ({ tipo, pedidos }: ResumoStatusCardProps) => {
           corDestaque: "text-green-600",
           bgDestaque: "bg-green-50"
         };
-      case "pendentes":
+      case "semana":
         return {
-          titulo: "Entregas Pendentes",
-          icone: <Clock className="h-5 w-5" />,
-          corDestaque: "text-yellow-600",
-          bgDestaque: "bg-yellow-50"
-        };
-      case "antecipada":
-        return {
-          titulo: "Separação Antecipada",
-          icone: <CheckCircle className="h-5 w-5" />,
+          titulo: "Entregas da Semana",
+          icone: <CalendarRange className="h-5 w-5" />,
           corDestaque: "text-blue-600",
           bgDestaque: "bg-blue-50"
+        };
+      case "atrasados":
+        return {
+          titulo: "Entregas Atrasadas",
+          icone: <Clock className="h-5 w-5" />,
+          corDestaque: "text-red-600",
+          bgDestaque: "bg-red-50"
+        };
+      case "todos":
+        return {
+          titulo: "Todas as Entregas",
+          icone: <Layers className="h-5 w-5" />,
+          corDestaque: "text-foreground",
+          bgDestaque: "bg-muted/50"
         };
     }
   };
