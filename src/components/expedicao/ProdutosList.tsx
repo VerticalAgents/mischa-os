@@ -45,6 +45,15 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
     );
   }, [pedido.trocas_pendentes, proporcoes]);
 
+  const bonificacoesOrdenadas = useMemo(() => {
+    const bonificacoes = pedido.bonificacoes_pendentes || [];
+    if (bonificacoes.length === 0) return [];
+    return ordenarItensPorOrdemCategoria(
+      bonificacoes.map(b => ({ ...b, nome: b.produto_nome })),
+      proporcoes
+    );
+  }, [pedido.bonificacoes_pendentes, proporcoes]);
+
   return (
     <div className="space-y-2">
       <Button
