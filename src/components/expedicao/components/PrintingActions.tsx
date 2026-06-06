@@ -86,19 +86,18 @@ export const PrintingActions = ({
     let colWidths = {
       cliente: '22%',
       data: '12%',
-      tipo: '10%',
-      produtos: '40%',
-      total: '8%',
+      produtos: '50%',
+      total: '10%',
       obs: '0%',
       trocas: '0%'
     };
     
     if (temAlgumaObservacao && temAlgumaTroca) {
-      colWidths = { cliente: '18%', data: '10%', tipo: '7%', produtos: '30%', total: '6%', obs: '14%', trocas: '15%' };
+      colWidths = { cliente: '18%', data: '10%', produtos: '35%', total: '10%', obs: '12%', trocas: '15%' };
     } else if (temAlgumaObservacao) {
-      colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '22%', trocas: '0%' };
+      colWidths = { cliente: '20%', data: '10%', produtos: '38%', total: '10%', obs: '22%', trocas: '0%' };
     } else if (temAlgumaTroca) {
-      colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '0%', trocas: '22%' };
+      colWidths = { cliente: '20%', data: '10%', produtos: '38%', total: '10%', obs: '0%', trocas: '22%' };
     }
     
     // Identificar grupos de clientes com mesma razão social
