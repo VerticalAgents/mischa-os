@@ -2529,6 +2529,14 @@ export type Database = {
           quantidade: number
         }[]
       }
+      compute_entrega_itens_completo: {
+        Args: { p_agendamento_id: string }
+        Returns: {
+          produto_id: string
+          produto_nome: string
+          quantidade: number
+        }[]
+      }
       compute_entrega_itens_v2: {
         Args: { p_agendamento_id: string }
         Returns: {
