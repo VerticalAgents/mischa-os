@@ -30,6 +30,7 @@ interface PedidoExpedicao {
   observacoes_gerais?: string;
   observacoes_agendamento?: string;
   trocas_pendentes?: any[];
+  bonificacoes_pendentes?: any[];
   // Campos para lista de documentos
   emite_nota_fiscal?: boolean;
   forma_pagamento?: string;
@@ -269,6 +270,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 observacoes_gerais: cliente?.observacoes || undefined,
                 observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
                 trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
+                bonificacoes_pendentes: Array.isArray(agendamento.bonificacoes_pendentes) ? agendamento.bonificacoes_pendentes : [],
                 emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
                 forma_pagamento: cliente?.forma_pagamento || 'PIX',
                 tipo_logistica: cliente?.tipo_logistica || undefined,
@@ -423,6 +425,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               observacoes_gerais: cliente?.observacoes || undefined,
               observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
               trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
+              bonificacoes_pendentes: Array.isArray(agendamento.bonificacoes_pendentes) ? agendamento.bonificacoes_pendentes : [],
               // Campos para lista de documentos
               emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
               forma_pagamento: cliente?.forma_pagamento || 'PIX',

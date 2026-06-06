@@ -29,6 +29,8 @@ import ProdutoQuantidadeSelector from "./ProdutoQuantidadeSelector";
 import ObservacoesAgendamentoSection from "./ObservacoesAgendamentoSection";
 import { TrocaPendente } from "./TrocasPendentesEditor";
 import TrocasAccordion from "./TrocasAccordion";
+import { BonificacaoPendente } from "./BonificacoesPendentesEditor";
+import BonificacoesAccordion from "./BonificacoesAccordion";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -68,6 +70,7 @@ export default function AgendamentoEditModal({
   const [observacoesGerais, setObservacoesGerais] = useState<string>("");
   const [observacoesAgendamento, setObservacoesAgendamento] = useState<string>("");
   const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendente[]>([]);
+  const [bonificacoesPendentes, setBonificacoesPendentes] = useState<BonificacaoPendente[]>([]);
   
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { atualizarCliente } = useClienteStore();
@@ -125,7 +128,7 @@ export default function AgendamentoEditModal({
           if (agendamentoAtual) {
             const { data: agendamentoDb } = await supabase
               .from('agendamentos_clientes')
-              .select('observacoes_agendamento, trocas_pendentes')
+              .select('observacoes_agendamento, trocas_pendentes, bonificacoes_pendentes')
               .eq('cliente_id', agendamento.cliente.id)
               .single();
             
@@ -137,6 +140,13 @@ export default function AgendamentoEditModal({
               setTrocasPendentes(trocas as unknown as TrocaPendente[]);
             } else {
               setTrocasPendentes([]);
+            }
+
+            const bonificacoes = (agendamentoDb as any)?.bonificacoes_pendentes;
+            if (bonificacoes && Array.isArray(bonificacoes)) {
+              setBonificacoesPendentes(bonificacoes as unknown as BonificacaoPendente[]);
+            } else {
+              setBonificacoesPendentes([]);
             }
           }
         } catch (error) {
@@ -154,6 +164,7 @@ export default function AgendamentoEditModal({
           }
           setObservacoesAgendamento("");
           setTrocasPendentes([]);
+          setBonificacoesPendentes([]);
         }
 
         setDadosCarregados(true);
@@ -295,7 +306,8 @@ export default function AgendamentoEditModal({
         .from('agendamentos_clientes')
         .update({
           observacoes_agendamento: observacoesAgendamento || null,
-          trocas_pendentes: trocasPendentes.length > 0 ? JSON.parse(JSON.stringify(trocasPendentes)) : []
+          trocas_pendentes: trocasPendentes.length > 0 ? JSON.parse(JSON.stringify(trocasPendentes)) : [],
+          bonificacoes_pendentes: bonificacoesPendentes.length > 0 ? JSON.parse(JSON.stringify(bonificacoesPendentes)) : []
         })
         .eq('cliente_id', agendamento.cliente.id);
 
@@ -496,6 +508,11 @@ export default function AgendamentoEditModal({
               <TrocasAccordion
                 trocasPendentes={trocasPendentes}
                 onTrocasPendentesChange={setTrocasPendentes}
+              />
+
+              <BonificacoesAccordion
+                bonificacoesPendentes={bonificacoesPendentes}
+                onBonificacoesPendentesChange={setBonificacoesPendentes}
               />
 
               <ObservacoesAgendamentoSection

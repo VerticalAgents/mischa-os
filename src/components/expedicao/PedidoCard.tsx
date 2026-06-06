@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Send, RefreshCw, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3, MessageSquare } from "lucide-react";
+import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3, MessageSquare, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +35,7 @@ interface PedidoCardProps {
     observacoes_agendamento?: string;
     observacoes_gerais?: string;
     trocas_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
+    bonificacoes_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
@@ -276,6 +277,21 @@ const PedidoCard = ({
               >
                 <RefreshCw className="h-3 w-3" />
                 {totalTrocas} {totalTrocas === 1 ? 'troca' : 'trocas'}
+              </Badge>
+              );
+            })()}
+            {pedido.bonificacoes_pendentes && pedido.bonificacoes_pendentes.length > 0 && (() => {
+              const totalBonif = pedido.bonificacoes_pendentes.reduce((s, b) => s + (Number(b.quantidade) || 0), 0);
+              return (
+              <Badge
+                variant="outline"
+                className="bg-green-50 text-green-800 border-green-300 flex items-center gap-1"
+                title={pedido.bonificacoes_pendentes
+                  .map(b => `${b.quantidade}x ${b.produto_nome}${(b.motivo_nome || b.motivo) ? ` (${b.motivo_nome || b.motivo})` : ''}`)
+                  .join('\n')}
+              >
+                <Gift className="h-3 w-3" />
+                {totalBonif} {totalBonif === 1 ? 'bonif.' : 'bonif.'}
               </Badge>
               );
             })()}

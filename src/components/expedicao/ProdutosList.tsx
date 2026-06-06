@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Gift } from "lucide-react";
 
 interface ProdutosListProps {
   pedido: {
@@ -14,6 +14,7 @@ interface ProdutosListProps {
     quantidade_total: number;
     itens_personalizados?: any[];
     trocas_pendentes?: Array<{ produto_id?: string; produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
+    bonificacoes_pendentes?: Array<{ produto_id?: string; produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
 }
 
@@ -43,6 +44,15 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
       proporcoes
     );
   }, [pedido.trocas_pendentes, proporcoes]);
+
+  const bonificacoesOrdenadas = useMemo(() => {
+    const bonificacoes = pedido.bonificacoes_pendentes || [];
+    if (bonificacoes.length === 0) return [];
+    return ordenarItensPorOrdemCategoria(
+      bonificacoes.map(b => ({ ...b, nome: b.produto_nome })),
+      proporcoes
+    );
+  }, [pedido.bonificacoes_pendentes, proporcoes]);
 
   return (
     <div className="space-y-2">
@@ -136,6 +146,31 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
                       )}
                     </div>
                     <span className="font-medium text-amber-800">{troca.quantidade} un.</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bonificacoesOrdenadas.length > 0 && (
+            <div className="border-t border-green-300 mt-3 pt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Gift className="h-3.5 w-3.5 text-green-700" />
+                <h4 className="font-medium text-green-800 text-sm">Bonificações</h4>
+              </div>
+              <div className="space-y-1">
+                {bonificacoesOrdenadas.map((bonif: any, index: number) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                      <span className="text-green-900">{bonif.produto_nome}</span>
+                      {(bonif.motivo_nome || bonif.motivo) && (
+                        <span className="text-xs text-green-700 italic">
+                          ({bonif.motivo_nome || bonif.motivo})
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-green-800">{bonif.quantidade} un.</span>
                   </div>
                 ))}
               </div>

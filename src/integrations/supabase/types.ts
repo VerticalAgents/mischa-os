@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       agendamentos_clientes: {
         Row: {
+          bonificacoes_pendentes: Json
           cliente_id: string
           contatar_cliente: boolean | null
           created_at: string
@@ -35,6 +36,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bonificacoes_pendentes?: Json
           cliente_id: string
           contatar_cliente?: boolean | null
           created_at?: string
@@ -54,6 +56,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bonificacoes_pendentes?: Json
           cliente_id?: string
           contatar_cliente?: boolean | null
           created_at?: string
@@ -179,6 +182,45 @@ export type Database = {
           id?: string
           ip_address?: unknown
           success?: boolean
+        }
+        Relationships: []
+      }
+      bonificacoes: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_bonificacao: string
+          historico_entrega_id: string | null
+          id: string
+          motivo_id: number | null
+          motivo_nome: string | null
+          produto_id: string | null
+          produto_nome: string
+          quantidade: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_bonificacao?: string
+          historico_entrega_id?: string | null
+          id?: string
+          motivo_id?: number | null
+          motivo_nome?: string | null
+          produto_id?: string | null
+          produto_nome: string
+          quantidade?: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_bonificacao?: string
+          historico_entrega_id?: string | null
+          id?: string
+          motivo_id?: number | null
+          motivo_nome?: string | null
+          produto_id?: string | null
+          produto_nome?: string
+          quantidade?: number
         }
         Relationships: []
       }
@@ -1190,6 +1232,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      motivos_bonificacao: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: number
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          nome?: string
+        }
+        Relationships: []
       }
       motivos_troca: {
         Row: {
