@@ -76,7 +76,7 @@ export default function ProjecaoProducaoTab() {
       const out: Record<string, ProdutoQuantidade> = {};
       for (const ag of lista) {
         if (!ag.id) continue;
-        const { data, error } = await supabase.rpc('compute_entrega_itens_v2', { p_agendamento_id: ag.id });
+        const { data, error } = await supabase.rpc('compute_entrega_itens_completo', { p_agendamento_id: ag.id });
         if (error || !Array.isArray(data)) continue;
         data.forEach((item: any) => {
           if (out[item.produto_id]) {
