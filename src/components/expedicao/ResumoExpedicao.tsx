@@ -5,10 +5,10 @@ import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   RefreshCw, Package, Calendar, CalendarDays, ClipboardList, CheckCircle2,
-  Truck, PackageCheck, AlertTriangle, Map as MapIcon, Layers
+  Truck, PackageCheck, Map as MapIcon, Layers
 } from "lucide-react";
 import {
   format, startOfWeek, endOfWeek, startOfDay, endOfDay, parseISO,
