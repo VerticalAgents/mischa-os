@@ -164,6 +164,7 @@ export default function AgendamentoEditModal({
           }
           setObservacoesAgendamento("");
           setTrocasPendentes([]);
+          setBonificacoesPendentes([]);
         }
 
         setDadosCarregados(true);
