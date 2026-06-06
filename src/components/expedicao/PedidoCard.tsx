@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Send, RefreshCw, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3, MessageSquare } from "lucide-react";
+import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink, Clock3, MessageSquare, Gift } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +35,7 @@ interface PedidoCardProps {
     observacoes_agendamento?: string;
     observacoes_gerais?: string;
     trocas_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
+    bonificacoes_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
