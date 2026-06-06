@@ -312,10 +312,17 @@ export const PrintingActions = ({
       
       let trocasHtml = '';
       if (temAlgumaTroca) {
-        const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
+        const trocasRaw: TrocaPendente[] = pedido.trocas_pendentes || [];
+        // Ordenar trocas usando a mesma regra de ordenação dos produtos (ordem das categorias da aba Produtos)
+        const trocasParaExibir = trocasRaw.length > 0
+          ? (ordenarItensPorOrdemCategoria(
+              trocasRaw.map(t => ({ ...t, nome: t.produto_nome })),
+              proporcoes
+            ) as unknown as TrocaPendente[])
+          : trocasRaw;
         trocasHtml = '<td><div class="trocas-lista">';
-        if (trocasPendentes.length > 0) {
-          trocasPendentes.forEach((troca) => {
+        if (trocasParaExibir.length > 0) {
+          trocasParaExibir.forEach((troca) => {
             trocasHtml += `
               <div class="troca-item">
                 <span class="troca-produto">${troca.produto_nome}: ${troca.quantidade}</span>
