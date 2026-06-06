@@ -29,6 +29,8 @@ import ProdutoQuantidadeSelector from "./ProdutoQuantidadeSelector";
 import ObservacoesAgendamentoSection from "./ObservacoesAgendamentoSection";
 import { TrocaPendente } from "./TrocasPendentesEditor";
 import TrocasAccordion from "./TrocasAccordion";
+import { BonificacaoPendente } from "./BonificacoesPendentesEditor";
+import BonificacoesAccordion from "./BonificacoesAccordion";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { useUserRoles } from "@/hooks/useUserRoles";
