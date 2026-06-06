@@ -86,19 +86,18 @@ export const PrintingActions = ({
     let colWidths = {
       cliente: '22%',
       data: '12%',
-      tipo: '10%',
-      produtos: '40%',
-      total: '8%',
+      produtos: '50%',
+      total: '10%',
       obs: '0%',
       trocas: '0%'
     };
     
     if (temAlgumaObservacao && temAlgumaTroca) {
-      colWidths = { cliente: '18%', data: '10%', tipo: '7%', produtos: '30%', total: '6%', obs: '14%', trocas: '15%' };
+      colWidths = { cliente: '18%', data: '10%', produtos: '35%', total: '10%', obs: '12%', trocas: '15%' };
     } else if (temAlgumaObservacao) {
-      colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '22%', trocas: '0%' };
+      colWidths = { cliente: '20%', data: '10%', produtos: '38%', total: '10%', obs: '22%', trocas: '0%' };
     } else if (temAlgumaTroca) {
-      colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '0%', trocas: '22%' };
+      colWidths = { cliente: '20%', data: '10%', produtos: '38%', total: '10%', obs: '0%', trocas: '22%' };
     }
     
     // Identificar grupos de clientes com mesma razão social
@@ -243,7 +242,6 @@ export const PrintingActions = ({
               <tr>
                 <th style="width: ${colWidths.cliente};">Cliente</th>
                 <th style="width: ${colWidths.data};">Data</th>
-                <th style="width: ${colWidths.tipo};">Tipo</th>
                 <th style="width: ${colWidths.produtos};">Produtos</th>
                 <th style="width: ${colWidths.total};">Total</th>
                 ${temAlgumaObservacao ? `<th style="width: ${colWidths.obs};">Observações</th>` : ''}
@@ -270,7 +268,7 @@ export const PrintingActions = ({
       return a.localeCompare(b);
     });
 
-    const totalColunas = 5 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
+    const totalColunas = 4 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
 
     const renderPedidoRow = (pedido: any) => {
       const produtosParaExibir = buildProdutosParaExibir(pedido);
@@ -347,9 +345,11 @@ export const PrintingActions = ({
             ${razaoSocialDiferente ? `<br/><span style="font-size: 9px; color: #555;">${pedido.cliente_razao_social}</span>` : ''}
           </td>
           <td>${formatDate(new Date(pedido.data_prevista_entrega))}</td>
-          <td>${pedido.tipo_pedido}</td>
           <td>${produtosHtml}</td>
-          <td style="text-align: center; font-weight: bold;">${pedido.quantidade_total}</td>
+          <td style="text-align: center; font-weight: bold;">
+            ${pedido.quantidade_total}
+            ${pedido.tipo_pedido ? `<div style="font-size: 9px; font-weight: normal; color: #555; margin-top: 2px;">${pedido.tipo_pedido}</div>` : ''}
+          </td>
           ${observacoesHtml}
           ${trocasHtml}
         </tr>
@@ -372,7 +372,7 @@ export const PrintingActions = ({
     
     // Adicionar resumo total
     const totalGeral = listaAtual.reduce((sum, pedido) => sum + pedido.quantidade_total, 0);
-    const colspanTotal = 4;
+    const colspanTotal = 3;
     const colspanVazio = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
     
     printContent += `
