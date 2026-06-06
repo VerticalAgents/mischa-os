@@ -435,11 +435,11 @@ const ResumoExpedicao = () => {
 
 // ---------- Sub-components ----------
 
-const toneClasses: Record<string, { bg: string; text: string; ring: string }> = {
-  amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', ring: 'ring-amber-200 dark:ring-amber-900' },
-  blue: { bg: 'bg-blue-50 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-400', ring: 'ring-blue-200 dark:ring-blue-900' },
-  indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', ring: 'ring-indigo-200 dark:ring-indigo-900' },
-  green: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-900' },
+const toneDot: Record<string, string> = {
+  amber: 'bg-amber-500',
+  blue: 'bg-blue-500',
+  indigo: 'bg-indigo-500',
+  green: 'bg-emerald-500',
 };
 
 interface StatusFunilCardProps {
@@ -447,34 +447,37 @@ interface StatusFunilCardProps {
   icone: React.ReactNode;
   pedidos: number;
   unidades: number;
-  tone: keyof typeof toneClasses;
+  tone: keyof typeof toneDot;
   onClick?: () => void;
   delta?: number | null;
 }
 
 const StatusFunilCard = ({ titulo, icone, pedidos, unidades, tone, onClick, delta }: StatusFunilCardProps) => {
-  const c = toneClasses[tone];
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "text-left rounded-lg p-4 ring-1 transition-all hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary",
-        c.bg, c.ring,
+        "text-left rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40",
       )}
     >
-      <div className={cn("flex items-center justify-between mb-2", c.text)}>
-        <span className="text-sm font-medium">{titulo}</span>
-        {icone}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={cn("h-1.5 w-1.5 rounded-full", toneDot[tone])} />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            {titulo}
+          </span>
+        </div>
+        <span className="text-muted-foreground/60">{icone}</span>
       </div>
-      <div className={cn("text-3xl font-bold", c.text)}>{pedidos}</div>
+      <div className="text-3xl font-bold tabular-nums text-foreground">{pedidos}</div>
       <div className="flex items-center justify-between mt-1">
         <span className="text-xs text-muted-foreground">
           {pedidos === 1 ? 'pedido' : 'pedidos'} · {unidades} un
         </span>
         {delta !== null && delta !== undefined && (
           <span className={cn(
-            "text-xs font-semibold",
+            "text-xs font-semibold tabular-nums",
             delta >= 0 ? "text-emerald-600" : "text-red-600"
           )}>
             {delta >= 0 ? '+' : ''}{delta}%
@@ -485,10 +488,10 @@ const StatusFunilCard = ({ titulo, icone, pedidos, unidades, tone, onClick, delt
   );
 };
 
-const alertaCores: Record<string, string> = {
-  red: 'border-red-200 bg-red-50 dark:bg-red-950/20',
-  amber: 'border-amber-200 bg-amber-50 dark:bg-amber-950/20',
-  muted: 'border-border bg-muted/40',
+const alertaDot: Record<string, string> = {
+  red: 'bg-red-500',
+  amber: 'bg-amber-500',
+  muted: 'bg-muted-foreground/40',
 };
 
 interface AlertaItemProps {
@@ -502,16 +505,24 @@ interface AlertaItemProps {
 
 const AlertaItem = ({ cor, titulo, descricao, valor, actionLabel, onAction }: AlertaItemProps) => {
   return (
-    <div className={cn("border rounded-lg p-3 flex items-start gap-3", alertaCores[cor])}>
+    <div className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-muted/40 transition-colors">
+      <span className={cn("mt-1.5 h-1.5 w-1.5 rounded-full shrink-0", alertaDot[cor])} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">{titulo}</span>
-          <Badge variant={valor > 0 ? 'default' : 'secondary'}>{valor}</Badge>
+          <span className="text-sm font-semibold text-foreground">{titulo}</span>
+          <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+            {valor}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{descricao}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{descricao}</p>
       </div>
       {actionLabel && (
-        <Button variant="outline" size="sm" onClick={onAction}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onAction}
+          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-7 px-2 text-xs font-medium"
+        >
           {actionLabel}
         </Button>
       )}
