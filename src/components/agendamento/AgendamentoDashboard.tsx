@@ -1284,11 +1284,16 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       )}
 
       {/* Calendário Semanal */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Calendário Semanal</CardTitle>
-          <CardDescription className="text-left">Visão dos agendamentos por dia da semana selecionada - Clique em um dia para ver os detalhes</CardDescription>
-        </CardHeader>
+      <Card className="overflow-hidden">
+        <div className="px-5 pt-5 pb-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            Calendário Semanal
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Visão dos agendamentos por dia — clique em um dia para ver os detalhes
+          </p>
+        </div>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex flex-col gap-2 md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
@@ -1324,37 +1329,36 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </Card>
 
       {/* Agendamentos do Dia Selecionado */}
-      {diaSelecionado && <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle>Agendamentos para {format(diaSelecionado, "dd 'de' MMMM 'de' yyyy", {
-                  locale: ptBR
-                })}</CardTitle>
-                <CardDescription className="text-left">
-                  {agendamentosDiaSelecionado.length === 0 && entregasDiaSelecionado.length === 0
-                    ? "Nenhum agendamento ou entrega encontrado para este dia"
-                    : [
-                        agendamentosDiaSelecionado.length > 0 ? `${agendamentosDiaSelecionado.length} agendamento(s)` : null,
-                        entregasDiaSelecionado.length > 0 ? `${entregasDiaSelecionado.length} entrega(s) realizada(s)` : null
-                      ].filter(Boolean).join(' e ')}
-                </CardDescription>
-              </div>
-              {agendamentosDiaSelecionado.length > 0 && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setModalReagendarAberto(true)}
-                  disabled={agendamentosDiaSelecionado.length === 0 || !canEdit}
-                  title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                  className="flex items-center gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  Reagendar em Massa
-                </Button>
-              )}
+      {diaSelecionado && <Card className="overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 px-5 pt-5 pb-1">
+            <div>
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Agendamentos para {format(diaSelecionado, "dd 'de' MMMM", { locale: ptBR })}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                {agendamentosDiaSelecionado.length === 0 && entregasDiaSelecionado.length === 0
+                  ? "Nenhum agendamento ou entrega encontrado para este dia"
+                  : [
+                      agendamentosDiaSelecionado.length > 0 ? `${agendamentosDiaSelecionado.length} agendamento(s)` : null,
+                      entregasDiaSelecionado.length > 0 ? `${entregasDiaSelecionado.length} entrega(s) realizada(s)` : null
+                    ].filter(Boolean).join(' e ')}
+              </p>
             </div>
-          </CardHeader>
+            {agendamentosDiaSelecionado.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setModalReagendarAberto(true)}
+                disabled={agendamentosDiaSelecionado.length === 0 || !canEdit}
+                title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
+                className="self-start sm:self-auto text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-8 px-3 text-xs font-medium"
+              >
+                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                Reagendar em Massa
+              </Button>
+            )}
+          </div>
           <CardContent>
             {(agendamentosDiaSelecionado.length > 0 || entregasDiaSelecionado.length > 0) ? <div className="space-y-3">
                 {(() => {
