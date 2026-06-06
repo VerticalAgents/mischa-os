@@ -208,23 +208,23 @@ const ResumoExpedicao = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex rounded-md border overflow-hidden">
-            <Button
-              variant={modoDataResumo === 'dia' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setModoDataResumo('dia')}
-              className="rounded-none border-0 px-3"
-            >
-              <Calendar className="h-4 w-4 mr-1" /> Dia
-            </Button>
-            <Button
-              variant={modoDataResumo === 'semana' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setModoDataResumo('semana')}
-              className="rounded-none border-0 px-3"
-            >
-              <CalendarDays className="h-4 w-4 mr-1" /> Semana
-            </Button>
+          <div className="inline-flex bg-muted/40 rounded-md p-0.5">
+            {(['dia', 'semana'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setModoDataResumo(m)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-[13px] font-medium transition-colors",
+                  modoDataResumo === m
+                    ? "bg-background text-amber-600 shadow-sm"
+                    : "text-foreground/60 hover:text-foreground"
+                )}
+              >
+                {m === 'dia' ? <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} /> : <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} />}
+                {m === 'dia' ? 'Dia' : 'Semana'}
+              </button>
+            ))}
           </div>
 
           {modoDataResumo === 'dia' ? (
@@ -295,15 +295,15 @@ const ResumoExpedicao = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ResumoQuantidadeProdutos pedidos={pedidosPendentes} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+        <Card className="overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-amber-500" />
               Alertas & Destaques
-            </CardTitle>
-            <CardDescription>Itens que merecem atenção</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">Itens que merecem atenção</p>
+          </div>
+          <CardContent className="px-2 pb-3 space-y-0.5 pt-3">
             <AlertaItem
               cor="red"
               titulo="Pedidos atrasados"
@@ -338,17 +338,17 @@ const ResumoExpedicao = () => {
 
       {/* Distribuição por dia (semana) */}
       {modoDataResumo === 'semana' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-primary" />
+        <Card className="overflow-hidden">
+          <div className="px-5 pt-5 pb-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-amber-500" />
               Distribuição por dia
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
               Total: {pedidosNoPeriodo.length} pedidos · {totalUnidadesPeriodo} unidades
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <CardContent className="pt-4">
             <div className="grid grid-cols-7 gap-2">
               {distribuicaoPorDia.map(({ dia, pedidos, unidades }) => {
                 const altura = (unidades / maxUnidadesDia) * 100;
@@ -385,15 +385,15 @@ const ResumoExpedicao = () => {
       )}
 
       {/* Distribuição por logística */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapIcon className="h-5 w-5 text-primary" />
+      <Card className="overflow-hidden">
+        <div className="px-5 pt-5 pb-1">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-amber-500" />
             Distribuição por logística
-          </CardTitle>
-          <CardDescription>Como os pedidos do período serão entregues</CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">Como os pedidos do período serão entregues</p>
+        </div>
+        <CardContent className="pt-4">
           {distribuicaoPorLogistica.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6 italic">
               Sem pedidos no período selecionado.
