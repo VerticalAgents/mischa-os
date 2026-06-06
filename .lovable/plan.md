@@ -1,37 +1,32 @@
-# Adicionar Bonificações (espelhando Trocas)
+## Problema
 
-Estrutura paralela ao sistema de trocas, mas para registrar brindes/cortesias. Destaque visual verde, sem integração com GestãoClick (apenas interno).
+No `AgendamentoEditModal`, às vezes aparece "Nenhum produto disponível para as categorias habilitadas deste cliente" mesmo quando o cliente tem categorias configuradas.
 
-## 1. Banco de dados (1 migration)
+**Causa raiz:** `ProdutoQuantidadeSelector` (e os editores de Trocas/Bonificações) decide mostrar a mensagem com base em `produtosFiltrados.length === 0`, sem considerar:
 
-**Novas tabelas:**
-- `motivos_bonificacao` (id serial, nome, ativo, created_at) — espelha `motivos_troca`. Seed inicial: "Cortesia", "Degustação", "Campanha".
-- `bonificacoes` (id, cliente_id, historico_entrega_id, produto_id, produto_nome, quantidade, motivo_id, motivo_nome, data_bonificacao, created_at) — espelha `trocas`.
+1. **`produtos` ainda carregando** — `useSupabaseProdutos` expõe um `loading` que hoje é ignorado. Enquanto produtos não chegam, `produtosFiltrados` é `[]` e a mensagem aparece indevidamente.
+2. **Cliente ainda não hidratado no store** — quando a prop `categoriasHabilitadas` não vem (ou vem vazia momentaneamente), o componente faz fallback para `getClientePorId(clienteId)?.categoriasHabilitadas ?? []`. Se o `useClienteStore` ainda não populou aquele cliente, `habilitadas` fica `[]` e a mensagem dispara.
 
-**Coluna nova:**
-- `agendamentos_clientes.bonificacoes_pendentes jsonb DEFAULT '[]'::jsonb`.
+Resultado: condição de corrida que mostra o aviso até a próxima re-renderização.
 
-**RLS/GRANTS:** mesmo padrão das tabelas equivalentes de trocas.
+## Mudanças
 
-**Função:** atualizar `process_entrega_safe` para também ler `bonificacoes_pendentes`, inserir em `bonificacoes` (com historico_entrega_id), concatenar resumo na observação ("Bonificações: ...") e limpar o campo no fim (igual trocas).
+### 1. `src/components/agendamento/ProdutoQuantidadeSelector.tsx`
+- Consumir `loading` de `useSupabaseProdutos`.
+- Substituir o bloco único de mensagem (linhas ~300-309) por três estados:
+  - `loading` ou `produtos.length === 0` → "Carregando produtos…" (texto neutro, sem alarme).
+  - `!loading && habilitadas.length === 0` → "Configure as categorias do cliente primeiro."
+  - `!loading && habilitadas.length > 0 && produtosFiltrados.length === 0` → "Nenhum produto ativo nas categorias habilitadas deste cliente."
+  - `produtosDisponiveis.length === 0 && value.length > 0` → mantém o aviso âmbar atual.
 
-## 2. Frontend
+### 2. `src/components/agendamento/TrocasPendentesEditor.tsx` e `BonificacoesPendentesEditor.tsx`
+- Mesmo tratamento: usar `loading` do hook de produtos para não filtrar/desabilitar prematuramente, e só mostrar mensagens de "sem produtos" após o carregamento concluir.
 
-**Novos arquivos:**
-- `src/hooks/useMotivosBonificacao.ts` — espelha `useMotivosTroca`.
-- `src/components/agendamento/BonificacoesPendentesEditor.tsx` — espelha `TrocasPendentesEditor`.
-- `src/components/agendamento/BonificacoesAccordion.tsx` — espelha `TrocasAccordion`, mas usando paleta verde (`text-green-600`, `border-green-500/50`, `bg-green-500/5`) e ícone `Gift`. Trava aberto quando há itens.
+### 3. Sem mudanças no backend/RLS
+A correção é puramente de UI/estado de carregamento — os dados existem, só estão sendo lidos cedo demais.
 
-**Edições:**
-- `AgendamentoEditModal.tsx` — adicionar state `bonificacoesPendentes`, carregar do banco, salvar, e renderizar `<BonificacoesAccordion />` logo abaixo do `<TrocasAccordion />` (antes das Observações).
-- `expedicao/hooks/usePedidoConverter.ts` — propagar `bonificacoes_pendentes` no objeto convertido.
-- `expedicao/PedidoCard.tsx` — badge "X bonif." verde quando houver itens (igual badge de trocas).
-- `expedicao/ProdutosList.tsx` — nova seção "Bonificações" no accordion com ícone Gift e estilo verde, listando produto/motivo/quantidade.
+## Validação
 
-**Configurações:** adicionar tela de gerenciamento de `motivos_bonificacao` espelhando a de motivos de troca, se já houver uma página correspondente.
-
-## 3. Detalhes técnicos
-
-- Tipo `BonificacaoPendente`: `{ produto_id, produto_nome, quantidade, motivo_id?, motivo_nome? }`.
-- Cores via classes Tailwind do design system existente (verde). Sem integração com Gestão Click (não vai pra venda).
-- Após confirmação da entrega, bonificações ficam permanentemente registradas em `public.bonificacoes` para histórico/relatórios futuros.
+- Abrir o modal de edição de um agendamento de cliente com categorias habilitadas várias vezes seguidas: nunca deve aparecer a mensagem falsa; ao invés disso, deve aparecer brevemente "Carregando produtos…".
+- Cliente realmente sem categorias: continua mostrando a orientação para configurar categorias.
+- Trocas e Bonificações: lista de produtos enche corretamente sem mensagem incorreta.

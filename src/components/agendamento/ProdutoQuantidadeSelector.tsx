@@ -38,7 +38,7 @@ export default function ProdutoQuantidadeSelector({
   onQuantidadeTotalChange,
   categoriasHabilitadas
 }: ProdutoQuantidadeSelectorProps) {
-  const { produtos, carregarProdutos } = useSupabaseProdutos();
+  const { produtos, carregarProdutos, loading: loadingProdutos } = useSupabaseProdutos();
   const { getClientePorId } = useClienteStore();
   const { proporcoes, obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
   const [refreshing, setRefreshing] = useState(false);
@@ -297,10 +297,17 @@ export default function ProdutoQuantidadeSelector({
         </TooltipProvider>
       </div>
 
-      {produtosFiltrados.length === 0 ? (
+      {loadingProdutos || produtos.length === 0 ? (
         <div className="text-center py-4 text-muted-foreground">
-          Nenhum produto disponível para as categorias habilitadas deste cliente.
+          Carregando produtos…
+        </div>
+      ) : habilitadas.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
           Configure as categorias do cliente primeiro.
+        </div>
+      ) : produtosFiltrados.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
+          Nenhum produto ativo nas categorias habilitadas deste cliente.
         </div>
       ) : produtosDisponiveis.length === 0 && value.length > 0 ? (
         <div className="text-center py-2 text-amber-600 bg-amber-50 rounded-md border border-amber-200">
