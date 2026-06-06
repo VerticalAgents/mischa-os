@@ -16,6 +16,15 @@ interface TrocaPendente {
   motivo?: string; // Fallback para dados antigos
 }
 
+interface BonificacaoPendente {
+  produto_id?: string;
+  produto_nome: string;
+  quantidade: number;
+  motivo_id?: number;
+  motivo_nome?: string;
+  motivo?: string;
+}
+
 interface PrintingActionsProps {
   activeSubTab: string;
   pedidosPadrao: any[];
@@ -81,24 +90,21 @@ export const PrintingActions = ({
     // Verificar se há observações ou trocas em algum pedido
     const temAlgumaObservacao = listaAtual.some(p => p.observacoes_gerais || p.observacoes_agendamento);
     const temAlgumaTroca = listaAtual.some(p => p.trocas_pendentes && p.trocas_pendentes.length > 0);
-    
+    const temAlgumaBonificacao = listaAtual.some(p => p.bonificacoes_pendentes && p.bonificacoes_pendentes.length > 0);
+
     // Calcular larguras das colunas dinamicamente
-    let colWidths = {
-      cliente: '22%',
-      data: '12%',
-      produtos: '50%',
+    const extras = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0) + (temAlgumaBonificacao ? 1 : 0);
+    const extraPct = extras > 0 ? Math.floor(44 / extras) : 0;
+    const produtosPct = 50 - (extras * (extraPct - 6));
+    const colWidths = {
+      cliente: extras > 1 ? '18%' : '20%',
+      data: '10%',
+      produtos: `${Math.max(28, produtosPct)}%`,
       total: '10%',
-      obs: '0%',
-      trocas: '0%'
+      obs: temAlgumaObservacao ? `${extraPct}%` : '0%',
+      trocas: temAlgumaTroca ? `${extraPct}%` : '0%',
+      bonif: temAlgumaBonificacao ? `${extraPct}%` : '0%',
     };
-    
-    if (temAlgumaObservacao && temAlgumaTroca) {
-      colWidths = { cliente: '18%', data: '10%', produtos: '35%', total: '10%', obs: '12%', trocas: '15%' };
-    } else if (temAlgumaObservacao) {
-      colWidths = { cliente: '20%', data: '10%', produtos: '38%', total: '10%', obs: '22%', trocas: '0%' };
-    } else if (temAlgumaTroca) {
-      colWidths = { cliente: '20%', data: '10%', produtos: '38%', total: '10%', obs: '0%', trocas: '22%' };
-    }
     
     // Identificar grupos de clientes com mesma razão social
     const razoesSociaisMap = new Map<string, { clientes: string[], nomes: string[] }>();
@@ -155,6 +161,10 @@ export const PrintingActions = ({
             .troca-item { margin-bottom: 3px; padding: 2px 4px; background-color: #fef3c7; border-left: 2px solid #d97706; }
             .troca-produto { font-weight: bold; }
             .troca-motivo { color: #92400e; font-style: italic; font-size: 8px; }
+            .bonif-lista { font-size: 9px; line-height: 1.2; }
+            .bonif-item { margin-bottom: 3px; padding: 2px 4px; background-color: #dcfce7; border-left: 2px solid #16a34a; }
+            .bonif-produto { font-weight: bold; }
+            .bonif-motivo { color: #166534; font-style: italic; font-size: 8px; }
             .grupo-representante-header {
               background-color: #e5e7eb;
               font-weight: bold;
@@ -246,6 +256,7 @@ export const PrintingActions = ({
                 <th style="width: ${colWidths.total};">Total</th>
                 ${temAlgumaObservacao ? `<th style="width: ${colWidths.obs};">Observações</th>` : ''}
                 ${temAlgumaTroca ? `<th style="width: ${colWidths.trocas};">Trocas</th>` : ''}
+                ${temAlgumaBonificacao ? `<th style="width: ${colWidths.bonif};">Bonificações</th>` : ''}
               </tr>
             </thead>
             <tbody>
@@ -268,7 +279,7 @@ export const PrintingActions = ({
       return a.localeCompare(b);
     });
 
-    const totalColunas = 4 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
+    const totalColunas = 4 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0) + (temAlgumaBonificacao ? 1 : 0);
 
     const renderPedidoRow = (pedido: any) => {
       const produtosParaExibir = buildProdutosParaExibir(pedido);
@@ -333,7 +344,32 @@ export const PrintingActions = ({
         }
         trocasHtml += '</div></td>';
       }
-      
+
+      let bonificacoesHtml = '';
+      if (temAlgumaBonificacao) {
+        const bonifRaw: BonificacaoPendente[] = pedido.bonificacoes_pendentes || [];
+        const bonifParaExibir = bonifRaw.length > 0
+          ? (ordenarItensPorOrdemCategoria(
+              bonifRaw.map(b => ({ ...b, nome: b.produto_nome })),
+              proporcoes
+            ) as unknown as BonificacaoPendente[])
+          : bonifRaw;
+        bonificacoesHtml = '<td><div class="bonif-lista">';
+        if (bonifParaExibir.length > 0) {
+          bonifParaExibir.forEach((b) => {
+            bonificacoesHtml += `
+              <div class="bonif-item">
+                <span class="bonif-produto">${b.produto_nome}: ${b.quantidade}</span>
+                <br/><span class="bonif-motivo">${b.motivo_nome || b.motivo || ''}</span>
+              </div>
+            `;
+          });
+        } else {
+          bonificacoesHtml += '<span style="color: #999;">-</span>';
+        }
+        bonificacoesHtml += '</div></td>';
+      }
+
       const razaoSocialDiferente = pedido.cliente_razao_social && 
         pedido.cliente_razao_social !== '-' && 
         pedido.cliente_razao_social.toLowerCase() !== pedido.cliente_nome.toLowerCase();
@@ -352,6 +388,7 @@ export const PrintingActions = ({
           </td>
           ${observacoesHtml}
           ${trocasHtml}
+          ${bonificacoesHtml}
         </tr>
       `;
     };
@@ -373,7 +410,7 @@ export const PrintingActions = ({
     // Adicionar resumo total
     const totalGeral = listaAtual.reduce((sum, pedido) => sum + pedido.quantidade_total, 0);
     const colspanTotal = 3;
-    const colspanVazio = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
+    const colspanVazio = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0) + (temAlgumaBonificacao ? 1 : 0);
     
     printContent += `
             </tbody>
