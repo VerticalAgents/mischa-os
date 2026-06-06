@@ -30,6 +30,7 @@ interface PedidoExpedicao {
   observacoes_gerais?: string;
   observacoes_agendamento?: string;
   trocas_pendentes?: any[];
+  bonificacoes_pendentes?: any[];
   // Campos para lista de documentos
   emite_nota_fiscal?: boolean;
   forma_pagamento?: string;
