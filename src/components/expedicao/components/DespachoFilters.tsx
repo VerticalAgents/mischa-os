@@ -51,38 +51,44 @@ export const DespachoFilters = ({
   ].filter(Boolean).length;
 
   return (
-    <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
-      {/* Presets de período */}
-      <div className="flex flex-wrap gap-2">
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => onPresetChange(p.id)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors border",
-              preset === p.id
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-background text-foreground border-border hover:bg-muted"
-            )}
-          >
-            {p.icon}
-            {p.label}
-          </button>
-        ))}
+    <div className="rounded-lg border border-border/60 bg-background p-4 space-y-3">
+      {/* Presets de período - tabs underline minimalistas */}
+      <div className="flex flex-wrap gap-1 border-b border-border/60 -mx-1 px-1">
+        {PRESETS.map((p) => {
+          const ativo = preset === p.id;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onPresetChange(p.id)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors relative -mb-px border-b-2",
+                ativo
+                  ? "text-amber-600 border-amber-500"
+                  : "text-foreground/60 border-transparent hover:text-foreground"
+              )}
+            >
+              {p.icon}
+              {p.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Filter className="h-4 w-4" />
-          Filtros
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Filtros
+          </span>
           {filtrosAtivos > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {filtrosAtivos} ativo{filtrosAtivos > 1 ? "s" : ""}
-            </Badge>
+            <span className="text-[11px] font-medium text-amber-600">
+              · {filtrosAtivos} ativo{filtrosAtivos > 1 ? "s" : ""}
+            </span>
           )}
         </div>
-        <div className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{totalPedidos}</span> pedidos
+        <div className="text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground tabular-nums">{totalPedidos}</span> pedidos
         </div>
       </div>
 
