@@ -280,6 +280,21 @@ const PedidoCard = ({
               </Badge>
               );
             })()}
+            {pedido.bonificacoes_pendentes && pedido.bonificacoes_pendentes.length > 0 && (() => {
+              const totalBonif = pedido.bonificacoes_pendentes.reduce((s, b) => s + (Number(b.quantidade) || 0), 0);
+              return (
+              <Badge
+                variant="outline"
+                className="bg-green-50 text-green-800 border-green-300 flex items-center gap-1"
+                title={pedido.bonificacoes_pendentes
+                  .map(b => `${b.quantidade}x ${b.produto_nome}${(b.motivo_nome || b.motivo) ? ` (${b.motivo_nome || b.motivo})` : ''}`)
+                  .join('\n')}
+              >
+                <Gift className="h-3 w-3" />
+                {totalBonif} {totalBonif === 1 ? 'bonif.' : 'bonif.'}
+              </Badge>
+              );
+            })()}
             {pedido.observacoes_agendamento && (
               <Badge
                 variant="outline"
