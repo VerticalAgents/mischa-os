@@ -70,6 +70,7 @@ export default function AgendamentoEditModal({
   const [observacoesGerais, setObservacoesGerais] = useState<string>("");
   const [observacoesAgendamento, setObservacoesAgendamento] = useState<string>("");
   const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendente[]>([]);
+  const [bonificacoesPendentes, setBonificacoesPendentes] = useState<BonificacaoPendente[]>([]);
   
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { atualizarCliente } = useClienteStore();
