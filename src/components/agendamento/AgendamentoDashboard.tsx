@@ -32,6 +32,7 @@ import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequen
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConfirmationScore } from "@/hooks/useConfirmationScore";
 import ConfirmationScoreBadge from "@/components/agendamento/ConfirmationScoreBadge";
+import { cn } from "@/lib/utils";
 
 // Componente para indicadores visuais de entrega
 const IndicadoresEntrega = ({ 
