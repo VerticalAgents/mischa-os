@@ -689,26 +689,24 @@ export const PrintingActions = ({
   const { lista: listaParaModal } = getListaAtual();
 
   return (
-    <div className="flex items-center gap-2">
-      <Button 
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
         onClick={() => setModalListasAberto(true)}
-        size="sm"
-        variant="outline"
-        className="flex items-center gap-2"
+        className="group flex flex-1 items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg text-foreground/70 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all text-left"
       >
-        <Printer className="h-4 w-4" />
+        <Printer className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-amber-500 transition-colors" strokeWidth={1.5} />
         Listas de Expedição
-      </Button>
+      </button>
 
-      <Button 
+      <button
+        type="button"
         onClick={imprimirEtiquetas}
-        size="sm"
-        variant="outline"
-        className="flex items-center gap-2"
+        className="group flex flex-1 items-center gap-3 px-3 py-2.5 text-[13px] font-medium rounded-lg text-foreground/70 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all text-left"
       >
-        <FileText className="h-4 w-4" />
+        <FileText className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-amber-500 transition-colors" strokeWidth={1.5} />
         Etiquetas
-      </Button>
+      </button>
       
       {/* IFrame invisível para impressão */}
       <iframe ref={printFrameRef} style={{ display: 'none' }} />
