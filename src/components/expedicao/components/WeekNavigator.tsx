@@ -65,18 +65,20 @@ export const WeekNavigator = ({
       </Button>
 
       <div className="flex items-center gap-1 ml-2">
-        <Button
-          variant={!isVerTodos ? "default" : "outline"}
-          size="sm"
-          onClick={() => {
-            onMudarModoVisualizacao?.('semana');
-            if (!ehSemanaAtual) onVoltarHoje();
-          }}
-          className="text-xs"
-        >
-          Semana Atual
-        </Button>
-        
+        {(!ehSemanaAtual || isVerTodos) && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              onMudarModoVisualizacao?.('semana');
+              if (!ehSemanaAtual) onVoltarHoje();
+            }}
+            className="text-xs"
+          >
+            Semana Atual
+          </Button>
+        )}
+
         {onMudarModoVisualizacao && (
           <Button
             variant={isVerTodos ? "default" : "outline"}
