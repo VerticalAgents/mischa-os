@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { useMotivosTroca } from "@/hooks/useMotivosTroca";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 
@@ -28,6 +28,29 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
   });
 
   const produtosAtivos = produtos.filter(p => p.ativo);
+  const valueRef = useRef(value);
+  useEffect(() => { valueRef.current = value; }, [value]);
+
+  // Auto-commit: assim que produto + motivo estiverem preenchidos, adiciona à lista
+  useEffect(() => {
+    if (
+      novaTroca.produto_id &&
+      novaTroca.produto_nome &&
+      novaTroca.motivo_id &&
+      novaTroca.motivo_nome &&
+      (novaTroca.quantidade ?? 0) > 0
+    ) {
+      const trocaCompleta: TrocaPendente = {
+        produto_id: novaTroca.produto_id,
+        produto_nome: novaTroca.produto_nome,
+        quantidade: novaTroca.quantidade!,
+        motivo_id: novaTroca.motivo_id,
+        motivo_nome: novaTroca.motivo_nome
+      };
+      onChange([...(valueRef.current || []), trocaCompleta]);
+      setNovaTroca({ quantidade: 1 });
+    }
+  }, [novaTroca, onChange]);
 
   // Debug - logs para diagnóstico
   useEffect(() => {
@@ -37,31 +60,6 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
       console.log('🔄 TrocasPendentesEditor - Motivos disponíveis:', motivos.map(m => `${m.id}: ${m.nome}`));
     }
   }, [produtos, produtosAtivos.length, motivos]);
-
-  const handleAdicionarTroca = () => {
-    console.log('➕ Tentando adicionar troca:', novaTroca);
-    
-    if (!novaTroca.produto_nome || !novaTroca.motivo_nome || !novaTroca.quantidade) {
-      console.log('❌ Validação falhou - campos faltando:', {
-        produto_nome: novaTroca.produto_nome,
-        motivo_nome: novaTroca.motivo_nome,
-        quantidade: novaTroca.quantidade
-      });
-      return;
-    }
-    
-    const trocaCompleta: TrocaPendente = {
-      produto_id: novaTroca.produto_id,
-      produto_nome: novaTroca.produto_nome,
-      quantidade: novaTroca.quantidade,
-      motivo_id: novaTroca.motivo_id,
-      motivo_nome: novaTroca.motivo_nome
-    };
-    
-    console.log('✅ Adicionando troca completa:', trocaCompleta);
-    onChange([...value, trocaCompleta]);
-    setNovaTroca({ quantidade: 1 });
-  };
 
   const handleRemoverTroca = (index: number) => {
     console.log('🗑️ Removendo troca no índice:', index);
@@ -212,17 +210,10 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
             </SelectContent>
           </Select>
         </div>
-        
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-9 w-9"
-          onClick={handleAdicionarTroca}
-          disabled={!novaTroca.produto_nome || !novaTroca.motivo_nome}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        A troca é adicionada automaticamente assim que produto e motivo estão selecionados.
+      </p>
     </div>
   );
 }
