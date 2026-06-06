@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
@@ -66,6 +66,53 @@ export const Despacho = () => {
 
   // Usar hook de sincronização
   useExpedicaoSync();
+
+  // Selecionar preset padrão dinâmico ao entrar na aba (apenas uma vez por montagem,
+  // depois que pedidos forem carregados)
+  const presetAutoAplicado = useRef(false);
+  useEffect(() => {
+    if (presetAutoAplicado.current) return;
+    if (isLoading) return;
+    if (!pedidos || pedidos.length === 0) return;
+
+    const base = pedidos.filter(
+      (p: any) =>
+        p.status_agendamento === 'Agendado' &&
+        (p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado')
+    );
+
+    const hoje = startOfDay(new Date());
+    const hojeStr = format(hoje, 'yyyy-MM-dd');
+    const fimSemana = endOfWeek(hoje, { weekStartsOn: 0 });
+
+    let temHoje = false;
+    let temAtrasados = false;
+    let temFuturoNaSemana = false;
+
+    for (const p of base) {
+      if (!p.data_prevista_entrega) continue;
+      const d = startOfDay(new Date(p.data_prevista_entrega));
+      const dStr = format(d, 'yyyy-MM-dd');
+      if (dStr === hojeStr) {
+        temHoje = true;
+      } else if (isBefore(d, hoje)) {
+        temAtrasados = true;
+      } else if (d <= fimSemana) {
+        temFuturoNaSemana = true;
+      }
+    }
+
+    let novoPreset: 'hoje' | 'semana' | 'atrasados' | 'todos';
+    if (temHoje) novoPreset = 'hoje';
+    else if (temAtrasados && temFuturoNaSemana) novoPreset = 'semana';
+    else if (temAtrasados) novoPreset = 'atrasados';
+    else novoPreset = 'todos';
+
+    presetAutoAplicado.current = true;
+    if (novoPreset !== presetDespacho) {
+      setPresetDespacho(novoPreset);
+    }
+  }, [isLoading, pedidos, presetDespacho, setPresetDespacho]);
 
   // Handlers para GestaoClick
   const handleGerarVendaGC = async (pedidoId: string, clienteId: string) => {
