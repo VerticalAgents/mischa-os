@@ -439,9 +439,11 @@ export default function AgendamentoEditModal({
           </div>
 
           {statusAgendamento !== "Agendar" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <div className="space-y-2">
-                <Label>Data de Reposição</Label>
+                <div className="flex min-h-5 items-center">
+                  <Label>Data de Reposição</Label>
+                </div>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -469,22 +471,22 @@ export default function AgendamentoEditModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quantidade" className="flex items-center justify-between gap-4">
-                  <span>Quantidade Total</span>
-                  {hasValidationError && (
-                    <span className="text-sm text-red-500 font-normal">
-                      Soma deve bater ({somaQuantidadesProdutos})
-                    </span>
-                  )}
-                </Label>
+                <div className="flex min-h-5 items-center">
+                  <Label htmlFor="quantidade">Quantidade Total</Label>
+                </div>
                 <Input
                   id="quantidade"
                   type="number"
                   value={quantidadeTotal}
                   onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
                   min="0"
-                  className={hasValidationError ? "border-red-500" : ""}
+                  className={hasValidationError ? "border-destructive" : ""}
                 />
+                {hasValidationError && (
+                  <p className="text-sm font-normal text-destructive">
+                    Soma deve bater ({somaQuantidadesProdutos})
+                  </p>
+                )}
               </div>
             </div>
           )}
