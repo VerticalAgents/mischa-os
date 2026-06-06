@@ -1,34 +1,15 @@
-## Objetivo
+## Ajuste de tamanho dos blocos no editor de produtos
 
-Refinar a área de **Observações e Trocas** do modal de agendamento:
+Hoje, em `ProdutoQuantidadeSelector.tsx`, cada linha de produto usa `grid-cols-3` com colunas iguais, fazendo com que **Produto**, **Quantidade** e o botão da **lixeira** ocupem o mesmo espaço (como na imagem). Vou ajustar para uma proporção mais natural:
 
-1. Tornar a seção **colapsável** (oculta por padrão) ao final do modal.
-2. Garantir que `observacoes_agendamento` seja **limpa** após confirmação da entrega.
-3. Corrigir UX/persistência das **trocas pendentes** (hoje, se o usuário não clicar no "+", a seleção é perdida ao salvar).
-4. Registrar as trocas pendentes no histórico (`trocas`) ao confirmar a entrega, conforme o aviso já diz.
+### Mudanças (apenas visuais, no arquivo `src/components/agendamento/ProdutoQuantidadeSelector.tsx`)
 
-## Mudanças
+1. Trocar o grid `grid-cols-1 sm:grid-cols-3` por um layout flex no desktop:
+   - **Produto**: ocupa o espaço restante (`flex-1`)
+   - **Quantidade**: largura fixa pequena (`w-24`)
+   - **Lixeira**: botão `size="icon"` (quadrado ~h-9 w-9), sem ocupar coluna inteira
+2. No mobile (`< sm`): manter empilhado em coluna única, mas com a lixeira alinhada à direita em sua própria linha compacta.
+3. Manter labels e acessibilidade (`htmlFor`) intactos.
 
-### 1. UI — `AgendamentoEditModal.tsx` + `ObservacoesAgendamentoSection.tsx`
-- Envolver `<ObservacoesAgendamentoSection>` em um `<Collapsible>` (componente shadcn já existente) no final do modal:
-  - Trigger: botão discreto com chevron — "Observações e Trocas" (mostra badge "•" se houver conteúdo: obs. gerais, obs. agendamento ou trocas).
-  - Collapsed por padrão.
-- Manter o conteúdo interno como está.
-
-### 2. UX — `TrocasPendentesEditor.tsx`
-- Expor um helper `commitPendingTroca()` (via `useImperativeHandle` com `forwardRef`, ou via `onChange` automático sempre que `novaTroca` ficar completo) para que a troca em edição (produto + motivo + qtd preenchidos) seja automaticamente persistida em `value` antes do save.
-- Abordagem mais simples e robusta: **adicionar automaticamente** a troca à lista assim que `produto_id` e `motivo_id` estiverem preenchidos (efeito ao mudar qualquer um dos três), limpando o form interno. Assim o "+" deixa de existir/é redundante. Mantém botão remover por linha.
-
-### 3. Backend — migração que atualiza `process_entrega_safe`
-Atualizar a versão com 3 parâmetros (`p_agendamento_id, p_observacao, p_data_entrega`) para:
-- Antes de zerar, ler `observacoes_agendamento` e `trocas_pendentes` do agendamento.
-- Após o `INSERT` em `historico_entregas` (já temos `v_historico_id`), inserir cada item de `trocas_pendentes` em `public.trocas` com `cliente_id`, `historico_entrega_id = v_historico_id`, `produto_id`, `produto_nome`, `quantidade`, `motivo_id`, `motivo_nome`, `data_troca = v_data_entrega_efetiva`.
-- Concatenar `observacoes_agendamento` na `observacao` do `historico_entregas` (se houver), para não perder a informação.
-- No `UPDATE` final do agendamento (ambos os ramos: com e sem reagendamento), também **setar** `observacoes_agendamento = NULL` e `trocas_pendentes = '[]'::jsonb`.
-
-Não há mudança de schema nem RLS — apenas substituição da função.
-
-### Detalhes técnicos
-- Manter a versão de 2 parâmetros existente intacta (compat).
-- A lista de trocas que vem no `historico_entregas.observacao` continua sem mudar; trocas vão para a tabela própria.
-- Frontend não precisa mais mexer em zerar campos após entrega — fica tudo no RPC.
+### Resultado esperado
+Linha mais equilibrada: Produto dominante, Quantidade enxuta, ícone de lixeira compacto ao lado — sem alterar nenhuma lógica de adicionar/remover/atualizar produto.
