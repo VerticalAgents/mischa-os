@@ -252,7 +252,7 @@ export const PrintingActions = ({
           <table>
             <thead>
               <tr>
-                <th style="width: 28px;"></th>
+                <th style="width: 28px; text-align: center;">✓</th>
                 <th style="width: ${colWidths.cliente};">Cliente</th>
                 <th style="width: ${colWidths.data};">Data</th>
                 <th style="width: ${colWidths.produtos};">Produtos</th>
