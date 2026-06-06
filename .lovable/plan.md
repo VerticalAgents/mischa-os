@@ -1,32 +1,20 @@
-## Refatorar editor de trocas pendentes
+## Objetivo
+1. Mostrar de forma minimalista no card do pedido (Separação e Despacho) quando houver **trocas pendentes** e/ou **observação temporária** (observacoes_agendamento).
+2. Ordenar as trocas na impressão da Lista de Separação usando a mesma regra dos produtos (`ordenarItensPorOrdemCategoria` baseada na ordem das categorias/produtos).
 
-### Problema
-Hoje `TrocasPendentesEditor` só persiste uma troca quando **produto + quantidade + motivo** estão preenchidos (auto-commit). Se o usuário escolhe produto e quantidade mas esquece o motivo, ao salvar o agendamento a troca desaparece — não é registrada em `trocas_pendentes`.
+## Mudanças
 
-### Solução
-Reescrever o editor no mesmo padrão do `ProdutoQuantidadeSelector` (lista de linhas editáveis + botão "Adicionar Troca"):
+### 1. `src/components/expedicao/PedidoCard.tsx`
+- Estender `PedidoCardProps.pedido` com `observacoes_agendamento?: string` e `trocas_pendentes?: Array<{produto_nome; quantidade; motivo_nome?}>` (já chegam via `usePedidoConverter`).
+- No `CardHeader`, ao lado dos badges existentes (TipoPedido, Antecipada, substatus), adicionar de forma minimalista:
+  - **Badge de Trocas**: ícone `RefreshCw` + contagem (ex: `2 trocas`) quando `trocas_pendentes?.length > 0`. Estilo outline em tom amber, com `title` listando produtos+motivos para tooltip.
+  - **Badge de Observação**: ícone `MessageSquare` (lucide) quando houver `observacoes_agendamento`, com `title` mostrando o texto completo.
+- Funciona tanto em Separação quanto Despacho (mesmo componente).
 
-1. **Lista de trocas como linhas editáveis**
-   - Cada item em `value` vira uma linha com 3 campos: Produto (Select), Quantidade (Input number, w-24), Motivo (Select, opcional) + botão lixeira (icon).
-   - Qualquer alteração em qualquer campo dispara `onChange` imediatamente — não há "estado temporário" que possa se perder.
-   - Layout flex (igual `ProdutoQuantidadeSelector`): produto `flex-1`, quantidade `w-24`, motivo `w-56`, lixeira `size="icon"`.
+### 2. `src/components/expedicao/components/PrintingActions.tsx`
+- Em `imprimirListaSeparacao`, antes de iterar `trocasPendentes` na renderização (linha ~317), aplicar `ordenarItensPorOrdemCategoria(trocasPendentes, proporcoes)` — assim as trocas seguem a mesma ordem da aba Produtos, igual aos itens normais (`buildProdutosParaExibir` já faz isso).
+- Sem mudanças visuais na coluna; apenas reordenação.
 
-2. **Botão "Adicionar Troca"**
-   - Adiciona uma linha vazia `{ produto_nome: "", quantidade: 1, motivo_nome: "" }`.
-   - Substitui o auto-commit + linha de "nova troca" + tabela read-only atuais.
-
-3. **Motivo opcional**
-   - A linha é salva mesmo sem motivo. A função `process_entrega_safe` já trata `motivo_id` ausente via `NULLIF(...)::int`, então o INSERT em `public.trocas` aceita NULL e o histórico continua funcional.
-
-4. **Comportamento pós-entrega (já implementado, apenas confirmar)**
-   - O migration anterior já zera `trocas_pendentes = '[]'` em ambos os ramos do UPDATE em `process_entrega_safe`.
-   - O mesmo trecho já insere cada item de `trocas_pendentes` em `public.trocas` com `historico_entrega_id` apontando para a entrega recém-criada — então a aba **Controle de Trocas** (`TrocasHistoricoTable` que lê de `trocas`) já passa a mostrar essas trocas automaticamente.
-   - Também registra a troca dentro da `observacao` do `historico_entregas` via concatenação? Hoje só concatena `observacoes_agendamento`. Vou **estender** essa concatenação para incluir um resumo `"Trocas: 2x Brownie Avelã (Quebrado), 1x Brownie Chocolate"` no campo `observacao` do `historico_entregas`, para que o usuário veja no histórico de entregas sem precisar abrir a aba de trocas.
-
-### Arquivos afetados
-- `src/components/agendamento/TrocasPendentesEditor.tsx` — reescrita do componente.
-- **Nova migration** atualizando `process_entrega_safe` para anexar resumo das trocas em `historico_entregas.observacao` (mantém todo o resto da função intacto).
-
-### Detalhes técnicos
-- Componente continua exportando `TrocaPendente` com a mesma shape `{ produto_id?, produto_nome, quantidade, motivo_id?, motivo_nome }`, então `AgendamentoEditModal` não precisa mudar.
-- Sem alterações em RLS, schema ou outras tabelas.
+## Fora do escopo
+- Sem alterações em banco, RLS, ou lógica de confirmação de entrega.
+- Sem alterações em `usePedidoConverter.ts` (campos já passam adiante).
