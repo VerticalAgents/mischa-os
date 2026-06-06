@@ -510,6 +510,11 @@ export default function AgendamentoEditModal({
                 onTrocasPendentesChange={setTrocasPendentes}
               />
 
+              <BonificacoesAccordion
+                bonificacoesPendentes={bonificacoesPendentes}
+                onBonificacoesPendentesChange={setBonificacoesPendentes}
+              />
+
               <ObservacoesAgendamentoSection
                 observacoesGerais={observacoesGerais}
                 onObservacoesGeraisChange={setObservacoesGerais}
