@@ -427,53 +427,53 @@ export default function AgendamentoEditModal({
           </div>
 
           {statusAgendamento !== "Agendar" && (
-            <div className="space-y-2">
-              <Label>Data de Reposição</Label>
-              <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dataReposicao && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dataReposicao ? format(dataReposicao, "PPP", { locale: ptBR }) : "Selecione uma data"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[100]" align="start" onInteractOutside={(e) => e.stopPropagation()}>
-                <Calendar
-                  mode="single"
-                  selected={dataReposicao}
-                  onSelect={setDataReposicao}
-                  locale={ptBR}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-              </Popover>
-            </div>
-          )}
-
-          {statusAgendamento !== "Agendar" && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-4">
-                <Label htmlFor="quantidade">Quantidade Total</Label>
-                {hasValidationError && (
-                  <p className="text-sm text-red-500">
-                    Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
-                  </p>
-                )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data de Reposição</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dataReposicao && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dataReposicao ? format(dataReposicao, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[100]" align="start" onInteractOutside={(e) => e.stopPropagation()}>
+                    <Calendar
+                      mode="single"
+                      selected={dataReposicao}
+                      onSelect={setDataReposicao}
+                      locale={ptBR}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <Input
-                id="quantidade"
-                type="number"
-                value={quantidadeTotal}
-                onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
-                min="0"
-                className={hasValidationError ? "border-red-500" : ""}
-              />
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <Label htmlFor="quantidade">Quantidade Total</Label>
+                  {hasValidationError && (
+                    <p className="text-sm text-red-500">
+                      Soma deve bater ({somaQuantidadesProdutos})
+                    </p>
+                  )}
+                </div>
+                <Input
+                  id="quantidade"
+                  type="number"
+                  value={quantidadeTotal}
+                  onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
+                  min="0"
+                  className={hasValidationError ? "border-red-500" : ""}
+                />
+              </div>
             </div>
           )}
 
