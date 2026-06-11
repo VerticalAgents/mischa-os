@@ -363,6 +363,7 @@ const SeparacaoPedidos = () => {
           isLoading={isLoading}
           pedidosFiltrados={pedidosFiltrados}
           representantes={representantes}
+          onGerarVendasGC={handleGerarVendasEmMassa}
         />
       </div>
       
