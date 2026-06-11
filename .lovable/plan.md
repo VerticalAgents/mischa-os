@@ -1,50 +1,54 @@
 ## Objetivo
 
-Trocas e bonificações pendentes de cada agendamento passam a **(a)** debitar estoque na confirmação da entrega e **(b)** somar nos cards "Produtos Necessários" da Separação e do PCP, alinhando o cálculo de necessidades com o que de fato sai do estoque.
+Ao clicar em **"Lista de Separação"** dentro do modal `ExpedicaoListasModal`, em vez de imprimir direto a lista com todos os pedidos filtrados, abrir um novo modal de seleção (estilo o `SeparacaoEmMassaDialog` / `GerarVendasEmMassaDialog`) para o usuário escolher quais pedidos entram na impressão. O modal também terá um **toggle "Gerar vendas no GestãoClick"** que, quando ligado, dispara a criação das vendas GC antes de imprimir.
 
-## Causa raiz
+## Comportamento
 
-- `compute_entrega_itens_v2` (Postgres) só considera `itens_personalizados`/proporções padrão.
-- `process_entrega_safe` registra trocas/bonificações em tabelas próprias, mas não cria movimentação de saída.
-- `useQuantidadesSeparadas` (expedição) e `ProjecaoProducaoTab` (PCP) reusam a mesma lógica e portanto também ignoram trocas/bonificações.
+1. Usuário abre **"Listas de Expedição"** → `ExpedicaoListasModal` (sem alterações no design dele).
+2. Clica em **"Lista de Separação"** → fecha esse modal e abre o novo **`SelecaoPedidosParaImpressaoDialog`**.
+3. Novo modal mostra:
+   - Lista completa de pedidos atualmente filtrados na aba (mesmo `listaParaModal` que hoje é usado direto).
+   - Checkbox por pedido (cliente, qtd, data, tipo) + "Selecionar todos" (já marcado por padrão → comportamento atual: tudo selecionado = lista igual à de hoje).
+   - Badge "X de Y selecionados".
+   - Toggle (`Switch`) **"Gerar vendas no GestãoClick ao imprimir"** — desligado por padrão.
+     - Mostra contador auxiliar: "N pedidos sem venda GC serão gerados" (filtrando os selecionados que ainda não têm `gestaoclick_venda_id`).
+     - Se todos selecionados já têm venda, o toggle aparece desabilitado com texto "Todos já têm venda gerada".
+   - Botão primário: **"Imprimir lista"** (ou "Gerar vendas e imprimir" quando o toggle está ligado).
+4. Ao confirmar:
+   - Se toggle ligado: chama o fluxo equivalente a `handleGerarVendasEmMassa` para os IDs selecionados sem `gestaoclick_venda_id`, aguarda, depois imprime.
+   - Se toggle desligado: imprime direto.
+   - Em ambos os casos, a impressão usa apenas os pedidos selecionados (subset do `listaAtual` já calculado em `getListaAtual()`).
 
-## Mudanças
+A aba **Despacho** segue chamando o mesmo fluxo (já que `PrintingActions` é compartilhado), então o comportamento se aplica nas duas abas.
 
-### 1. Nova função SQL `compute_entrega_itens_completo(p_agendamento_id)`
-Retorna `(produto_id, produto_nome, quantidade)` agregando:
-- Itens regulares vindos de `compute_entrega_itens_v2`.
-- `trocas_pendentes` do agendamento, agrupado por `produto_id` quando presente; se a troca só tiver `produto_nome`, resolve por `lower(nome)` em `produtos_finais`.
-- `bonificacoes_pendentes`, mesma regra das trocas.
-- `SUM(quantidade)` por `produto_id`, ignorando itens sem produto resolvido ou quantidade ≤ 0.
+## Mudanças técnicas
 
-Grants idênticos aos de `compute_entrega_itens_v2`.
+### Novo componente
+- `src/components/expedicao/components/SelecaoPedidosImpressaoDialog.tsx`
+  - Props: `open`, `onOpenChange`, `pedidos` (array já filtrado), `tipoLista` (string para título), `onConfirm(pedidosSelecionados, gerarVendasGC: boolean)`.
+  - Reusa padrão visual de `SeparacaoEmMassaDialog` (header com ícone, ScrollArea, checkbox, badge de contagem).
+  - Adiciona `Switch` (`@/components/ui/switch`) para "Gerar vendas no GestãoClick".
+  - Estado interno: `selecionados: Set<string>`, `gerarVendasGC: boolean`, `loading`.
 
-### 2. Atualizar `process_entrega_safe`
-- Validação de saldo: trocar o loop atual por um loop sobre `compute_entrega_itens_completo`.
-- Inserção em `movimentacoes_estoque_produtos`: usar `compute_entrega_itens_completo` no `SELECT`, com observação preservando o nome do cliente (sem mudar o formato da observação textual já enviada para o histórico).
-- `historico_entregas.itens` continua refletindo apenas os itens regulares (`compute_entrega_itens_v2`) para não duplicar o consumo em relatórios de giro/faturamento que já tratam trocas/bonificações separadamente.
-- Demais blocos (resumo textual, inserts em `trocas`/`bonificacoes`, reagendamento) permanecem.
+### `PrintingActions.tsx`
+- Adicionar estado `modalSelecaoSeparacaoAberto` + render do novo dialog.
+- Refatorar `imprimirListaSeparacao()` para aceitar uma lista explícita de pedidos (`imprimirListaSeparacao(pedidosCustom?: any[])`) — quando não recebe parâmetro, usa `getListaAtual()` como hoje (mantém compat com `handleSelectLista`).
+- Em `handleSelectLista`, ao receber `'separacao'`, abrir o novo modal em vez de imprimir direto.
+- Adicionar prop opcional `onGerarVendasGC?: (pedidoIds: string[]) => Promise<void>` em `PrintingActions` para que `SeparacaoPedidos` injete sua função `handleGerarVendasEmMassa` existente. `Despacho` pode passar o handler equivalente (ou `undefined`, escondendo o toggle se não fornecido).
+- Fluxo do confirm do novo modal:
+  ```
+  if (gerarVendasGC && onGerarVendasGC) {
+    const semVenda = selecionados.filter(p => !p.gestaoclick_venda_id).map(p => p.id);
+    await onGerarVendasGC(semVenda);
+  }
+  imprimirListaSeparacao(selecionados);
+  ```
 
-### 3. Frontend — Card "Produtos Necessários" da Separação
-- `src/hooks/useQuantidadesSeparadas.ts`: após calcular os itens regulares por pedido, somar `pedido.trocas_pendentes` e `pedido.bonificacoes_pendentes` na mesma chave de produto (por nome, já que o card agrega por nome).
-- Garantir que o tipo dos pedidos passados (em `ProdutosEmExpedicao.tsx` e onde mais o hook é usado) inclua esses campos — eles já são carregados pelo `useExpedicaoStore`.
+### Pontos de uso
+- `SeparacaoPedidos.tsx`: passar `onGerarVendasGC={handleGerarVendasEmMassa}` para `PrintingActions`.
+- `Despacho.tsx`: se já existe handler equivalente, passar; senão deixar undefined (toggle some).
 
-### 4. Frontend — Card "Produtos Necessários" do PCP
-- `src/components/pcp/ProjecaoProducaoTab.tsx`: trocar a chamada `supabase.rpc('compute_entrega_itens_v2', …)` por `compute_entrega_itens_completo` nas duas listas (confirmados e previstos), para que a projeção semanal já inclua trocas/bonificações pendentes.
-
-### 5. Sem mudanças
-- Tabelas `trocas` e `bonificacoes` continuam como log auxiliar.
-- Observação textual e fluxo de reagendamento ficam iguais.
-- Relatórios financeiros/giro (que já leem `trocas`/`bonificacoes` separadamente) não são tocados.
-
-## Validação
-
-1. Criar agendamento com itens regulares + 1 troca + 1 bonificação.
-2. Antes de confirmar:
-   - Card "Produtos Necessários" na Separação deve mostrar a soma dos três.
-   - Card "Produtos Necessários" no PCP deve mostrar a soma dos três.
-3. Confirmar entrega:
-   - `movimentacoes_estoque_produtos` deve ter saídas iguais à soma dos três por produto.
-   - `historico_entregas.itens` continua apenas com os itens regulares.
-   - `trocas`/`bonificacoes` registradas como já são hoje.
-4. Tentar confirmar com saldo insuficiente apenas no produto da troca/bonificação: deve bloquear com "Saldo insuficiente".
+## Fora de escopo
+- Nada muda em `ExpedicaoListasModal` (cards "Lista de Separação" / "Lista de Documentos" continuam iguais).
+- Lista de Documentos e Etiquetas seguem como hoje.
+- Sem mudanças no HTML/CSS da impressão em si.
