@@ -4,6 +4,7 @@ import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
+import { SelecaoPedidosImpressaoDialog } from "./SelecaoPedidosImpressaoDialog";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
 
@@ -32,6 +33,8 @@ interface PrintingActionsProps {
   pedidosProximoDia: any[];
   todosPedidos: any[];
   representantes?: { id: number; nome: string }[];
+  /** Quando passado, habilita o toggle de "Gerar vendas no GestãoClick" no modal de seleção */
+  onGerarVendasGC?: (pedidoIds: string[]) => Promise<void>;
 }
 
 export const PrintingActions = ({ 
@@ -40,10 +43,12 @@ export const PrintingActions = ({
   pedidosAlterados, 
   pedidosProximoDia, 
   todosPedidos,
-  representantes = []
+  representantes = [],
+  onGerarVendasGC,
 }: PrintingActionsProps) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [modalListasAberto, setModalListasAberto] = useState(false);
+  const [modalSelecaoSeparacaoAberto, setModalSelecaoSeparacaoAberto] = useState(false);
   const { proporcoes } = useSupabaseProporoesPadrao();
 
   const buildProdutosParaExibir = (pedido: any): any[] => {
@@ -79,8 +84,9 @@ export const PrintingActions = ({
     }
   };
 
-  const imprimirListaSeparacao = () => {
-    const { lista: listaAtual, tipo: tipoLista } = getListaAtual();
+  const imprimirListaSeparacao = (pedidosCustom?: any[]) => {
+    const { lista: listaPadrao, tipo: tipoLista } = getListaAtual();
+    const listaAtual = pedidosCustom ?? listaPadrao;
     
     if (listaAtual.length === 0) {
       toast.error("Não há pedidos para separar nesta categoria.");
@@ -598,7 +604,7 @@ export const PrintingActions = ({
 
   const handleSelectLista = (tipo: 'separacao' | 'documentos') => {
     if (tipo === 'separacao') {
-      imprimirListaSeparacao();
+      setModalSelecaoSeparacaoAberto(true);
     } else {
       imprimirListaDocumentos();
     }
@@ -735,6 +741,7 @@ export const PrintingActions = ({
   };
 
   const { lista: listaParaModal } = getListaAtual();
+  const { tipo: tipoListaAtual } = getListaAtual();
 
   return (
     <div className="flex items-center gap-1">
@@ -765,6 +772,31 @@ export const PrintingActions = ({
         onOpenChange={setModalListasAberto}
         onSelectLista={handleSelectLista}
         totalPedidos={listaParaModal.length}
+      />
+
+      {/* Modal de seleção de pedidos para imprimir Lista de Separação */}
+      <SelecaoPedidosImpressaoDialog
+        open={modalSelecaoSeparacaoAberto}
+        onOpenChange={setModalSelecaoSeparacaoAberto}
+        pedidos={listaParaModal}
+        tipoLista={tipoListaAtual}
+        podeGerarVendasGC={!!onGerarVendasGC}
+        onConfirm={async (pedidosSelecionados, gerarVendasGC) => {
+          if (gerarVendasGC && onGerarVendasGC) {
+            const semVenda = pedidosSelecionados
+              .filter((p: any) => !p.gestaoclick_venda_id)
+              .map((p: any) => String(p.id));
+            if (semVenda.length > 0) {
+              try {
+                await onGerarVendasGC(semVenda);
+              } catch (e) {
+                toast.error("Erro ao gerar vendas no GestãoClick. A impressão foi cancelada.");
+                return;
+              }
+            }
+          }
+          imprimirListaSeparacao(pedidosSelecionados);
+        }}
       />
     </div>
   );
