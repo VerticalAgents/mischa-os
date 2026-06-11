@@ -13,6 +13,7 @@ interface SeparacaoActionsCardProps {
   pedidosFiltrados: any[];
   representantes?: { id: number; nome: string }[];
   className?: string;
+  onGerarVendasGC?: (pedidoIds: string[]) => Promise<void>;
 }
 
 export const SeparacaoActionsCard = ({
@@ -23,7 +24,8 @@ export const SeparacaoActionsCard = ({
   isLoading,
   pedidosFiltrados,
   representantes = [],
-  className = ""
+  className = "",
+  onGerarVendasGC,
 }: SeparacaoActionsCardProps) => {
   const itemBase =
     "group flex items-center gap-3 w-full px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-left disabled:opacity-40 disabled:cursor-not-allowed";
@@ -63,6 +65,7 @@ export const SeparacaoActionsCard = ({
           pedidosProximoDia={[]}
           todosPedidos={pedidosFiltrados}
           representantes={representantes}
+          onGerarVendasGC={onGerarVendasGC}
         />
 
         <div className="py-2 px-3">
