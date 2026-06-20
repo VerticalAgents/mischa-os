@@ -433,6 +433,11 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
   sanitized.rotaEntregaId = intOrNull(sanitized.rotaEntregaId);
   sanitized.categoriaEstabelecimentoId = intOrNull(sanitized.categoriaEstabelecimentoId);
   sanitized.prazoPagamentoDias = intOrNull(sanitized.prazoPagamentoDias) ?? 7;
+  const tipoPrazo = (sanitized as any).prazoPagamentoTipo;
+  (sanitized as any).prazoPagamentoTipo =
+    tipoPrazo === 'proximo_dia_semana' ? 'proximo_dia_semana' : 'dias';
+  (sanitized as any).prazoPagamentoDiaSemana = intOrNull((sanitized as any).prazoPagamentoDiaSemana);
+  (sanitized as any).prazoPagamentoDiasMinimos = intOrNull((sanitized as any).prazoPagamentoDiasMinimos);
 
   // 7. Sanitizar valores booleanos
   sanitized.ativo = boolOr(sanitized.ativo, true);
@@ -502,6 +507,9 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     tipo_cobranca: sanitized.tipoCobranca,
     forma_pagamento: sanitized.formaPagamento,
     prazo_pagamento_dias: sanitized.prazoPagamentoDias,
+    prazo_pagamento_tipo: (sanitized as any).prazoPagamentoTipo,
+    prazo_pagamento_dia_semana: (sanitized as any).prazoPagamentoDiaSemana,
+    prazo_pagamento_dias_minimos: (sanitized as any).prazoPagamentoDiasMinimos,
     gestaoclick_cliente_id: sanitized.gestaoClickClienteId || null,
     desabilitar_reagendamento: boolOr(sanitized.desabilitarReagendamento, false),
     updated_at: new Date().toISOString(),

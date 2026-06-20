@@ -70,6 +70,9 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   tipoCobranca: 'À vista',
   formaPagamento: 'Boleto',
   prazoPagamentoDias: 7,
+  prazoPagamentoTipo: 'dias',
+  prazoPagamentoDiaSemana: 1,
+  prazoPagamentoDiasMinimos: 7,
   emiteNotaFiscal: true,
   contabilizarGiroMedio: true,
   observacoes: '',
@@ -299,6 +302,9 @@ export default function ClienteFormDialog({
     tipoCobranca: formData.tipoCobranca || 'À vista',
     formaPagamento: formData.formaPagamento || 'Boleto',
     prazoPagamentoDias: formData.prazoPagamentoDias || 7,
+    prazoPagamentoTipo: (formData as any).prazoPagamentoTipo || 'dias',
+    prazoPagamentoDiaSemana: (formData as any).prazoPagamentoDiaSemana ?? null,
+    prazoPagamentoDiasMinimos: (formData as any).prazoPagamentoDiasMinimos ?? null,
     emiteNotaFiscal: formData.emiteNotaFiscal || true,
     contabilizarGiroMedio: formData.contabilizarGiroMedio || true,
     observacoes: formData.observacoes || '',
@@ -765,25 +771,87 @@ export default function ClienteFormDialog({
                       </SelectContent>
                     </Select>
                   </div>
-                  {(formData.formaPagamento === 'Boleto' || String(formData.formaPagamento).toUpperCase() === 'BOLETO') && (
-                    <div className="space-y-2">
-                      <Label htmlFor="prazoPagamentoDias">Prazo de Pagamento (dias)</Label>
-                      <Select 
-                        value={String(formData.prazoPagamentoDias || 7)} 
-                        onValueChange={(value) => handleInputChange('prazoPagamentoDias', parseInt(value))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="7">7 dias</SelectItem>
-                          <SelectItem value="14">14 dias</SelectItem>
-                          <SelectItem value="21">21 dias</SelectItem>
-                          <SelectItem value="28">28 dias</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {(() => {
+                    const fp = String(formData.formaPagamento || '').toUpperCase();
+                    const mostrarPrazo = fp === 'BOLETO' || fp === 'PIX';
+                    if (!mostrarPrazo) return null;
+                    const tipoPrazo = ((formData as any).prazoPagamentoTipo as string) || 'dias';
+                    return (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Prazo de Pagamento</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <Select
+                            value={tipoPrazo}
+                            onValueChange={(value) => handleInputChange('prazoPagamentoTipo' as any, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="dias">Dias corridos após a entrega</SelectItem>
+                              <SelectItem value="proximo_dia_semana">Próximo dia da semana após N dias</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          {tipoPrazo === 'dias' ? (
+                            <div className="space-y-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={formData.prazoPagamentoDias ?? 7}
+                                onChange={(e) => handleInputChange('prazoPagamentoDias', parseInt(e.target.value) || 0)}
+                                placeholder="Ex: 7"
+                              />
+                              <div className="flex gap-1 flex-wrap">
+                                {[7, 14, 21, 28].map((d) => (
+                                  <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => handleInputChange('prazoPagamentoDias', d)}
+                                    className="text-xs px-2 py-0.5 rounded border border-input hover:bg-muted"
+                                  >
+                                    {d} dias
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              <Select
+                                value={String((formData as any).prazoPagamentoDiaSemana ?? 1)}
+                                onValueChange={(value) => handleInputChange('prazoPagamentoDiaSemana' as any, parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Dia da semana" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="0">Domingo</SelectItem>
+                                  <SelectItem value="1">Segunda-feira</SelectItem>
+                                  <SelectItem value="2">Terça-feira</SelectItem>
+                                  <SelectItem value="3">Quarta-feira</SelectItem>
+                                  <SelectItem value="4">Quinta-feira</SelectItem>
+                                  <SelectItem value="5">Sexta-feira</SelectItem>
+                                  <SelectItem value="6">Sábado</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={(formData as any).prazoPagamentoDiasMinimos ?? 7}
+                                onChange={(e) => handleInputChange('prazoPagamentoDiasMinimos' as any, parseInt(e.target.value) || 0)}
+                                placeholder="Dias mínimos"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        {tipoPrazo === 'proximo_dia_semana' && (
+                          <p className="text-xs text-muted-foreground">
+                            Ex.: entrega sexta + 7 dias mínimos → vence na 2ª segunda-feira após a entrega.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 <div className="space-y-2">
                   <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
                   <Select 

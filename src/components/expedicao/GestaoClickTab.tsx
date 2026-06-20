@@ -117,7 +117,7 @@ export default function GestaoClickTab() {
       const clienteIds = [...new Set(agendamentos.map(a => a.cliente_id))];
       const { data: clientes } = await supabase
         .from("clientes")
-        .select("id, nome, cnpj_cpf, endereco_entrega, contato_telefone, contato_email, forma_pagamento, tipo_cobranca, prazo_pagamento_dias")
+        .select("id, nome, cnpj_cpf, endereco_entrega, contato_telefone, contato_email, forma_pagamento, tipo_cobranca, prazo_pagamento_dias, prazo_pagamento_tipo, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos")
         .in("id", clienteIds);
 
       const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
@@ -213,6 +213,9 @@ export default function GestaoClickTab() {
           forma_pagamento: cliente?.forma_pagamento || "PIX",
           tipo_cobranca: cliente?.tipo_cobranca || "A_VISTA",
           prazo_pagamento_dias: cliente?.prazo_pagamento_dias || 7,
+          prazo_pagamento_tipo: ((cliente as any)?.prazo_pagamento_tipo as any) || 'dias',
+          prazo_pagamento_dia_semana: (cliente as any)?.prazo_pagamento_dia_semana ?? null,
+          prazo_pagamento_dias_minimos: (cliente as any)?.prazo_pagamento_dias_minimos ?? null,
           data_proxima_reposicao: ag.data_proxima_reposicao || "",
           quantidade_total: ag.quantidade_total || 0,
           itens,
