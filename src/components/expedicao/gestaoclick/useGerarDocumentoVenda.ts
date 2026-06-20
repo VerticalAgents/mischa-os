@@ -1,7 +1,8 @@
 import { jsPDF } from "jspdf";
 import { VendaGC } from "./types";
-import { format, addDays, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { calcularVencimentoPrazo, descreverPrazo } from "@/utils/prazoPagamento";
 
 const EMPRESA = {
   nome: "MISCHA'S BAKERY",
@@ -19,15 +20,16 @@ export function useGerarDocumentoVenda() {
 
   const calcularDataVencimento = (venda: VendaGC): Date => {
     const dataEntrega = parseISO(venda.data_proxima_reposicao);
-    
+
     if (venda.forma_pagamento === 'DINHEIRO') {
       return dataEntrega;
-    } else if (venda.forma_pagamento === 'PIX') {
-      return addDays(dataEntrega, 1);
-    } else {
-      // BOLETO
-      return addDays(dataEntrega, venda.prazo_pagamento_dias || 7);
     }
+    return calcularVencimentoPrazo(dataEntrega, {
+      tipo: venda.prazo_pagamento_tipo || 'dias',
+      dias: venda.prazo_pagamento_dias ?? (venda.forma_pagamento === 'PIX' ? 1 : 7),
+      diaSemana: venda.prazo_pagamento_dia_semana ?? null,
+      diasMinimos: venda.prazo_pagamento_dias_minimos ?? null,
+    });
   };
 
   const gerarDocumentoA4 = (venda: VendaGC): void => {
@@ -214,9 +216,14 @@ export function useGerarDocumentoVenda() {
     doc.text(`Valor: ${formatarMoeda(venda.valor_total)}`, margin, yPos);
     yPos += 5;
     
-    const formaPgtoLabel = venda.forma_pagamento === 'BOLETO' 
-      ? `Boleto (${venda.prazo_pagamento_dias || 7} dias)`
-      : venda.forma_pagamento;
+    const formaPgtoLabel = venda.forma_pagamento === 'DINHEIRO'
+      ? 'Dinheiro'
+      : `${venda.forma_pagamento === 'BOLETO' ? 'Boleto' : 'PIX'} (${descreverPrazo({
+          tipo: venda.prazo_pagamento_tipo || 'dias',
+          dias: venda.prazo_pagamento_dias ?? 7,
+          diaSemana: venda.prazo_pagamento_dia_semana ?? null,
+          diasMinimos: venda.prazo_pagamento_dias_minimos ?? null,
+        })})`;
     doc.text(`Forma: ${formaPgtoLabel}`, margin, yPos);
 
     // Linha de assinatura
@@ -372,9 +379,14 @@ export function useGerarDocumentoVenda() {
       doc.text(`Valor: R$ ${venda.valor_total.toFixed(2).replace('.', ',')}`, margin, yPos);
       yPos += 5;
       
-      const formaPgtoLabel = venda.forma_pagamento === 'BOLETO' 
-        ? `Boleto (${venda.prazo_pagamento_dias || 7} dias)`
-        : venda.forma_pagamento;
+      const formaPgtoLabel = venda.forma_pagamento === 'DINHEIRO'
+        ? 'Dinheiro'
+        : `${venda.forma_pagamento === 'BOLETO' ? 'Boleto' : 'PIX'} (${descreverPrazo({
+            tipo: venda.prazo_pagamento_tipo || 'dias',
+            dias: venda.prazo_pagamento_dias ?? 7,
+            diaSemana: venda.prazo_pagamento_dia_semana ?? null,
+            diasMinimos: venda.prazo_pagamento_dias_minimos ?? null,
+          })})`;
       doc.text(`Forma: ${formaPgtoLabel}`, margin, yPos);
 
       yPos += 25;
