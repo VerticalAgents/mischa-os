@@ -1,54 +1,73 @@
 ## Objetivo
 
-Ao clicar em **"Lista de Separação"** dentro do modal `ExpedicaoListasModal`, em vez de imprimir direto a lista com todos os pedidos filtrados, abrir um novo modal de seleção (estilo o `SeparacaoEmMassaDialog` / `GerarVendasEmMassaDialog`) para o usuário escolher quais pedidos entram na impressão. O modal também terá um **toggle "Gerar vendas no GestãoClick"** que, quando ligado, dispara a criação das vendas GC antes de imprimir.
+Flexibilizar o prazo de pagamento do cliente para:
+1. Aplicar também ao **PIX** (hoje só aparece para Boleto, e PIX é hardcoded em +1 dia).
+2. Permitir **digitar o prazo em dias** (input numérico livre), além das opções padrão.
+3. Adicionar um novo **tipo de prazo "Próximo dia da semana após N dias"** (ex.: primeira segunda-feira ≥ 7 dias após a entrega).
 
-## Comportamento
+## Mudanças no banco (clientes)
 
-1. Usuário abre **"Listas de Expedição"** → `ExpedicaoListasModal` (sem alterações no design dele).
-2. Clica em **"Lista de Separação"** → fecha esse modal e abre o novo **`SelecaoPedidosParaImpressaoDialog`**.
-3. Novo modal mostra:
-   - Lista completa de pedidos atualmente filtrados na aba (mesmo `listaParaModal` que hoje é usado direto).
-   - Checkbox por pedido (cliente, qtd, data, tipo) + "Selecionar todos" (já marcado por padrão → comportamento atual: tudo selecionado = lista igual à de hoje).
-   - Badge "X de Y selecionados".
-   - Toggle (`Switch`) **"Gerar vendas no GestãoClick ao imprimir"** — desligado por padrão.
-     - Mostra contador auxiliar: "N pedidos sem venda GC serão gerados" (filtrando os selecionados que ainda não têm `gestaoclick_venda_id`).
-     - Se todos selecionados já têm venda, o toggle aparece desabilitado com texto "Todos já têm venda gerada".
-   - Botão primário: **"Imprimir lista"** (ou "Gerar vendas e imprimir" quando o toggle está ligado).
-4. Ao confirmar:
-   - Se toggle ligado: chama o fluxo equivalente a `handleGerarVendasEmMassa` para os IDs selecionados sem `gestaoclick_venda_id`, aguarda, depois imprime.
-   - Se toggle desligado: imprime direto.
-   - Em ambos os casos, a impressão usa apenas os pedidos selecionados (subset do `listaAtual` já calculado em `getListaAtual()`).
+Adicionar 3 colunas em `public.clientes` (não destrutivo, defaults preservam comportamento atual):
 
-A aba **Despacho** segue chamando o mesmo fluxo (já que `PrintingActions` é compartilhado), então o comportamento se aplica nas duas abas.
+- `prazo_pagamento_tipo text not null default 'dias'` — valores: `'dias'` | `'proximo_dia_semana'`.
+- `prazo_pagamento_dia_semana smallint` — 0=Domingo … 6=Sábado (usado só quando tipo = `proximo_dia_semana`).
+- `prazo_pagamento_dias_minimos smallint` — dias mínimos antes do próximo dia da semana (usado só quando tipo = `proximo_dia_semana`).
 
-## Mudanças técnicas
+A coluna existente `prazo_pagamento_dias` continua sendo usada quando tipo = `'dias'`.
 
-### Novo componente
-- `src/components/expedicao/components/SelecaoPedidosImpressaoDialog.tsx`
-  - Props: `open`, `onOpenChange`, `pedidos` (array já filtrado), `tipoLista` (string para título), `onConfirm(pedidosSelecionados, gerarVendasGC: boolean)`.
-  - Reusa padrão visual de `SeparacaoEmMassaDialog` (header com ícone, ScrollArea, checkbox, badge de contagem).
-  - Adiciona `Switch` (`@/components/ui/switch`) para "Gerar vendas no GestãoClick".
-  - Estado interno: `selecionados: Set<string>`, `gerarVendasGC: boolean`, `loading`.
+## Mudanças no formulário do cliente (`ClienteFormDialog.tsx`)
 
-### `PrintingActions.tsx`
-- Adicionar estado `modalSelecaoSeparacaoAberto` + render do novo dialog.
-- Refatorar `imprimirListaSeparacao()` para aceitar uma lista explícita de pedidos (`imprimirListaSeparacao(pedidosCustom?: any[])`) — quando não recebe parâmetro, usa `getListaAtual()` como hoje (mantém compat com `handleSelectLista`).
-- Em `handleSelectLista`, ao receber `'separacao'`, abrir o novo modal em vez de imprimir direto.
-- Adicionar prop opcional `onGerarVendasGC?: (pedidoIds: string[]) => Promise<void>` em `PrintingActions` para que `SeparacaoPedidos` injete sua função `handleGerarVendasEmMassa` existente. `Despacho` pode passar o handler equivalente (ou `undefined`, escondendo o toggle se não fornecido).
-- Fluxo do confirm do novo modal:
-  ```
-  if (gerarVendasGC && onGerarVendasGC) {
-    const semVenda = selecionados.filter(p => !p.gestaoclick_venda_id).map(p => p.id);
-    await onGerarVendasGC(semVenda);
-  }
-  imprimirListaSeparacao(selecionados);
-  ```
+Na seção financeira, substituir o `Select` atual de prazo por um bloco condicional que aparece quando `formaPagamento` for **Boleto OU PIX**:
 
-### Pontos de uso
-- `SeparacaoPedidos.tsx`: passar `onGerarVendasGC={handleGerarVendasEmMassa}` para `PrintingActions`.
-- `Despacho.tsx`: se já existe handler equivalente, passar; senão deixar undefined (toggle some).
+1. Select "Tipo de prazo":
+   - "Dias corridos após a entrega"
+   - "Próximo dia da semana após N dias"
+2. Se tipo = "Dias corridos":
+   - `Input type="number"` livre (placeholder 7), com sugestões rápidas (chips: 7 / 14 / 21 / 28) que apenas preenchem o input.
+3. Se tipo = "Próximo dia da semana":
+   - Select "Dia da semana" (Dom…Sáb).
+   - `Input type="number"` "Dias mínimos antes" (ex.: 7).
+   - Texto explicativo: *"Ex.: entrega na sexta + 7 dias mínimos → vence na 2ª segunda-feira."*
+
+Atualizar tipos (`src/types/index.ts`), defaults (`utils/clienteDataSanitizer.ts`) e mapeamento camelCase ↔ snake_case para incluir os 3 novos campos.
+
+## Mudanças no cálculo de vencimento
+
+`src/components/expedicao/gestaoclick/useGerarDocumentoVenda.ts` → `calcularDataVencimento`:
+
+- `DINHEIRO` → mantém (entrega).
+- `PIX` e `BOLETO` → mesma lógica baseada nos novos campos:
+  - tipo `'dias'` → `addDays(entrega, prazo_pagamento_dias)`.
+  - tipo `'proximo_dia_semana'` → partindo de `addDays(entrega, dias_minimos)`, avançar até cair em `dia_semana`.
+
+Propagar os novos campos por:
+- `gestaoclick/types.ts` (`VendaGC`).
+- `GestaoClickTab.tsx` (select do cliente e montagem do payload da venda).
+
+Atualizar os rótulos exibidos no PDF/checkout que hoje dizem `Boleto (N dias)` para refletir o tipo escolhido (ex.: `Boleto (toda segunda-feira, mín. 7 dias)`).
+
+## Compatibilidade
+
+- Clientes existentes: `prazo_pagamento_tipo = 'dias'` por default → comportamento idêntico ao atual.
+- PIX antigo (hardcoded +1 dia): novos clientes/edição passam a respeitar o campo; clientes não tocados continuam com `prazoPagamentoDias` default 7 — **vou setar o default migrado para 1 apenas quando `forma_pagamento = 'PIX'` e o campo estiver nulo**, para não mudar vencimentos já existentes silenciosamente.
 
 ## Fora de escopo
-- Nada muda em `ExpedicaoListasModal` (cards "Lista de Separação" / "Lista de Documentos" continuam iguais).
-- Lista de Documentos e Etiquetas seguem como hoje.
-- Sem mudanças no HTML/CSS da impressão em si.
+
+- Não alterar UI de Expedição/GestãoClick além da propagação dos campos.
+- Não alterar regras de negócio do agendamento, separação, despacho ou impressão.
+
+## Detalhes técnicos
+
+```text
+calcularDataVencimento(venda):
+  base = entrega
+  if forma == DINHEIRO: return base
+  if tipo == 'dias':
+    return base + prazo_dias
+  if tipo == 'proximo_dia_semana':
+    d = base + dias_minimos
+    while weekday(d) != dia_semana: d += 1
+    return d
+```
+
+Arquivos a tocar: migration em `clientes`; `ClienteFormDialog.tsx`; `types/index.ts`; `utils/clienteDataSanitizer.ts`; `gestaoclick/types.ts`; `gestaoclick/useGerarDocumentoVenda.ts`; `expedicao/GestaoClickTab.tsx`.
