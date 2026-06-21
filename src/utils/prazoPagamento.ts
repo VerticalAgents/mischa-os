@@ -1,6 +1,9 @@
 import { addDays } from "date-fns";
 
-export type PrazoPagamentoTipo = "dias" | "proximo_dia_semana";
+export type PrazoPagamentoTipo =
+  | "dias"
+  | "proximo_dia_semana"
+  | "ultimo_dia_util_mes";
 
 export interface PrazoPagamentoConfig {
   tipo?: PrazoPagamentoTipo | null;
@@ -44,6 +47,15 @@ export function calcularVencimentoPrazo(
     }
     return d;
   }
+  if (tipo === "ultimo_dia_util_mes") {
+    // último dia útil (seg–sex) do mês da data base
+    let d = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+    // se cair em sábado (6) recua 1 dia, se domingo (0) recua 2
+    while (d.getDay() === 0 || d.getDay() === 6) {
+      d = addDays(d, -1);
+    }
+    return d;
+  }
   const dias = Math.max(0, Number(config.dias ?? 0));
   return addDays(base, dias);
 }
@@ -56,6 +68,9 @@ export function descreverPrazo(config: PrazoPagamentoConfig): string {
   if (tipo === "proximo_dia_semana") {
     const min = Number(config.diasMinimos ?? 0);
     return `próxima ${diaSemanaLabel(config.diaSemana ?? 1)} (mín. ${min} dias)`;
+  }
+  if (tipo === "ultimo_dia_util_mes") {
+    return `último dia útil do mês`;
   }
   return `${Number(config.dias ?? 0)} dias`;
 }

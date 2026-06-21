@@ -1,0 +1,2 @@
+ALTER TABLE public.clientes DROP CONSTRAINT IF EXISTS clientes_prazo_pagamento_tipo_check;
+ALTER TABLE public.clientes ADD CONSTRAINT clientes_prazo_pagamento_tipo_check CHECK (prazo_pagamento_tipo IN ('dias','proximo_dia_semana','ultimo_dia_util_mes'));
