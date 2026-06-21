@@ -61,7 +61,7 @@ export interface Cliente {
   tipoCobranca: TipoCobranca;
   formaPagamento: FormaPagamentoNome;
   prazoPagamentoDias?: number; // Prazo em dias (quando prazoPagamentoTipo='dias')
-  prazoPagamentoTipo?: 'dias' | 'proximo_dia_semana';
+  prazoPagamentoTipo?: 'dias' | 'proximo_dia_semana' | 'ultimo_dia_util_mes';
   prazoPagamentoDiaSemana?: number | null; // 0=Dom..6=Sab
   prazoPagamentoDiasMinimos?: number | null;
   observacoes?: string;

@@ -26,7 +26,7 @@ export interface VendaGC {
   forma_pagamento: string;
   tipo_cobranca: string;
   prazo_pagamento_dias: number;
-  prazo_pagamento_tipo?: 'dias' | 'proximo_dia_semana';
+  prazo_pagamento_tipo?: 'dias' | 'proximo_dia_semana' | 'ultimo_dia_util_mes';
   prazo_pagamento_dia_semana?: number | null;
   prazo_pagamento_dias_minimos?: number | null;
   data_proxima_reposicao: string;

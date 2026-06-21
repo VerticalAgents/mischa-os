@@ -790,6 +790,7 @@ export default function ClienteFormDialog({
                             <SelectContent>
                               <SelectItem value="dias">Dias corridos após a entrega</SelectItem>
                               <SelectItem value="proximo_dia_semana">Próximo dia da semana após N dias</SelectItem>
+                              <SelectItem value="ultimo_dia_util_mes">Último dia útil do mês</SelectItem>
                             </SelectContent>
                           </Select>
 
@@ -815,7 +816,7 @@ export default function ClienteFormDialog({
                                 ))}
                               </div>
                             </div>
-                          ) : (
+                          ) : tipoPrazo === 'proximo_dia_semana' ? (
                             <div className="grid grid-cols-2 gap-2">
                               <Select
                                 value={String((formData as any).prazoPagamentoDiaSemana ?? 1)}
@@ -842,11 +843,20 @@ export default function ClienteFormDialog({
                                 placeholder="Dias mínimos"
                               />
                             </div>
+                          ) : (
+                            <div className="flex items-center text-sm text-muted-foreground px-3 py-2 rounded border border-input bg-muted/30">
+                              Vence sempre no último dia útil (seg–sex) do mês da entrega.
+                            </div>
                           )}
                         </div>
                         {tipoPrazo === 'proximo_dia_semana' && (
                           <p className="text-xs text-muted-foreground">
                             Ex.: entrega sexta + 7 dias mínimos → vence na 2ª segunda-feira após a entrega.
+                          </p>
+                        )}
+                        {tipoPrazo === 'ultimo_dia_util_mes' && (
+                          <p className="text-xs text-muted-foreground">
+                            Ideal para clientes que acumulam pagamentos e fecham uma vez por mês.
                           </p>
                         )}
                       </div>

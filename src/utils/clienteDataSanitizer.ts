@@ -435,7 +435,9 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
   sanitized.prazoPagamentoDias = intOrNull(sanitized.prazoPagamentoDias) ?? 7;
   const tipoPrazo = (sanitized as any).prazoPagamentoTipo;
   (sanitized as any).prazoPagamentoTipo =
-    tipoPrazo === 'proximo_dia_semana' ? 'proximo_dia_semana' : 'dias';
+    tipoPrazo === 'proximo_dia_semana' || tipoPrazo === 'ultimo_dia_util_mes'
+      ? tipoPrazo
+      : 'dias';
   (sanitized as any).prazoPagamentoDiaSemana = intOrNull((sanitized as any).prazoPagamentoDiaSemana);
   (sanitized as any).prazoPagamentoDiasMinimos = intOrNull((sanitized as any).prazoPagamentoDiasMinimos);
 
