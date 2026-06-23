@@ -409,7 +409,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       
       const todosPrevistos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto");
       const agendamentosConfirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado");
+      const agendamentosSeparados = agendamentosConfirmados.filter(a => a.substatus_pedido === "Separado");
       const agendamentosDespachados = agendamentosConfirmados.filter(a => a.substatus_pedido === "Despachado");
+      const agendamentosApenasConfirmados = agendamentosConfirmados.filter(a => a.substatus_pedido !== "Separado" && a.substatus_pedido !== "Despachado");
 
       const destacarProvaveis = incluirPrevistos && modoPrevistos === 'provaveis';
       const agendamentosProvaveis = destacarProvaveis
@@ -450,7 +452,8 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         diaSemana: format(dia, 'EEEE', { locale: ptBR }),
         previstos: agendamentosPrevistos.length,
         provaveis: agendamentosProvaveis.length,
-        confirmados: agendamentosConfirmados.length,
+        confirmados: agendamentosApenasConfirmados.length,
+        separados: agendamentosSeparados.length,
         despachados: agendamentosDespachados.length,
         realizadas: entregasRealizadasDia.length,
         previstosUnidades: unidadesPrevistos,
@@ -1317,7 +1320,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                   {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.confirmados} Confirmados
                     </Badge>}
-                  {dia.despachados > 0 && <Badge variant="outline" className="text-[10px] bg-green-200 text-green-900 border-green-300 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.separados > 0 && <Badge variant="outline" className="text-[10px] bg-green-200 text-green-900 border-green-300 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                      {dia.separados} Separados
+                    </Badge>}
+                  {dia.despachados > 0 && <Badge variant="outline" className="text-[10px] bg-green-400 text-green-950 border-green-500 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.despachados} Despachados
                     </Badge>}
                   {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
