@@ -1435,13 +1435,31 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                       const numeroEntregas = frequenciaInfo?.numeroEntregas ?? 0;
 
                       const scoreCard = confirmationScores.get(agendamento.cliente.id)?.score ?? -1;
+                      const sub = agendamento.substatus_pedido;
                       const getBackgroundColor = () => {
-                        if (agendamento.statusAgendamento === "Agendado") return "bg-green-50";
+                        if (agendamento.statusAgendamento === "Agendado") {
+                          if (sub === "Despachado") return "bg-green-200 border-green-300";
+                          if (sub === "Separado") return "bg-green-100 border-green-200";
+                          return "bg-green-50";
+                        }
                         if (agendamento.statusAgendamento === "Previsto") {
                           return scoreCard > 85 ? "bg-purple-50 border-purple-200" : "bg-yellow-50";
                         }
                         return "bg-gray-50";
                       };
+                      const substatusBadge = agendamento.statusAgendamento === "Agendado" ? (
+                        sub === "Despachado" ? (
+                          <Badge variant="outline" className="bg-green-400 text-green-950 border-green-500">Despachado</Badge>
+                        ) : sub === "Separado" ? (
+                          <Badge variant="outline" className="bg-green-200 text-green-900 border-green-300">Separado</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">Confirmado</Badge>
+                        )
+                      ) : (
+                        <Badge variant={agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
+                          {agendamento.statusAgendamento}
+                        </Badge>
+                      );
 
                       return (
                         <div key={agendamento.cliente.id} className={`flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
@@ -1452,9 +1470,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             {/* Badges de status — linha própria abaixo do nome no mobile */}
                             <div className="flex items-center gap-1.5 flex-wrap mt-1 sm:hidden">
                               <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
-                              <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
-                                {agendamento.statusAgendamento}
-                              </Badge>
+                              {substatusBadge}
                             </div>
                             <div className="text-sm text-muted-foreground text-left mt-0.5">
                               Quantidade: {quantidade} unidades
@@ -1483,9 +1499,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             {/* Badges de status — só no desktop */}
                             <div className="hidden sm:flex items-center gap-2 flex-wrap">
                               <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
-                              <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
-                                {agendamento.statusAgendamento}
-                              </Badge>
+                              {substatusBadge}
                             </div>
 
                             {/* Botões — mobile: full width grandes / desktop: ícones compactos */}
@@ -1525,8 +1539,16 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
 
                   return (
                     <>
-                      {/* Agendados (confirmados) - lista simples */}
-                      {agendados.map(renderCard)}
+                      {/* Agendados (confirmados) - ordenados: Confirmado → Separado → Despachado */}
+                      {agendados
+                        .slice()
+                        .sort((a, b) => {
+                          const order = (s?: string) => s === "Despachado" ? 2 : s === "Separado" ? 1 : 0;
+                          const diff = order(a.substatus_pedido) - order(b.substatus_pedido);
+                          if (diff !== 0) return diff;
+                          return a.cliente.nome.localeCompare(b.cliente.nome);
+                        })
+                        .map(renderCard)}
 
                       {/* Previstos agrupados por representante */}
                       {gruposOrdenados.map(([nomeRepresentante, items]) => (
