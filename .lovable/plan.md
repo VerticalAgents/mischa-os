@@ -1,36 +1,29 @@
-## Sub-badge "Despachados" no Calendário Semanal
+## Problema
 
-Adicionar, logo abaixo do badge "X Confirmados" de cada dia do Calendário Semanal (Dashboard de Agendamento), um sub-badge em verde mais escuro mostrando quantos desses confirmados já estão despachados.
+Na aba **Projeção de Produção** (PCP), o card "Produtos Necessários" mostra **1803 (41 pedidos)**, contando todos os agendamentos confirmados da semana — inclusive os que já foram **Separados** e **Despachados**.
 
-### Onde
-`src/components/agendamento/AgendamentoDashboard.tsx`
+O card correto está na aba **Separação** da Expedição, que mostra **922 (19 pedidos)** — apenas os confirmados que ainda **não** foram separados/despachados (usa o filtro em `ResumoQuantidadeProdutos.tsx`: `pedido.substatus_pedido === 'Separado' || 'Despachado'` → exclui).
 
-### O que mudar
+## Correção
 
-1. No `useMemo` que monta `dadosGraficoSemanal` (~linha 410-462), calcular um novo campo `despachados` por dia:
-   ```ts
-   const despachados = agendamentosConfirmados.filter(
-     a => a.substatus_pedido === "Despachado"
-   ).length;
-   ```
-   e incluí-lo no objeto retornado por dia.
+Em `src/components/pcp/ProjecaoProducaoTab.tsx`, no memo `agendamentosConfirmadosSemana` (linha ~54), adicionar filtro para excluir agendamentos cujo `substatus_pedido` seja `"Separado"` ou `"Despachado"`:
 
-2. Na renderização do card de cada dia (~linha 1314-1332), logo após o badge `Confirmados`, renderizar condicionalmente o sub-badge quando `dia.despachados > 0`:
-   ```tsx
-   {dia.confirmados > 0 && (
-     <>
-       <Badge ...> {dia.confirmados} Confirmados </Badge>
-       {dia.despachados > 0 && (
-         <Badge variant="outline"
-           className="text-[10px] bg-green-200 text-green-900 border-green-300 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
-           {dia.despachados} Despachados
-         </Badge>
-       )}
-     </>
-   )}
-   ```
+```ts
+const agendamentosConfirmadosSemana = useMemo(() => {
+  return agendamentos.filter(a => {
+    const d = new Date(a.dataReposicao);
+    return d >= inicioSemana
+      && d <= fimSemana
+      && a.statusAgendamento === "Agendado"
+      && a.substatus_pedido !== "Separado"
+      && a.substatus_pedido !== "Despachado";
+  });
+}, [agendamentos, inicioSemana, fimSemana]);
+```
 
-### Observações
-- Verde levemente mais escuro: `bg-green-200 text-green-900 border-green-300` (atual confirmados usa `green-100/700/200`).
-- Não altera lógica de cálculo de previstos/prováveis nem nenhuma outra aba — apenas leitura de `substatus_pedido` já existente nos agendamentos.
-- Nada a mexer em backend.
+Isso alinha o cálculo de produtos necessários do PCP com o card da aba Separação: apenas pedidos confirmados que ainda precisam ser separados entram na conta de produção. Os agendamentos `Previstos` (quando o toggle "Incluir previstos" está ativo) não são afetados, pois substatus é exclusivo de pedidos confirmados.
+
+## Escopo
+
+- 1 arquivo alterado: `src/components/pcp/ProjecaoProducaoTab.tsx`
+- Sem mudanças em hooks, RPCs ou banco de dados.

@@ -54,7 +54,11 @@ export default function ProjecaoProducaoTab() {
   const agendamentosConfirmadosSemana = useMemo(() => {
     return agendamentos.filter(a => {
       const d = new Date(a.dataReposicao);
-      return d >= inicioSemana && d <= fimSemana && a.statusAgendamento === "Agendado";
+      return d >= inicioSemana
+        && d <= fimSemana
+        && a.statusAgendamento === "Agendado"
+        && a.substatus_pedido !== "Separado"
+        && a.substatus_pedido !== "Despachado";
     });
   }, [agendamentos, inicioSemana, fimSemana]);
 
