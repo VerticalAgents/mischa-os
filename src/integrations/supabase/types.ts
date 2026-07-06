@@ -573,6 +573,101 @@ export type Database = {
           },
         ]
       }
+      clientes_industriais: {
+        Row: {
+          ativo: boolean
+          cnpj: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          owner_id: string
+          preco_industrializacao_unitario: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          owner_id?: string
+          preco_industrializacao_unitario?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          owner_id?: string
+          preco_industrializacao_unitario?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coletas_pl: {
+        Row: {
+          cliente_industrial_id: string
+          created_at: string
+          data_coleta: string
+          id: string
+          itens: Json
+          nota_fiscal: string | null
+          observacoes: string | null
+          owner_id: string
+          updated_at: string
+          valor_total: number
+        }
+        Insert: {
+          cliente_industrial_id: string
+          created_at?: string
+          data_coleta?: string
+          id?: string
+          itens?: Json
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          owner_id?: string
+          updated_at?: string
+          valor_total?: number
+        }
+        Update: {
+          cliente_industrial_id?: string
+          created_at?: string
+          data_coleta?: string
+          id?: string
+          itens?: Json
+          nota_fiscal?: string | null
+          observacoes?: string | null
+          owner_id?: string
+          updated_at?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coletas_pl_cliente_industrial_id_fkey"
+            columns: ["cliente_industrial_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_industriais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       componentes_produto: {
         Row: {
           created_at: string
@@ -1069,6 +1164,68 @@ export type Database = {
         }
         Relationships: []
       }
+      insumos_pl: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          cliente_industrial_id: string
+          created_at: string
+          estoque_atual: number
+          estoque_ideal: number | null
+          estoque_minimo: number
+          id: string
+          nome: string
+          observacoes: string | null
+          owner_id: string
+          ultima_entrada: string | null
+          unidade_medida: string
+          updated_at: string
+          volume_bruto: number
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          cliente_industrial_id: string
+          created_at?: string
+          estoque_atual?: number
+          estoque_ideal?: number | null
+          estoque_minimo?: number
+          id?: string
+          nome: string
+          observacoes?: string | null
+          owner_id?: string
+          ultima_entrada?: string | null
+          unidade_medida?: string
+          updated_at?: string
+          volume_bruto?: number
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          cliente_industrial_id?: string
+          created_at?: string
+          estoque_atual?: number
+          estoque_ideal?: number | null
+          estoque_minimo?: number
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          owner_id?: string
+          ultima_entrada?: string | null
+          unidade_medida?: string
+          updated_at?: string
+          volume_bruto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumos_pl_cliente_industrial_id_fkey"
+            columns: ["cliente_industrial_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_industriais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integracoes_config: {
         Row: {
           config: Json
@@ -1328,6 +1485,53 @@ export type Database = {
           },
         ]
       }
+      movimentacoes_estoque_insumos_pl: {
+        Row: {
+          created_at: string
+          data_movimentacao: string
+          id: string
+          insumo_pl_id: string
+          observacao: string | null
+          owner_id: string
+          quantidade: number
+          referencia_id: string | null
+          referencia_tipo: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          insumo_pl_id: string
+          observacao?: string | null
+          owner_id?: string
+          quantidade: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          insumo_pl_id?: string
+          observacao?: string | null
+          owner_id?: string
+          quantidade?: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_estoque_insumos_pl_insumo_pl_id_fkey"
+            columns: ["insumo_pl_id"]
+            isOneToOne: false
+            referencedRelation: "insumos_pl"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes_estoque_produtos: {
         Row: {
           created_at: string
@@ -1363,6 +1567,110 @@ export type Database = {
           tipo?: string
         }
         Relationships: []
+      }
+      movimentacoes_estoque_produtos_pl: {
+        Row: {
+          created_at: string
+          data_movimentacao: string
+          id: string
+          observacao: string | null
+          owner_id: string
+          produto_pl_id: string
+          quantidade: number
+          referencia_id: string | null
+          referencia_tipo: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          observacao?: string | null
+          owner_id?: string
+          produto_pl_id: string
+          quantidade: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          observacao?: string | null
+          owner_id?: string
+          produto_pl_id?: string
+          quantidade?: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_estoque_produtos_pl_produto_pl_id_fkey"
+            columns: ["produto_pl_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_pl"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_producao_pl: {
+        Row: {
+          cliente_industrial_id: string
+          created_at: string
+          data_producao: string
+          id: string
+          observacoes: string | null
+          owner_id: string
+          produto_pl_id: string
+          quantidade_planejada: number
+          quantidade_produzida: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_industrial_id: string
+          created_at?: string
+          data_producao?: string
+          id?: string
+          observacoes?: string | null
+          owner_id?: string
+          produto_pl_id: string
+          quantidade_planejada: number
+          quantidade_produzida?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_industrial_id?: string
+          created_at?: string
+          data_producao?: string
+          id?: string
+          observacoes?: string | null
+          owner_id?: string
+          produto_pl_id?: string
+          quantidade_planejada?: number
+          quantidade_produzida?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_producao_pl_cliente_industrial_id_fkey"
+            columns: ["cliente_industrial_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_industriais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_producao_pl_produto_pl_id_fkey"
+            columns: ["produto_pl_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_pl"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       parcelamentos: {
         Row: {
@@ -1712,6 +2020,59 @@ export type Database = {
         }
         Relationships: []
       }
+      produtos_pl: {
+        Row: {
+          ativo: boolean
+          cliente_industrial_id: string
+          created_at: string
+          descricao: string | null
+          estoque_atual: number
+          estoque_minimo: number
+          id: string
+          nome: string
+          owner_id: string
+          peso_unitario: number | null
+          unidades_producao: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cliente_industrial_id: string
+          created_at?: string
+          descricao?: string | null
+          estoque_atual?: number
+          estoque_minimo?: number
+          id?: string
+          nome: string
+          owner_id?: string
+          peso_unitario?: number | null
+          unidades_producao?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cliente_industrial_id?: string
+          created_at?: string
+          descricao?: string | null
+          estoque_atual?: number
+          estoque_minimo?: number
+          id?: string
+          nome?: string
+          owner_id?: string
+          peso_unitario?: number | null
+          unidades_producao?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_pl_cliente_industrial_id_fkey"
+            columns: ["cliente_industrial_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_industriais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1873,6 +2234,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      receitas_pl: {
+        Row: {
+          created_at: string
+          id: string
+          insumo_pl_id: string
+          observacoes: string | null
+          owner_id: string
+          produto_pl_id: string
+          quantidade: number
+          unidade_medida: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insumo_pl_id: string
+          observacoes?: string | null
+          owner_id?: string
+          produto_pl_id: string
+          quantidade: number
+          unidade_medida?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insumo_pl_id?: string
+          observacoes?: string | null
+          owner_id?: string
+          produto_pl_id?: string
+          quantidade?: number
+          unidade_medida?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receitas_pl_insumo_pl_id_fkey"
+            columns: ["insumo_pl_id"]
+            isOneToOne: false
+            referencedRelation: "insumos_pl"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receitas_pl_produto_pl_id_fkey"
+            columns: ["produto_pl_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_pl"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rendimentos_receita_produto: {
         Row: {
@@ -2730,7 +3142,9 @@ export type Database = {
         Returns: undefined
       }
       saldo_insumo: { Args: { i_id: string }; Returns: number }
+      saldo_insumo_pl: { Args: { i_id: string }; Returns: number }
       saldo_produto: { Args: { p_id: string }; Returns: number }
+      saldo_produto_pl: { Args: { p_id: string }; Returns: number }
       validate_cnpj_cpf: { Args: { doc: string }; Returns: boolean }
       validate_email: { Args: { email: string }; Returns: boolean }
     }
