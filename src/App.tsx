@@ -56,6 +56,7 @@ const Security = lazy(() => import('@/pages/Security'));
 const ControleTrocas = lazy(() => import('@/pages/ControleTrocas'));
 const Reagendamentos = lazy(() => import('@/pages/Reagendamentos'));
 const Modulos = lazy(() => import('@/pages/Modulos'));
+const PrivateLabel = lazy(() => import('@/pages/PrivateLabel'));
 
 // Páginas dedicadas para representantes comerciais
 const RepHome = lazy(() => import('@/pages/rep/RepHome'));
@@ -372,6 +373,13 @@ function App() {
                         <ProtectedRoute>
                           <AppLayout>
                             <Modulos />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/private-label" element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <PrivateLabel />
                           </AppLayout>
                         </ProtectedRoute>
                       } />
