@@ -5,7 +5,7 @@ import {
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
   BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin,
-  Shield, RefreshCw, CalendarClock, Blocks
+  Shield, RefreshCw, CalendarClock, Blocks, Factory
 } from "lucide-react";
 
 export type MenuItem = {
@@ -65,6 +65,11 @@ export const menuGroups: MenuGroup[] = [
         label: "Reagendamentos",
         path: "/reagendamentos",
         icon: <CalendarClock className="h-4 w-4" />,
+      },
+      {
+        label: "Private-Label",
+        path: "/private-label",
+        icon: <Factory className="h-4 w-4" />,
       },
     ]
   },
