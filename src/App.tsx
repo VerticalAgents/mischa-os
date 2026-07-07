@@ -375,13 +375,6 @@ function App() {
                           </AppLayout>
                         </ProtectedRoute>
                       } />
-                      <Route path="/private-label" element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <PrivateLabel />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      } />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
