@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
 import { useSupabasePrecosCategoriaCliente } from './useSupabasePrecosCategoriaCliente';
 import { useClienteStore } from './useClienteStore';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 
 interface IndicadoresEntregas {
   totalEntregas: number;
@@ -26,7 +27,10 @@ export const useEntregasIndicadores = (dataInicio: string, dataFim: string) => {
 
   const { carregarHistorico, registros } = useHistoricoEntregasStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  // Blindagem PL: entregas ignoram clientes puramente industriais
+  const clientes = clientesTodos.filter(isClienteOperacional);
+  const clienteIdsOperacionais = new Set(clientes.map(c => c.id));
 
   // Função para buscar preços com cache
   const obterPrecosPorCliente = async (clienteId: string) => {
@@ -103,6 +107,8 @@ export const useEntregasIndicadores = (dataInicio: string, dataFim: string) => {
       
       const entregasPeriodo = registros.filter(h => {
         const dataEntrega = new Date(h.data);
+        // Blindagem PL: excluir entregas de clientes puramente industriais
+        if (!clienteIdsOperacionais.has(h.cliente_id)) return false;
         return dataEntrega >= dataInicioDate && dataEntrega <= dataFimDate;
       });
 
