@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
 import { useConfiguracoesStore } from '@/hooks/useConfiguracoesStore';
 import { useSupabasePrecosCategoriaCliente } from '@/hooks/useSupabasePrecosCategoriaCliente';
@@ -31,7 +32,9 @@ export function useFaturamentoPrevisto() {
     faturamentoSemanal: number;
   }>>([]);
 
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  // Blindagem PL: faturamento previsto ignora clientes puramente industriais
+  const clientes = clientesTodos.filter(isClienteOperacional);
   const { categorias } = useSupabaseCategoriasProduto();
   const { obterConfiguracao } = useConfiguracoesStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
