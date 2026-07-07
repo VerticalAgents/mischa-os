@@ -17,43 +17,6 @@ export interface ClienteIndustrial {
   updated_at: string;
 }
 
-export interface InsumoPL {
-  id: string;
-  cliente_industrial_id: string;
-  nome: string;
-  categoria: string;
-  volume_bruto: number;
-  unidade_medida: string;
-  estoque_atual: number;
-  estoque_minimo: number;
-  estoque_ideal: number | null;
-  ultima_entrada: string | null;
-  observacoes: string | null;
-  ativo: boolean;
-}
-
-export interface ProdutoPL {
-  id: string;
-  cliente_industrial_id: string;
-  nome: string;
-  descricao: string | null;
-  peso_unitario: number | null;
-  unidades_producao: number;
-  estoque_atual: number;
-  estoque_minimo: number;
-  ativo: boolean;
-}
-
-export interface ReceitaPLItem {
-  id: string;
-  produto_pl_id: string;
-  insumo_pl_id: string;
-  quantidade: number;
-  unidade_medida: string;
-  observacoes: string | null;
-  insumo?: InsumoPL;
-}
-
 function handleErr(prefix: string, error: any) {
   console.error(prefix, error);
   toast({ title: prefix, description: error?.message || 'Erro desconhecido', variant: 'destructive' });
