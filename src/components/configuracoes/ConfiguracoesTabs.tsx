@@ -20,6 +20,7 @@ import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
 import IntegracoesGestaoClickTab from "./tabs/IntegracoesGestaoClickTab";
 import TiposAcessoTab from "./tabs/TiposAcessoTab";
 import FuncionariosTab from "./tabs/FuncionariosTab";
+import ClientesIndustriaisConfigTab from "./tabs/ClientesIndustriaisTab";
 
 // Mapeamento de componentes por ID
 const tabComponents: Record<string, React.ComponentType> = {
@@ -40,6 +41,7 @@ const tabComponents: Record<string, React.ComponentType> = {
   "gestaoclick": IntegracoesGestaoClickTab,
   "funcionarios": FuncionariosTab,
   "tipos-acesso": TiposAcessoTab,
+  "clientes-industriais": ClientesIndustriaisConfigTab,
 };
 
 export default function ConfiguracoesTabs() {

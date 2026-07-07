@@ -66,11 +66,6 @@ export const menuGroups: MenuGroup[] = [
         path: "/reagendamentos",
         icon: <CalendarClock className="h-4 w-4" />,
       },
-      {
-        label: "Private-Label",
-        path: "/private-label",
-        icon: <Factory className="h-4 w-4" />,
-      },
     ]
   },
   {

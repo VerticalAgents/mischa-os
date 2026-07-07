@@ -62,6 +62,7 @@ const configGroups = [
       { id: "clientes", label: "Comercial", icon: Users },
       { id: "agendamento", label: "Agendamento", icon: Calendar },
       { id: "producao", label: "Produção", icon: Factory },
+      { id: "clientes-industriais", label: "Clientes Industriais (PL)", icon: Factory },
     ]
   },
   {
