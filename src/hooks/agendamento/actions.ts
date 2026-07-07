@@ -7,6 +7,7 @@ import {
   convertToAgendamentoItem, 
   convertAgendamentoToDbFormat 
 } from './utils';
+import { isRowClienteOperacional } from '@/utils/clienteTipo';
 
 export const createAgendamentoActions = (
   get: () => any,
@@ -30,13 +31,18 @@ export const createAgendamentoActions = (
         throw error;
       }
 
-      const agendamentosConvertidos = data?.map(row => 
+      // Blindagem PL: excluir agendamentos de clientes puramente industriais
+      const dataOperacional = (data || []).filter((row: any) =>
+        isRowClienteOperacional(row.clientes)
+      );
+
+      const agendamentosConvertidos = dataOperacional.map((row: any) =>
         convertToAgendamentoItem(row, row.clientes)
-      ) || [];
+      );
 
       // Armazenar agendamentos completos no cache
       const agendamentosCompletosMapa = new Map();
-      data?.forEach(row => {
+      dataOperacional.forEach((row: any) => {
         agendamentosCompletosMapa.set(row.cliente_id, convertDbRowToAgendamento(row));
       });
       
