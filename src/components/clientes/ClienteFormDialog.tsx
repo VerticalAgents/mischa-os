@@ -323,7 +323,9 @@ export default function ClienteFormDialog({
     categoriaId: cliente?.categoriaId || 0,
     subcategoriaId: cliente?.subcategoriaId || 0,
     gestaoClickClienteId: formData.gestaoClickClienteId || '',
-    desabilitarReagendamento: formData.desabilitarReagendamento || false
+    desabilitarReagendamento: formData.desabilitarReagendamento || false,
+    tipoCliente: formData.tipoCliente || 'PDV',
+    precoIndustrializacaoUnitario: formData.precoIndustrializacaoUnitario ?? null,
   };
 
   return (
