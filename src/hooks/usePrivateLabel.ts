@@ -71,4 +71,3 @@ export function useClientesIndustriais() {
 
   return { clientes, loading, carregar, criar, atualizar, remover };
 }
-}
