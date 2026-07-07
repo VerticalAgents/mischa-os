@@ -1,76 +1,76 @@
-## Contexto
+# Plano: Private-Label integrado (Opção 3)
 
-Nova operação de **private-label (industrialização)** pra uma indústria de alfajores: eles mandam os insumos, você industrializa (produz brownies com a marca deles), eles coletam. Insumos e produtos ficam totalmente segregados dos da Mischa's. Cobrança é por unidade produzida.
+Objetivo: eliminar a aba `/private-label` e integrar a operação de industrialização nos fluxos já existentes (Estoque, PCP, Expedição, DRE), mantendo `clientes_industriais` como tabela separada e marcando insumos/produtos consignados via `cliente_industrial_id`.
 
-## Modelo de dados
+Princípio norteador: **nenhuma query existente pode mudar de comportamento por padrão**. Todas as leituras atuais passam a filtrar `cliente_industrial_id IS NULL` para continuar mostrando só o universo Mischa's. Quem quiser ver PL opta explicitamente.
 
-Todas as tabelas novas herdam RLS pelo padrão `get_owner_id(auth.uid())`.
+---
 
-### 1. `clientes_industriais`
-Cadastro do parceiro private-label.
-- `nome`, `cnpj`, `contato_nome/email/telefone`, `endereco`
-- `preco_industrializacao_unitario` (R$ por unidade)
-- `ativo`
+## Fase 0 — Migração de schema (não destrutiva)
 
-### 2. `insumos_pl` (insumos consignados)
-Espelho de `insumos`, mas do cliente. Campos idênticos + `cliente_industrial_id`. Custo = 0 (não é seu). Estoque próprio.
+1. Manter `clientes_industriais` (já criada). Remover `produtos_pl`, `insumos_pl`, `receitas_pl`, `movimentacoes_estoque_*_pl`, `ordens_producao_pl`, `coletas_pl` — não estão em uso.
+2. Adicionar colunas nullable:
+   - `insumos.cliente_industrial_id uuid null references clientes_industriais(id)`
+   - `produtos_finais.cliente_industrial_id uuid null references clientes_industriais(id)`
+   - `itens_receita` já aponta pra insumo/produto — herda naturalmente.
+   - `historico_producao.cliente_industrial_id uuid null` (marca a ordem como PL).
+   - `historico_entregas.cliente_industrial_id uuid null` + `tipo_movimento text` (`venda` default, `coleta_pl`) — coletas viram um tipo de "entrega".
+3. Índices parciais em `cliente_industrial_id` para performance.
+4. RLS: policies atuais já filtram por `owner_id`; nada muda. Adicionar constraint: se produto tem `cliente_industrial_id`, todos os insumos da receita têm que ter o mesmo `cliente_industrial_id` (trigger de validação).
+5. Custo dos insumos PL: manter campo `custo_medio` mas ignorar em cálculos de DRE de venda (não é seu custo). Adicionar helper SQL `is_insumo_pl(insumo_id)`.
 
-### 3. `produtos_pl` (SKUs private-label)
-Espelho reduzido de `produtos_finais` + `cliente_industrial_id`. Não aparece em Clientes, Agendamento, Expedição normal, DRE de venda.
+## Fase 1 — Cadastro do cliente industrial
 
-### 4. `receitas_pl` (fichas técnicas PL)
-Ficha de cada produto PL apontando pra `insumos_pl` (nunca pros seus).
+- Nova sub-aba em **Configurações** → "Clientes Industriais" (CRUD simples do que já existe em `ClientesIndustriaisTab.tsx`, movido pra lá).
+- Remover rota `/private-label` do `App.tsx` e item do sidebar.
 
-### 5. `movimentacoes_estoque_insumos_pl` e `movimentacoes_estoque_produtos_pl`
-Espelham as tabelas existentes, com triggers `saldo_*_pl`, `sync_estoque_*_pl` e `prevent_negative_*_pl`.
+## Fase 2 — Estoque integrado com filtro
 
-### 6. `ordens_producao_pl`
-- `cliente_industrial_id`, `produto_pl_id`, `quantidade_planejada`, `quantidade_produzida`
-- `data_producao`, `status` (Planejada / Em produção / Concluída / Coletada)
-- Ao concluir: baixa insumos PL (via receita) e entra produto PL no estoque.
+- Em **Estoque → Insumos** e **Estoque → Produtos**: adicionar filtro `Contexto: [Mischa's | Alfajor XYZ | Todos]` no topo. Default = "Mischa's" (comportamento atual preservado).
+- Cadastro de insumo/produto ganha campo opcional "Pertence a cliente industrial" (select). Se preenchido, o item vira PL.
+- Visualmente: linhas PL ganham badge colorido com nome do cliente.
+- Entradas de estoque PL: mesmo dialog de movimentação; ao registrar, custo = 0 automático (bloqueado no form quando `cliente_industrial_id` presente).
+- **Blindagem**: todos os hooks que hoje carregam insumos/produtos pra telas de Mischa's (agendamento, precificação, DRE de venda, análise de giro, expedição normal, sugestão de produção Mischa's) passam a filtrar `cliente_industrial_id IS NULL`. Auditar: `useSupabaseInsumos`, `useSupabaseProdutos`, `useProdutoStore`, `useInsumoStore`, `useEstoqueProdutos`, `useEstoqueDisponivel`, `useProdutosAtivos`, `useEstoqueComExpedicao`, `useNecessidadeInsumos`, `useListaComprasAutomatica`, `useConsumoSemanalInsumos`, `usePrecificacaoClienteStore`, hooks de DRE e giro.
 
-### 7. `coletas_pl`
-- `cliente_industrial_id`, `data_coleta`, `itens` (produto_pl_id + quantidade), `nota_fiscal`
-- Ao registrar: baixa estoque de produtos PL e alimenta faturamento.
+## Fase 3 — Fichas técnicas PL
 
-### 8. `faturamento_pl` (view ou tabela derivada)
-Soma unidades coletadas × `preco_industrializacao_unitario` por período. Vai pro DRE como **receita de serviço** (categoria nova, separada de venda de produto).
+- Ficha técnica reaproveita `itens_receita`. Ao criar receita pra produto PL, o dialog de seleção de insumos filtra automaticamente pelo mesmo `cliente_industrial_id` do produto (não deixa misturar consignado com Mischa's).
+- Validação por trigger no banco reforça a regra.
 
-## Telas (fase única, entregas incrementais)
+## Fase 4 — Produção integrada no PCP
 
-Nova rota `/private-label` com sub-abas:
+- **PCP** ganha seção "Ordens Private-Label" ao lado das ordens Mischa's (mesma tela, agrupamento visual).
+- Nova origem de ordem: usuário abre "Nova ordem PL", escolhe cliente industrial + produto PL + quantidade. Entra na mesma fila de `historico_producao` com `cliente_industrial_id` preenchido.
+- Ao concluir: usa a receita PL, baixa insumos PL (mesmos triggers de estoque atuais funcionam — só o filtro que muda). Entra produto PL no estoque via mesma mecânica.
+- **Necessidade de compra de insumos**: continua ignorando insumos PL (você não compra). Sugestão de produção Mischa's ignora ordens PL.
+- Capacidade de produção: ordens PL entram no mesmo cálculo de ocupação da fábrica (é o mesmo forno/mão de obra) — expor toggle "considerar ordens PL na capacidade" (default: sim).
 
-```text
-/private-label
-├── Dashboard          → resumo: estoque consignado, ordens ativas, faturamento do mês
-├── Insumos            → estoque + entradas (quando o cliente manda insumo)
-├── Produtos e Fichas  → cadastro de SKUs PL + ficha técnica
-├── Produção           → planejar/executar ordens de produção PL
-├── Coletas            → registrar coleta, gera faturamento
-└── Faturamento        → histórico de industrialização por período
-```
+## Fase 5 — Coleta e faturamento
 
-Reaproveita componentes existentes (tabelas, dialogs de estoque, PCP) com props isolando pro contexto PL.
+- **Expedição** ganha aba "Coletas Private-Label" (separada de "Entregas"). Interface enxuta: escolhe cliente industrial → lista produtos PL em estoque → registra quantidades coletadas + nota fiscal. Gera linha em `historico_entregas` com `tipo_movimento = 'coleta_pl'`.
+- Ao registrar coleta: baixa `movimentacoes_estoque_produtos` (produto PL) via trigger existente. Valor = `sum(quantidade × cliente_industrial.preco_industrializacao_unitario)`.
+- Aba "Entregas" normal filtra `tipo_movimento = 'venda'` (default) — não mostra coletas.
 
-## Integração com o resto do sistema
+## Fase 6 — DRE
 
-- **PCP / Projeção de produção**: ordens PL entram na fila de produção da fábrica, mas contam com insumos próprios (não afeta necessidade de compra dos seus).
-- **DRE**: nova linha "Receita de industrialização" separada de "Receita de venda". Custos dos insumos PL = 0. Custo de produção (mão de obra, energia) é rateio dos seus custos fixos/variáveis (fase 2, opcional).
-- **Sidebar**: novo item "Private-Label" abaixo de Estoque.
-- **Permissões**: usa `has_route_permission('/private-label', …)`.
+- Nova linha "Receita de industrialização" na seção de receitas do DRE, calculada de `historico_entregas` com `tipo_movimento = 'coleta_pl'`. Separada de "Receita de venda".
+- Custos: insumos PL não entram no CMV (custo = 0). Custos fixos/variáveis continuam como estão (rateio fica pra depois se o usuário pedir).
+- Análise de giro, faturamento médio por PDV, indicadores de cliente: **excluem PL** (o cliente industrial não é PDV).
 
-## Ordem de implementação sugerida
+## Fase 7 — Limpeza e QA
 
-1. **Fase 1 — Fundação (esta iteração):** migration com todas as tabelas + RLS + triggers de saldo/sync. Rota `/private-label` com abas Insumos e Produtos+Fichas funcionando (cadastro, entrada de insumo consignado, montagem de ficha).
-2. **Fase 2:** aba Produção (ordem PL, baixa consignado via ficha, entrada produto PL).
-3. **Fase 3:** aba Coletas + Faturamento + linha no DRE.
-4. **Fase 4 (opcional):** dashboard e integração fina com PCP.
+- Remover `src/pages/PrivateLabel.tsx`, `InsumosPLTab.tsx`, `ProdutosPLTab.tsx` (movido pra Configurações). `usePrivateLabel.ts` fica só com `useClientesIndustriais`.
+- Auditoria manual: percorrer cada tela listada na Fase 2 confirmando que o filtro `cliente_industrial_id IS NULL` está aplicado.
+- Testar com um cliente industrial + 3 insumos PL + 1 produto PL + 1 ordem + 1 coleta, e conferir que nenhum dado PL vaza pras telas de Mischa's.
+
+---
 
 ## Detalhes técnicos
 
-- Padrão de `owner_id uuid` + policies `USING (get_owner_id(auth.uid()) = owner_id)` em todas as tabelas.
-- Triggers idênticos aos de `insumos`/`produtos_finais`: `sync_estoque_insumo_pl`, `prevent_negative_insumo_pl`, e análogos pra produtos.
-- Função `consumir_insumos_producao_pl(ordem_id)` — replica lógica de baixa por ficha técnica, mas nas tabelas `_pl`.
-- Types Supabase serão regenerados automaticamente após a migration.
+**Ordem de execução:** Fase 0 → 1 → 2 (crítica, muitos hooks) → 3 → 4 → 5 → 6 → 7. Cada fase é entregável independente.
 
-Confirma que faz sentido começar pela **Fase 1** (fundação + Insumos + Produtos/Fichas) ou quer ajustar algo no modelo antes?
+**Risco principal:** Fase 2. Se algum hook não receber o filtro, dados PL aparecem em telas Mischa's. Mitigação: mapear todos os hooks que fazem `.from('insumos')` ou `.from('produtos_finais')` via grep antes de tocar em qualquer um, aplicar o filtro em bloco, e comparar contagens antes/depois.
+
+**Migração de dados:** nenhuma. Todas as novas colunas são nullable, insumos/produtos atuais ficam com `cliente_industrial_id = null` (= Mischa's), comportamento preservado.
+
+**Reversão:** dropar colunas nullable é seguro se der ruim.
