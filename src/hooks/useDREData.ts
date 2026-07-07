@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useClienteStore } from './useClienteStore';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 import { useSupabaseCustosFixos } from './useSupabaseCustosFixos';
 import { useSupabaseCustosVariaveis } from './useSupabaseCustosVariaveis';
 import { useFaturamentoPrevisto } from './useFaturamentoPrevisto';
@@ -9,7 +10,9 @@ import { DREData, ChannelData } from '@/types/projections';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useDREData() {
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  // Blindagem PL: DRE ignora clientes puramente industriais
+  const clientes = clientesTodos.filter(isClienteOperacional);
   const { custosFixos } = useSupabaseCustosFixos();
   const { custosVariaveis } = useSupabaseCustosVariaveis();
   const faturamentoPrevisto = useFaturamentoPrevisto(); // This returns the object directly, not { data }
