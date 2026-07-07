@@ -27,6 +27,8 @@ export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 // Status de agendamento do cliente - updated to include Separado
 export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Separado' | 'Reagendar' | string;
 
+export type TipoCliente = 'PDV' | 'INDUSTRIAL' | 'AMBOS';
+
 export interface Cliente {
   id: string; // UUID from Supabase
   nome: string;
@@ -78,6 +80,10 @@ export interface Cliente {
   
   // Flag para desabilitar reagendamento automático
   desabilitarReagendamento?: boolean;
+
+  // Private-label / industrialização terceirizada
+  tipoCliente?: TipoCliente; // PDV (padrão), INDUSTRIAL (só coleta), AMBOS (compra + coleta)
+  precoIndustrializacaoUnitario?: number | null;
 }
 
 // Representantes, Rotas e Categorias para configuração
