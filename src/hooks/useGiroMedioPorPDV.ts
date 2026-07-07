@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 
 const CATEGORIA_DISTRIBUIDOR_ID = 16;
 
@@ -38,7 +39,7 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
   // Filtrar clientes ativos (opcionalmente por representante)
   const clientesAtivos = useMemo(() => {
-    let filtered = clientes.filter(c => c.statusCliente === 'Ativo');
+    let filtered = clientes.filter(c => c.statusCliente === 'Ativo' && isClienteOperacional(c));
     
     if (representanteId && representanteId !== 'todos') {
       filtered = filtered.filter(c => c.representanteId?.toString() === representanteId);
