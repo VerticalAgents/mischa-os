@@ -83,7 +83,9 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   categoriaEstabelecimentoId: undefined,
   instrucoesEntrega: '',
   gestaoClickClienteId: '',
-  desabilitarReagendamento: false
+  desabilitarReagendamento: false,
+  tipoCliente: 'PDV',
+  precoIndustrializacaoUnitario: null,
 });
 
 export default function ClienteFormDialog({ 
