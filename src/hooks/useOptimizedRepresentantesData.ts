@@ -3,10 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
 import { useGiroMedioPorPDV } from '@/hooks/useGiroMedioPorPDV';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 
 export const useOptimizedRepresentantesData = (representanteSelecionado: string, isActive: boolean) => {
   // Only load data when tab is active
-  const { clientes, loading: clientesLoading } = useClienteStore();
+  const { clientes: clientesTodos, loading: clientesLoading } = useClienteStore();
+  // Blindagem PL: representantes/faturamento só consideram clientes operacionais (PDV/AMBOS)
+  const clientes = useMemo(() => clientesTodos.filter(isClienteOperacional), [clientesTodos]);
   const { representantes, loading: representantesLoading } = useSupabaseRepresentantes();
   const { giroTotal, giroMedioPorPDV, isLoading: giroLoading } = useGiroMedioPorPDV(representanteSelecionado);
 

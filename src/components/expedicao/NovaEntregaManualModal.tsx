@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { isClienteOperacional } from "@/utils/clienteTipo";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -29,7 +30,9 @@ export const NovaEntregaManualModal = ({ open, onOpenChange }: NovaEntregaManual
   const [tipoEntrega, setTipoEntrega] = useState<'entrega' | 'retorno'>('entrega');
   const [loading, setLoading] = useState(false);
 
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  // Blindagem PL: nova entrega manual só permite clientes operacionais (PDV/AMBOS)
+  const clientes = clientesTodos.filter(isClienteOperacional);
   const { adicionarRegistro } = useHistoricoEntregasStore();
 
   const handleSalvar = async () => {

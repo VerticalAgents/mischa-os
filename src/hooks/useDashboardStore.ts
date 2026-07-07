@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { DashboardData } from '../types';
 import { useClienteStore } from './useClienteStore';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 
 interface DashboardStore {
   dashboardData: DashboardData;
@@ -36,7 +37,8 @@ export const useDashboardStore = create<DashboardStore>()(
         
         try {
           const clienteStore = useClienteStore.getState();
-          const clientes = clienteStore.clientes;
+          // Blindagem PL: dashboard só considera clientes operacionais (PDV/AMBOS)
+          const clientes = clienteStore.clientes.filter(isClienteOperacional);
           
           // Calcular contadores de status
           const contadoresStatus = {
@@ -94,6 +96,8 @@ export const useDashboardStore = create<DashboardStore>()(
         set({ loading: true });
         
         try {
+          // Blindagem PL: excluir clientes puramente industriais
+          clientes = clientes.filter(isClienteOperacional);
           // Calcular contadores de status
           const contadoresStatus = {
             ativos: clientes.filter(c => c.statusCliente === 'Ativo').length,

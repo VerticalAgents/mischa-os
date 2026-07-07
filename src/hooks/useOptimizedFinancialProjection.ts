@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useCallback } from 'react';
 import { useClienteStore } from './useClienteStore';
+import { isClienteOperacional } from '@/utils/clienteTipo';
 import { useSupabaseCategoriasProduto } from './useSupabaseCategoriasProduto';
 import { useSupabasePrecosCategoriaCliente } from './useSupabasePrecosCategoriaCliente';
 import { useSupabaseGirosSemanaPersonalizados } from './useSupabaseGirosSemanaPersonalizados';
@@ -38,7 +39,9 @@ export function useOptimizedFinancialProjection(): {
   recalcular: () => void;
   lastUpdated?: Date;
 } {
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  // Blindagem PL: projeção financeira ignora clientes puramente industriais
+  const clientes = clientesTodos.filter(isClienteOperacional);
   const { categorias } = useSupabaseCategoriasProduto();
   const { carregarTodosPrecos } = useSupabasePrecosCategoriaCliente();
   const { carregarTodosGiros } = useSupabaseGirosSemanaPersonalizados();

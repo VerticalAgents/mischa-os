@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useClienteStore } from "./useClienteStore";
+import { isClienteOperacional } from '@/utils/clienteTipo';
 import { useSupabaseCategoriasProduto } from "./useSupabaseCategoriasProduto";
 import { useSupabasePrecosCategoriaCliente } from "./useSupabasePrecosCategoriaCliente";
 import { useConfiguracoesStore } from "./useConfiguracoesStore";
@@ -80,7 +81,9 @@ export const useIndicadoresFinanceiros = (periodo: string | number = "mes-passad
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  // Blindagem PL: indicadores financeiros ignoram clientes puramente industriais
+  const clientes = clientesTodos.filter(isClienteOperacional);
   const { categorias } = useSupabaseCategoriasProduto();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
   const { obterConfiguracao } = useConfiguracoesStore();
