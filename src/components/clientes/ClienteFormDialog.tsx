@@ -83,7 +83,9 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   categoriaEstabelecimentoId: undefined,
   instrucoesEntrega: '',
   gestaoClickClienteId: '',
-  desabilitarReagendamento: false
+  desabilitarReagendamento: false,
+  tipoCliente: 'PDV',
+  precoIndustrializacaoUnitario: null,
 });
 
 export default function ClienteFormDialog({ 
@@ -321,7 +323,9 @@ export default function ClienteFormDialog({
     categoriaId: cliente?.categoriaId || 0,
     subcategoriaId: cliente?.subcategoriaId || 0,
     gestaoClickClienteId: formData.gestaoClickClienteId || '',
-    desabilitarReagendamento: formData.desabilitarReagendamento || false
+    desabilitarReagendamento: formData.desabilitarReagendamento || false,
+    tipoCliente: formData.tipoCliente || 'PDV',
+    precoIndustrializacaoUnitario: formData.precoIndustrializacaoUnitario ?? null,
   };
 
   return (
@@ -529,6 +533,54 @@ export default function ClienteFormDialog({
               <CardTitle className="text-lg">Configurações Comerciais</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipoCliente">Tipo de cliente</Label>
+                  <Select
+                    value={formData.tipoCliente || 'PDV'}
+                    onValueChange={(value) => {
+                      handleInputChange('tipoCliente', value);
+                      if (value === 'PDV') {
+                        handleInputChange('precoIndustrializacaoUnitario', null);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="tipoCliente" translate="no" data-translate="no">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent translate="no" data-translate="no">
+                      <SelectItem value="PDV">PDV (compra Mischa's)</SelectItem>
+                      <SelectItem value="INDUSTRIAL">Industrial (private-label)</SelectItem>
+                      <SelectItem value="AMBOS">Ambos (PDV + Industrial)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Industrial = envia insumos e coleta produção terceirizada. Não aparece em fluxos de venda.
+                  </p>
+                </div>
+                {(formData.tipoCliente === 'INDUSTRIAL' || formData.tipoCliente === 'AMBOS') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="precoIndustrializacaoUnitario">
+                      Preço por unidade industrializada (R$) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="precoIndustrializacaoUnitario"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.precoIndustrializacaoUnitario ?? ''}
+                      onChange={(e) =>
+                        handleInputChange(
+                          'precoIndustrializacaoUnitario',
+                          e.target.value === '' ? null : parseFloat(e.target.value)
+                        )
+                      }
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="periodicidadePadrao">Periodicidade (dias)</Label>

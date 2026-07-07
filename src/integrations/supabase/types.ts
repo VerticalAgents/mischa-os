@@ -424,12 +424,14 @@ export type Database = {
           prazo_pagamento_dias: number | null
           prazo_pagamento_dias_minimos: number | null
           prazo_pagamento_tipo: string
+          preco_industrializacao_unitario: number | null
           proxima_data_reposicao: string | null
           quantidade_padrao: number | null
           representante_id: number | null
           rota_entrega_id: number | null
           status_agendamento: string | null
           status_cliente: string | null
+          tipo_cliente: string
           tipo_cobranca: string | null
           tipo_logistica: string | null
           tipo_pessoa: string | null
@@ -470,12 +472,14 @@ export type Database = {
           prazo_pagamento_dias?: number | null
           prazo_pagamento_dias_minimos?: number | null
           prazo_pagamento_tipo?: string
+          preco_industrializacao_unitario?: number | null
           proxima_data_reposicao?: string | null
           quantidade_padrao?: number | null
           representante_id?: number | null
           rota_entrega_id?: number | null
           status_agendamento?: string | null
           status_cliente?: string | null
+          tipo_cliente?: string
           tipo_cobranca?: string | null
           tipo_logistica?: string | null
           tipo_pessoa?: string | null
@@ -516,12 +520,14 @@ export type Database = {
           prazo_pagamento_dias?: number | null
           prazo_pagamento_dias_minimos?: number | null
           prazo_pagamento_tipo?: string
+          preco_industrializacao_unitario?: number | null
           proxima_data_reposicao?: string | null
           quantidade_padrao?: number | null
           representante_id?: number | null
           rota_entrega_id?: number | null
           status_agendamento?: string | null
           status_cliente?: string | null
+          tipo_cliente?: string
           tipo_cobranca?: string | null
           tipo_logistica?: string | null
           tipo_pessoa?: string | null
@@ -572,54 +578,6 @@ export type Database = {
             referencedColumns: ["cliente_id"]
           },
         ]
-      }
-      clientes_industriais: {
-        Row: {
-          ativo: boolean
-          cnpj: string | null
-          contato_email: string | null
-          contato_nome: string | null
-          contato_telefone: string | null
-          created_at: string
-          endereco: string | null
-          id: string
-          nome: string
-          observacoes: string | null
-          owner_id: string
-          preco_industrializacao_unitario: number
-          updated_at: string
-        }
-        Insert: {
-          ativo?: boolean
-          cnpj?: string | null
-          contato_email?: string | null
-          contato_nome?: string | null
-          contato_telefone?: string | null
-          created_at?: string
-          endereco?: string | null
-          id?: string
-          nome: string
-          observacoes?: string | null
-          owner_id?: string
-          preco_industrializacao_unitario?: number
-          updated_at?: string
-        }
-        Update: {
-          ativo?: boolean
-          cnpj?: string | null
-          contato_email?: string | null
-          contato_nome?: string | null
-          contato_telefone?: string | null
-          created_at?: string
-          endereco?: string | null
-          id?: string
-          nome?: string
-          observacoes?: string | null
-          owner_id?: string
-          preco_industrializacao_unitario?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       componentes_produto: {
         Row: {
@@ -920,7 +878,6 @@ export type Database = {
       historico_entregas: {
         Row: {
           cliente_id: string
-          cliente_industrial_id: string | null
           created_at: string
           data: string
           editado_manualmente: boolean | null
@@ -937,7 +894,6 @@ export type Database = {
         }
         Insert: {
           cliente_id: string
-          cliente_industrial_id?: string | null
           created_at?: string
           data?: string
           editado_manualmente?: boolean | null
@@ -954,7 +910,6 @@ export type Database = {
         }
         Update: {
           cliente_id?: string
-          cliente_industrial_id?: string | null
           created_at?: string
           data?: string
           editado_manualmente?: boolean | null
@@ -969,15 +924,7 @@ export type Database = {
           trocas_realizadas?: Json | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "historico_entregas_cliente_industrial_id_fkey"
-            columns: ["cliente_industrial_id"]
-            isOneToOne: false
-            referencedRelation: "clientes_industriais"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       historico_giro_semanal_consolidado: {
         Row: {
@@ -1023,7 +970,7 @@ export type Database = {
       }
       historico_producao: {
         Row: {
-          cliente_industrial_id: string | null
+          cliente_id: string | null
           confirmado_em: string | null
           created_at: string
           data_producao: string
@@ -1041,7 +988,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          cliente_industrial_id?: string | null
+          cliente_id?: string | null
           confirmado_em?: string | null
           created_at?: string
           data_producao: string
@@ -1059,7 +1006,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          cliente_industrial_id?: string | null
+          cliente_id?: string | null
           confirmado_em?: string | null
           created_at?: string
           data_producao?: string
@@ -1078,11 +1025,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "historico_producao_cliente_industrial_id_fkey"
-            columns: ["cliente_industrial_id"]
+            foreignKeyName: "historico_producao_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clientes_industriais"
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_producao_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "historico_producao_produto_id_fkey"
@@ -1096,7 +1050,7 @@ export type Database = {
       insumos: {
         Row: {
           categoria: string
-          cliente_industrial_id: string | null
+          cliente_id: string | null
           created_at: string
           custo_medio: number
           estoque_atual: number | null
@@ -1112,7 +1066,7 @@ export type Database = {
         }
         Insert: {
           categoria: string
-          cliente_industrial_id?: string | null
+          cliente_id?: string | null
           created_at?: string
           custo_medio: number
           estoque_atual?: number | null
@@ -1128,7 +1082,7 @@ export type Database = {
         }
         Update: {
           categoria?: string
-          cliente_industrial_id?: string | null
+          cliente_id?: string | null
           created_at?: string
           custo_medio?: number
           estoque_atual?: number | null
@@ -1144,11 +1098,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "insumos_cliente_industrial_id_fkey"
-            columns: ["cliente_industrial_id"]
+            foreignKeyName: "insumos_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clientes_industriais"
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
           },
         ]
       }
@@ -1730,7 +1691,7 @@ export type Database = {
         Row: {
           ativo: boolean
           categoria_id: number | null
-          cliente_industrial_id: string | null
+          cliente_id: string | null
           created_at: string
           custo_total: number | null
           custo_unitario: number | null
@@ -1753,7 +1714,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           categoria_id?: number | null
-          cliente_industrial_id?: string | null
+          cliente_id?: string | null
           created_at?: string
           custo_total?: number | null
           custo_unitario?: number | null
@@ -1776,7 +1737,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           categoria_id?: number | null
-          cliente_industrial_id?: string | null
+          cliente_id?: string | null
           created_at?: string
           custo_total?: number | null
           custo_unitario?: number | null
@@ -1798,11 +1759,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "produtos_finais_cliente_industrial_id_fkey"
-            columns: ["cliente_industrial_id"]
+            foreignKeyName: "produtos_finais_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clientes_industriais"
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_finais_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
           },
         ]
       }

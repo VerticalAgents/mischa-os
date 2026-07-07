@@ -514,6 +514,15 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     prazo_pagamento_dias_minimos: (sanitized as any).prazoPagamentoDiasMinimos,
     gestaoclick_cliente_id: sanitized.gestaoClickClienteId || null,
     desabilitar_reagendamento: boolOr(sanitized.desabilitarReagendamento, false),
+    tipo_cliente: (['PDV','INDUSTRIAL','AMBOS'] as const).includes((sanitized as any).tipoCliente)
+      ? (sanitized as any).tipoCliente
+      : 'PDV',
+    preco_industrializacao_unitario:
+      (sanitized as any).precoIndustrializacaoUnitario === undefined ||
+      (sanitized as any).precoIndustrializacaoUnitario === null ||
+      (sanitized as any).precoIndustrializacaoUnitario === ''
+        ? null
+        : Number((sanitized as any).precoIndustrializacaoUnitario),
     updated_at: new Date().toISOString(),
   };
 
