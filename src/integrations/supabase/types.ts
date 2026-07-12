@@ -1632,6 +1632,7 @@ export type Database = {
           ativo: boolean | null
           categoria: string | null
           categoria_id: number | null
+          cliente_id: string | null
           created_at: string
           custo_total: number | null
           custo_unitario: number | null
@@ -1651,6 +1652,7 @@ export type Database = {
           ativo?: boolean | null
           categoria?: string | null
           categoria_id?: number | null
+          cliente_id?: string | null
           created_at?: string
           custo_total?: number | null
           custo_unitario?: number | null
@@ -1670,6 +1672,7 @@ export type Database = {
           ativo?: boolean | null
           categoria?: string | null
           categoria_id?: number | null
+          cliente_id?: string | null
           created_at?: string
           custo_total?: number | null
           custo_unitario?: number | null
@@ -1685,7 +1688,22 @@ export type Database = {
           unidades_producao?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "produtos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
       }
       produtos_finais: {
         Row: {
