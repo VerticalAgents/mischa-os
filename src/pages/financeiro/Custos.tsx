@@ -58,9 +58,10 @@ export default function Custos() {
     isLoading: loadingFaturamento
   } = useFaturamentoPrevisto();
   const {
-    clientes,
+    clientes: clientesTodos,
     carregarClientes
   } = useClienteStore();
+  const clientes = clientesTodos.filter(c => (c as any).tipoCliente !== 'INDUSTRIAL');
   const {
     categorias
   } = useSupabaseCategoriasProduto();
