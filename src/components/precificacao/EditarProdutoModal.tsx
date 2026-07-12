@@ -479,6 +479,27 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                   <Label htmlFor="ativo">Produto ativo</Label>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-consignante">Cliente consignante</Label>
+                  <Select value={clienteId} onValueChange={setClienteId}>
+                    <SelectTrigger id="cliente-consignante">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MISCHA">Mischa's (produto próprio)</SelectItem>
+                      {clientesIndustriais.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nomeFantasia}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione um cliente industrial para marcar este produto como
+                    private-label / industrializado.
+                  </p>
+                </div>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Resumo de Custos</CardTitle>
