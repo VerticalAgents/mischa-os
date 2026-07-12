@@ -4,6 +4,7 @@ import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { apenasOperacionais } from "@/utils/clienteTipo";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
 import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
 import { useDashboardStore } from "@/hooks/useDashboardStore";
@@ -27,7 +28,8 @@ import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function DashboardAnalytics() {
   const [activeTab, setActiveTab] = useState("operational-summary");
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
   const { pedidos } = usePedidoStore();
   const { baseDRE } = useProjectionStore();
   const planejamentoProducaoStore = usePlanejamentoProducaoStore();
