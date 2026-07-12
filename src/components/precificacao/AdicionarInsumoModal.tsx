@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +28,9 @@ interface AdicionarInsumoModalProps {
 
 export default function AdicionarInsumoModal({ isOpen, onClose }: AdicionarInsumoModalProps) {
   const { adicionarInsumo } = useSupabaseInsumos();
+  const { clientes: clientesIndustriais } = useClientesIndustriais();
   const [loading, setLoading] = useState(false);
+  const [clienteId, setClienteId] = useState<string>("MISCHA");
   const [formData, setFormData] = useState({
     nome: "",
     categoria: "" as "Matéria Prima" | "Embalagem" | "Outros" | "",
@@ -63,7 +66,8 @@ export default function AdicionarInsumoModal({ isOpen, onClose }: AdicionarInsum
         unidade_medida: formData.unidade_medida as "g" | "kg" | "ml" | "l" | "un" | "pct",
         custo_medio: parseFloat(formData.custo_medio),
         estoque_atual: parseFloat(formData.estoque_atual) || 0,
-        estoque_minimo: parseFloat(formData.estoque_minimo) || 0
+        estoque_minimo: parseFloat(formData.estoque_minimo) || 0,
+        cliente_id: clienteId === "MISCHA" ? null : clienteId,
       });
       
       toast.success("Insumo adicionado com sucesso!");
@@ -79,6 +83,7 @@ export default function AdicionarInsumoModal({ isOpen, onClose }: AdicionarInsum
         estoque_atual: "0",
         estoque_minimo: "0"
       });
+      setClienteId("MISCHA");
     } catch (error) {
       console.error('Erro ao adicionar insumo:', error);
       toast.error("Erro ao adicionar insumo");
@@ -112,6 +117,26 @@ export default function AdicionarInsumoModal({ isOpen, onClose }: AdicionarInsum
               onChange={(e) => handleInputChange("nome", e.target.value)}
               placeholder="Nome do insumo"
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="cliente-consignante">Cliente consignante</Label>
+            <Select value={clienteId} onValueChange={setClienteId}>
+              <SelectTrigger id="cliente-consignante">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MISCHA">Mischa (estoque próprio)</SelectItem>
+                {clientesIndustriais.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    PL · {c.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Selecione um cliente industrial para insumos consignados (Private Label).
+            </p>
           </div>
 
           <div className="grid gap-2">
