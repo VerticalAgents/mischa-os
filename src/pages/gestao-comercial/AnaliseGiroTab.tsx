@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, TrendingUp, Users, Package } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { apenasOperacionais } from '@/utils/clienteTipo';
 import { GiroAnalysisFiltersComponent } from '@/components/analytics/giro/GiroAnalysisFilters';
 import { GiroOverviewCards } from '@/components/analytics/giro/GiroOverviewCards';
 import { GiroDashboardGeral } from '@/components/analytics/giro/GiroDashboardGeral';
@@ -28,7 +29,8 @@ export default function AnaliseGiroTab() {
   } = useGiroAnalysisConsolidated(filtros);
 
   // Usar useClienteStore para obter dados corretos de clientes (mesmo que a página Início)
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
 
   // Extrair listas únicas para filtros
   const representantes = [...new Set(dadosConsolidados.map(d => d.representante_nome).filter(Boolean))];
