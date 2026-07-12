@@ -22,9 +22,9 @@ export function useClientesIndustriais() {
       setLoading(true);
       const { data, error } = await supabase
         .from("clientes")
-        .select("id, nome_fantasia, razao_social, tipo_cliente")
+        .select("id, nome, razao_social, tipo_cliente")
         .in("tipo_cliente", ["INDUSTRIAL", "AMBOS"])
-        .order("nome_fantasia");
+        .order("nome");
       if (!cancelled) {
         if (error) {
           console.error("Erro ao carregar clientes industriais:", error);
@@ -33,7 +33,7 @@ export function useClientesIndustriais() {
           setClientes(
             (data || []).map((c: any) => ({
               id: c.id,
-              nomeFantasia: c.nome_fantasia,
+              nomeFantasia: c.nome,
               razaoSocial: c.razao_social,
               tipoCliente: c.tipo_cliente,
             })),
