@@ -6,12 +6,14 @@ import { TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-reac
 import { useOptimizedFinancialData } from "@/hooks/useOptimizedFinancialData";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { apenasOperacionais } from "@/utils/clienteTipo";
 import BreakEvenPorProduto from "@/components/gestao-financeira/BreakEvenPorProduto";
 
 export default function PontoEquilibrio() {
   const { data: financialData, loading, error } = useOptimizedFinancialData();
   const faturamentoPrevisto = useFaturamentoPrevisto();
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
 
   const calculations = useMemo(() => {
     if (!financialData || !faturamentoPrevisto.precosDetalhados) return null;
