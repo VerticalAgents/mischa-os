@@ -7,6 +7,7 @@ import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useOptimizedFinancialProjection } from '@/hooks/useOptimizedFinancialProjection';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { apenasOperacionais } from '@/utils/clienteTipo';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
 import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
 import { useGiroHistoricoReal } from '@/hooks/useGiroHistoricoReal';
@@ -16,7 +17,8 @@ import LazyTabs from '@/components/gestao-financeira/LazyTabs';
 
 export default function ProjecaoResultadosPDV() {
   const { precosDetalhados, isLoading, recalcular, faturamentoMensal, faturamentoSemanal } = useOptimizedFinancialProjection();
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
   const { categorias } = useSupabaseCategoriasProduto();
   const { obterGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
   const [faturamentoMedioRevenda, setFaturamentoMedioRevenda] = useState(0);
