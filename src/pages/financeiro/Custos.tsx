@@ -61,7 +61,7 @@ export default function Custos() {
     clientes: clientesTodos,
     carregarClientes
   } = useClienteStore();
-  const clientes = clientesTodos.filter(c => (c as any).tipoCliente !== 'INDUSTRIAL');
+  const clientes = apenasOperacionais(clientesTodos);
   const {
     categorias
   } = useSupabaseCategoriasProduto();
