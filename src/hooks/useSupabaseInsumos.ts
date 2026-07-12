@@ -17,6 +17,11 @@ export interface InsumoSupabase {
   created_at: string;
   updated_at: string;
   user_id: string;
+  /**
+   * Cliente consignante do insumo (private-label). Quando null, o insumo
+   * é estoque próprio da Mischa's; quando preenchido, é consignado pelo cliente industrial.
+   */
+  cliente_id?: string | null;
 }
 
 export const useSupabaseInsumos = () => {

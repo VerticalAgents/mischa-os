@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { InsumoSupabase } from "@/hooks/useSupabaseInsumos";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
 
 interface EditarInsumoModalProps {
   isOpen: boolean;
@@ -16,12 +17,14 @@ interface EditarInsumoModalProps {
 
 export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarInsumoModalProps) {
   const { atualizarInsumo } = useSupabaseInsumos();
+  const { clientes: clientesIndustriais } = useClientesIndustriais();
   
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState<"Matéria Prima" | "Embalagem" | "Outros">("Matéria Prima");
   const [volumeBruto, setVolumeBruto] = useState("");
   const [unidadeMedida, setUnidadeMedida] = useState<"g" | "kg" | "ml" | "l" | "un" | "pct">("g");
   const [custoMedio, setCustoMedio] = useState("");
+  const [clienteId, setClienteId] = useState<string>("MISCHA");
   const [loading, setLoading] = useState(false);
 
   // Reset form when insumo changes
@@ -32,6 +35,7 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
       setVolumeBruto(insumo.volume_bruto?.toString() || "");
       setUnidadeMedida(insumo.unidade_medida || "g");
       setCustoMedio(insumo.custo_medio?.toString() || "");
+      setClienteId(insumo.cliente_id || "MISCHA");
     } else {
       // Reset to default values when no insumo
       setNome("");
@@ -39,6 +43,7 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
       setVolumeBruto("");
       setUnidadeMedida("g");
       setCustoMedio("");
+      setClienteId("MISCHA");
     }
   }, [insumo]);
 
@@ -52,7 +57,8 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
         categoria,
         volume_bruto: parseFloat(volumeBruto),
         unidade_medida: unidadeMedida,
-        custo_medio: parseFloat(custoMedio)
+        custo_medio: parseFloat(custoMedio),
+        cliente_id: clienteId === "MISCHA" ? null : clienteId,
       });
 
       if (sucesso) {
@@ -151,6 +157,26 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
               placeholder="4.10"
               step="0.01"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cliente-consignante">Cliente consignante</Label>
+            <Select value={clienteId} onValueChange={setClienteId}>
+              <SelectTrigger id="cliente-consignante">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MISCHA">Mischa's (estoque próprio)</SelectItem>
+                {clientesIndustriais.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nomeFantasia}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Selecione um cliente industrial para marcar este insumo como consignado (private-label).
+            </p>
           </div>
         </div>
 

@@ -9,6 +9,8 @@ import { Plus, TrendingDown, BarChart3, Search, Settings, DollarSign, Package, A
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useMovimentacoesEstoqueInsumos } from "@/hooks/useMovimentacoesEstoqueInsumos";
 import { useConsumoSemanalInsumos } from "@/hooks/useConsumoSemanalInsumos";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
@@ -27,8 +29,10 @@ export default function EstoqueInsumosTab() {
   const { insumos, loading: loadingInsumos } = useSupabaseInsumos();
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoInsumo } = useMovimentacoesEstoqueInsumos();
   const { consumoSemanal } = useConsumoSemanalInsumos();
+  const { clientes: clientesIndustriais } = useClientesIndustriais();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroCliente, setFiltroCliente] = useState<string>("MISCHA");
   const [saldos, setSaldos] = useState<Record<string, number>>({});
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
@@ -53,10 +57,22 @@ export default function EstoqueInsumosTab() {
     }
   }, [insumos]);
 
-  // Filtrar insumos
-  const insumosFiltrados = insumos.filter(insumo =>
-    insumo.nome.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar insumos por cliente consignante e busca
+  const insumosFiltrados = insumos.filter((insumo) => {
+    const clienteMatch =
+      filtroCliente === "TODOS"
+        ? true
+        : filtroCliente === "MISCHA"
+          ? !insumo.cliente_id
+          : insumo.cliente_id === filtroCliente;
+    const nomeMatch = insumo.nome
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    return clienteMatch && nomeMatch;
+  });
+
+  const nomeClientePorId = (id?: string | null) =>
+    id ? clientesIndustriais.find((c) => c.id === id)?.nomeFantasia : null;
 
   // Entrada rápida
   const entradaRapida = async (insumoId: string, quantidade: number) => {
@@ -185,7 +201,7 @@ export default function EstoqueInsumosTab() {
       </div>
 
       {/* Filtros e busca */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -195,6 +211,20 @@ export default function EstoqueInsumosTab() {
             className="pl-10"
           />
         </div>
+        <Select value={filtroCliente} onValueChange={setFiltroCliente}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="MISCHA">Mischa's (estoque próprio)</SelectItem>
+            {clientesIndustriais.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                Consignado — {c.nomeFantasia}
+              </SelectItem>
+            ))}
+            <SelectItem value="TODOS">Todos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tabela de insumos */}
@@ -233,6 +263,14 @@ export default function EstoqueInsumosTab() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{insumo.nome}</div>
+                          {insumo.cliente_id && (
+                            <Badge
+                              variant="outline"
+                              className="bg-purple-50 text-purple-700 border-purple-200"
+                            >
+                              PL · {nomeClientePorId(insumo.cliente_id)}
+                            </Badge>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"

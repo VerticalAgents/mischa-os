@@ -18,6 +18,7 @@ import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoria
 import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
 
 interface EditarProdutoModalProps {
   produto: ProdutoCompleto | null;
@@ -36,6 +37,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [categoriaId, setCategoriaId] = useState<number | undefined>();
   const [subcategoriaId, setSubcategoriaId] = useState<number | undefined>();
   const [componentes, setComponentes] = useState<ComponenteProduto[]>([]);
+  const [clienteId, setClienteId] = useState<string>("MISCHA");
   const [novoComponenteTipo, setNovoComponenteTipo] = useState<'receita' | 'insumo'>('receita');
   const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
   const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(100);
@@ -50,6 +52,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
   const { obterRendimentoPorProduto } = useRendimentosReceitaProduto();
+  const { clientes: clientesIndustriais } = useClientesIndustriais();
 
   const receitasOptions = useMemo(() => receitas, [receitas]);
   const insumosOptions = useMemo(() => insumos, [insumos]);
@@ -75,6 +78,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setPrecoVenda(produto.preco_venda || undefined);
     setCategoriaId(produto.categoria_id || undefined);
     setSubcategoriaId(produto.subcategoria_id || undefined);
+    setClienteId((produto as any).cliente_id || "MISCHA");
     
     const carregarComponentes = async () => {
       try {
@@ -177,6 +181,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         custo_total: custoTotal,
         custo_unitario: custoUnitario,
         margem_lucro: margemLucro,
+        cliente_id: clienteId === "MISCHA" ? null : clienteId,
       });
 
       toast({
@@ -472,6 +477,27 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                     onCheckedChange={setAtivo}
                   />
                   <Label htmlFor="ativo">Produto ativo</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-consignante">Cliente consignante</Label>
+                  <Select value={clienteId} onValueChange={setClienteId}>
+                    <SelectTrigger id="cliente-consignante">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MISCHA">Mischa's (produto próprio)</SelectItem>
+                      {clientesIndustriais.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nomeFantasia}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione um cliente industrial para marcar este produto como
+                    private-label / industrializado.
+                  </p>
                 </div>
 
                 <Card>
