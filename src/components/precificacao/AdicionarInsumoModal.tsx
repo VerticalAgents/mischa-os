@@ -129,7 +129,7 @@ export default function AdicionarInsumoModal({ isOpen, onClose }: AdicionarInsum
                 <SelectItem value="MISCHA">Mischa (estoque próprio)</SelectItem>
                 {clientesIndustriais.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    PL · {c.nome}
+                    PL · {c.nomeFantasia}
                   </SelectItem>
                 ))}
               </SelectContent>
