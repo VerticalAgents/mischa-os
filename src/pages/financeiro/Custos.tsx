@@ -17,6 +17,7 @@ import { useSupabaseCustosVariaveis, CustoVariavel } from "@/hooks/useSupabaseCu
 import { useSupabaseSubcategoriasCustos } from "@/hooks/useSupabaseSubcategoriasCustos";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { apenasOperacionais } from "@/utils/clienteTipo";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
