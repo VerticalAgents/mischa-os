@@ -1,7 +1,7 @@
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { StatusCliente } from "@/types";
+import { StatusCliente, TipoCliente } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,8 @@ interface ClientesFiltersProps {
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
   setFiltroRepresentante: (representanteId: number | 'Todos' | null) => void;
   setFiltroRotaEntrega: (rotaEntregaId: number | 'Todas' | null) => void;
+  filtroTipo: TipoCliente | 'Todos';
+  setFiltroTipo: (tipo: TipoCliente | 'Todos') => void;
   visibleColumns: string[];
   setVisibleColumns: React.Dispatch<React.SetStateAction<string[]>>;
   columnOptions: ColumnOption[];
@@ -37,6 +39,8 @@ export default function ClientesFilters({
   setFiltroStatus,
   setFiltroRepresentante,
   setFiltroRotaEntrega,
+  filtroTipo,
+  setFiltroTipo,
   visibleColumns,
   setVisibleColumns,
   columnOptions
@@ -75,6 +79,17 @@ export default function ClientesFilters({
         <option value="Inativo">Inativo</option>
         <option value="A ativar">A ativar</option>
         <option value="Standby">Standby</option>
+      </select>
+      <select
+        className="h-10 rounded-md border border-input bg-background px-3 py-2 min-w-[140px]"
+        value={filtroTipo}
+        onChange={e => setFiltroTipo(e.target.value as TipoCliente | 'Todos')}
+        title="Tipo de cliente"
+      >
+        <option value="Todos">Todos os tipos</option>
+        <option value="PDV">PDV</option>
+        <option value="INDUSTRIAL">Industrial (Private-Label)</option>
+        <option value="AMBOS">Ambos</option>
       </select>
       <select 
         className="h-10 rounded-md border border-input bg-background px-3 py-2 min-w-[150px]" 

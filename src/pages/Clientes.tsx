@@ -17,6 +17,8 @@ import { FileSpreadsheet, Link2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { useRoutePermission } from "@/hooks/useRolePermissions";
 import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
+import { TipoCliente } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 export default function Clientes() {
   const { canEdit } = useRoutePermission('/clientes');
@@ -29,6 +31,7 @@ export default function Clientes() {
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [isSyncingGC, setIsSyncingGC] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState<TipoCliente | 'Todos'>('Todos');
   
   const {
     filtros,
@@ -256,6 +259,7 @@ export default function Clientes() {
     { id: "idGestaoClick", label: "ID GC", canToggle: true },
     { id: "razaoSocial", label: "Razão Social", canToggle: true },
     { id: "nome", label: "Nome", canToggle: false },
+    { id: "tipoCliente", label: "Tipo", canToggle: true },
     { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
     { id: "contato", label: "Contato", canToggle: true },
     { id: "periodicidade", label: "Period.", canToggle: true },
@@ -267,7 +271,7 @@ export default function Clientes() {
 
   // Column visibility state with persistence
   const defaultColumns = [
-    "idGestaoClick", "razaoSocial", "nome", "cnpjCpf", "contato", 
+    "idGestaoClick", "razaoSocial", "nome", "tipoCliente", "cnpjCpf", "contato",
     "periodicidade", "status", "acoes"
   ];
   
@@ -276,7 +280,10 @@ export default function Clientes() {
     defaultColumns
   );
 
-  const clientes = getClientesFiltrados();
+  const clientesBase = getClientesFiltrados();
+  const clientes = filtroTipo === 'Todos'
+    ? clientesBase
+    : clientesBase.filter(c => (c.tipoCliente ?? 'PDV') === filtroTipo);
   
   const handleOpenForm = () => {
     setIsFormOpen(true);
@@ -425,6 +432,8 @@ export default function Clientes() {
         setFiltroStatus={setFiltroStatus}
         setFiltroRepresentante={setFiltroRepresentante}
         setFiltroRotaEntrega={setFiltroRotaEntrega}
+        filtroTipo={filtroTipo}
+        setFiltroTipo={setFiltroTipo}
         visibleColumns={visibleColumns}
         setVisibleColumns={setVisibleColumns}
         columnOptions={columnOptions}

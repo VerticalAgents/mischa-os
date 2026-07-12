@@ -138,6 +138,8 @@ export default function ClientesTable({
         return getRazaoSocial(cliente.gestaoClickClienteId);
       case "nome":
         return cliente.nome;
+      case "tipoCliente":
+        return cliente.tipoCliente || "PDV";
       case "cnpjCpf":
         return cliente.cnpjCpf || "-";
       case "contato":
@@ -161,6 +163,24 @@ export default function ClientesTable({
     switch (columnId) {
       case "status":
         return <StatusBadge status={cliente.statusCliente} />;
+      case "tipoCliente": {
+        const tipo = cliente.tipoCliente || "PDV";
+        if (tipo === "PDV") {
+          return <span className="text-xs text-muted-foreground">PDV</span>;
+        }
+        return (
+          <Badge
+            variant="outline"
+            className={
+              tipo === "INDUSTRIAL"
+                ? "border-purple-300 bg-purple-50 text-purple-700"
+                : "border-blue-300 bg-blue-50 text-blue-700"
+            }
+          >
+            {tipo === "INDUSTRIAL" ? "Industrial" : "Ambos"}
+          </Badge>
+        );
+      }
       case "statusAgendamento":
         const statusAgendamento = cliente.statusAgendamento || 'Não Agendado';
         return (

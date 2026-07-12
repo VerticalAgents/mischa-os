@@ -9,9 +9,12 @@ import StatsTable from "@/components/dashboard/StatsTable";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useDashboardStore } from "@/hooks/useDashboardStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
+import { apenasOperacionais } from "@/utils/clienteTipo";
+import { useMemo } from "react";
 
 export default function Dashboard() {
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
   const { pedidos } = usePedidoStore();
   const { 
     dashboardData, 

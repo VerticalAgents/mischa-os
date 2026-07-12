@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useNavigate } from 'react-router-dom';
+import { apenasOperacionais } from '@/utils/clienteTipo';
 
 const STATUS_COLORS: Record<string, string> = {
   'Ativo': '#22c55e',
@@ -29,7 +30,8 @@ LoadingState.displayName = 'LoadingState';
 
 export default function HomeStatusPieChart() {
   const navigate = useNavigate();
-  const { clientes, loading } = useClienteStore();
+  const { clientes: clientesTodos, loading } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
 
   const dadosStatusPie = useMemo(() => {
     const statusCount: Record<string, number> = {};
