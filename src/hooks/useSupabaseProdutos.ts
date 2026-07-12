@@ -22,6 +22,12 @@ export interface ProdutoSupabase {
   margem_lucro?: number;
   ordem_categoria?: number;
   user_id: string;
+  /**
+   * Cliente consignante do produto (private-label). Quando null, o produto
+   * é próprio da Mischa's; quando preenchido, é consignado / industrializado
+   * para o cliente industrial.
+   */
+  cliente_id?: string | null;
 }
 
 export interface ComponenteProduto {
