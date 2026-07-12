@@ -11,6 +11,8 @@ import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoque
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
@@ -23,8 +25,10 @@ export default function EstoqueProdutosTab() {
   const { categorias } = useSupabaseCategoriasProduto();
   const { proporcoes } = useSupabaseProporoesPadrao();
   const { atualizarProduto } = useSupabaseProdutos();
+  const { clientes: clientesIndustriais } = useClientesIndustriais();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroCliente, setFiltroCliente] = useState<string>("MISCHA");
   const [mostrarSaldoTotal, setMostrarSaldoTotal] = useState(false);
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
@@ -37,8 +41,13 @@ export default function EstoqueProdutosTab() {
   const produtosFiltrados = useMemo(() => 
     produtos
       .filter(produto => mostrarInativos || produto.ativo)
+      .filter((produto) => {
+        if (filtroCliente === "TODOS") return true;
+        if (filtroCliente === "MISCHA") return !produto.cliente_id;
+        return produto.cliente_id === filtroCliente;
+      })
       .filter(produto => produto.nome.toLowerCase().includes(searchTerm.toLowerCase())),
-    [produtos, searchTerm, mostrarInativos]
+    [produtos, searchTerm, mostrarInativos, filtroCliente]
   );
 
   // Resumo de estoque (somente produtos ativos)
@@ -215,6 +224,20 @@ export default function EstoqueProdutosTab() {
             className="pl-10"
           />
         </div>
+        <Select value={filtroCliente} onValueChange={setFiltroCliente}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="MISCHA">Mischa's (estoque próprio)</SelectItem>
+            {clientesIndustriais.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                Consignado — {c.nomeFantasia}
+              </SelectItem>
+            ))}
+            <SelectItem value="TODOS">Todos</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2 border rounded-lg px-4 py-2">
           <Switch 
             checked={mostrarSaldoTotal}
