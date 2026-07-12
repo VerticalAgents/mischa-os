@@ -21,6 +21,7 @@ import {
   ArrowDown
 } from "lucide-react";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { apenasOperacionais } from "@/utils/clienteTipo";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useGiroAnalysisConsolidated } from "@/hooks/useGiroAnalysisConsolidated";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
@@ -37,7 +38,8 @@ interface SortConfig {
 }
 
 export default function Representantes() {
-  const { clientes, loading: clientesLoading, carregarClientes } = useClienteStore();
+  const { clientes: clientesTodos, loading: clientesLoading, carregarClientes } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
   const { representantes, loading: representantesLoading, carregarRepresentantes } = useSupabaseRepresentantes();
   const { registros, carregarHistorico } = useHistoricoEntregasStore();
   const [representanteSelecionado, setRepresentanteSelecionado] = useState<string>("todos");
