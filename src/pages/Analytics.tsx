@@ -4,6 +4,8 @@ import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useDREData } from '@/hooks/useDREData';
 import { useDashboardStore } from '@/hooks/useDashboardStore';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { apenasOperacionais } from '@/utils/clienteTipo';
+import { useMemo } from 'react';
 import { usePedidoStore } from '@/hooks/usePedidoStore';
 import OperationalSummary from '@/components/dashboard-analytics/OperationalSummary';
 import ProductionIndicators from '@/components/dashboard-analytics/ProductionIndicators';
@@ -16,7 +18,8 @@ import ProducaoSimuladaTab from '@/components/dashboard-analytics/ProducaoSimula
 export default function Analytics() {
   const { data: baseDRE, isLoading, error } = useDREData();
   const { dashboardData } = useDashboardStore();
-  const { clientes } = useClienteStore();
+  const { clientes: clientesTodos } = useClienteStore();
+  const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
   const { pedidos } = usePedidoStore();
   const [activeTab, setActiveTab] = useState('operational');
 
