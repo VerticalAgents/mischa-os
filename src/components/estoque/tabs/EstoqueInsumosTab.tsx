@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,21 +41,32 @@ export default function EstoqueInsumosTab() {
   const [insumoParaEditar, setInsumoParaEditar] = useState<any>(null);
   const [showHistorico, setShowHistorico] = useState<string | null>(null);
 
+  const saldoInicialPorInsumo = useMemo(() => {
+    return insumos.reduce<Record<string, number>>((acc, insumo) => {
+      acc[insumo.id] = Number(insumo.estoque_atual ?? 0);
+      return acc;
+    }, {});
+  }, [insumos]);
+
+  const getSaldoInsumo = (insumo: { id: string; estoque_atual?: number | null }) =>
+    saldos[insumo.id] ?? Number(insumo.estoque_atual ?? 0);
+
   // Carregar saldos dos insumos
   const carregarSaldos = async () => {
-    const novosSaldos: Record<string, number> = {};
+    const novosSaldos: Record<string, number> = { ...saldoInicialPorInsumo };
     for (const insumo of insumos) {
       const saldo = await obterSaldoInsumo(insumo.id);
-      novosSaldos[insumo.id] = saldo;
+      novosSaldos[insumo.id] = saldo || Number(insumo.estoque_atual ?? 0);
     }
     setSaldos(novosSaldos);
   };
 
   useEffect(() => {
+    setSaldos(saldoInicialPorInsumo);
     if (insumos.length > 0) {
       carregarSaldos();
     }
-  }, [insumos]);
+  }, [insumos, saldoInicialPorInsumo]);
 
   // Filtrar insumos por cliente consignante e busca
   const insumosFiltrados = insumos.filter((insumo) => {
@@ -128,7 +139,7 @@ export default function EstoqueInsumosTab() {
 
   // ==== Insights ====
   const valorTotalEstoque = insumos.reduce((acc, ins) => {
-    const saldo = saldos[ins.id] || 0;
+    const saldo = getSaldoInsumo(ins);
     const volumeBruto = Number(ins.volume_bruto) || 0;
     const custoMedioPack = Number(ins.custo_medio) || 0;
     const custoUnit = volumeBruto > 0 ? custoMedioPack / volumeBruto : 0;
@@ -138,7 +149,7 @@ export default function EstoqueInsumosTab() {
   const totalCadastrados = insumos.length;
 
   const itensEstoqueBaixo = insumos.filter(ins => {
-    const saldo = saldos[ins.id] || 0;
+    const saldo = getSaldoInsumo(ins);
     const consumoSem = consumoSemanal.get(ins.id) || 0;
     if (saldo <= 0) return true;
     return consumoSem > 0 && saldo < consumoSem * 0.2;
@@ -254,7 +265,7 @@ export default function EstoqueInsumosTab() {
                 </TableRow>
               ) : (
                 insumosFiltrados.map((insumo) => {
-                  const saldo = saldos[insumo.id] || 0;
+                  const saldo = getSaldoInsumo(insumo);
                   const consumoSem = consumoSemanal.get(insumo.id) || 0;
                   const status = getStatusEstoque(saldo, consumoSem, insumo.estoque_minimo);
                   
@@ -372,7 +383,10 @@ export default function EstoqueInsumosTab() {
             itemId={insumoSelecionado.id}
             itemNome={insumoSelecionado.nome}
             tipoItem="insumo"
-            saldoAtual={saldos[insumoSelecionado.id] || 0}
+            saldoAtual={
+              saldos[insumoSelecionado.id] ??
+              Number(insumos.find((i) => i.id === insumoSelecionado.id)?.estoque_atual ?? 0)
+            }
             onSuccess={handleCloseModal}
           />
         </>
