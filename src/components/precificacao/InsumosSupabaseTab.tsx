@@ -96,6 +96,9 @@ export default function InsumosSupabaseTab() {
             : insumo.cliente_id === ownerFilter;
       return matchesSearch && matchesOwner;
     })
+  const nomeClienteById = (id?: string | null) =>
+    id ? clientesIndustriais.find((c) => c.id === id)?.nomeFantasia : undefined;
+
     .sort((a, b) => {
       // Mischa's (sem cliente_id) vem primeiro; depois clientes PL por nome do proprietário
       const aIsMischas = !a.cliente_id;
@@ -111,9 +114,6 @@ export default function InsumosSupabaseTab() {
       // Mesmo proprietário: ordenar alfabeticamente pelo nome do insumo
       return a.nome.localeCompare(b.nome, 'pt-BR');
     });
-
-  const nomeClienteById = (id?: string | null) =>
-    id ? clientesIndustriais.find((c) => c.id === id)?.nomeFantasia : undefined;
 
   // Calcular métricas
   const metricas = {
