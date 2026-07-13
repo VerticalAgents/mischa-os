@@ -117,21 +117,22 @@ export default function EditarReceitaModal({
     return new Map(insumos.map(insumo => [insumo.id, insumo]));
   }, [insumos]);
 
+  const clienteIdAtual = receitaForm.watch("cliente_id") ?? null;
+
   // Filtrar insumos disponíveis conforme tipo da receita:
   // - Receita PL (com cliente_id): apenas insumos consignados àquele cliente
   // - Receita Mischa's (sem cliente_id): apenas insumos próprios (sem cliente_id)
   const insumosDisponiveis = useMemo(() => {
-    const clienteReceita = receita?.cliente_id ?? null;
-    return insumos.filter((i) => (i.cliente_id ?? null) === clienteReceita);
-  }, [insumos, receita?.cliente_id]);
+    return insumos.filter((i) => (i.cliente_id ?? null) === clienteIdAtual);
+  }, [insumos, clienteIdAtual]);
 
   const clienteReceitaNome = useMemo(() => {
-    if (!receita?.cliente_id) return null;
+    if (!clienteIdAtual) return null;
     return (
-      clientesPL.find((c) => c.id === receita.cliente_id)?.nomeFantasia ??
+      clientesPL.find((c) => c.id === clienteIdAtual)?.nomeFantasia ??
       "Cliente PL"
     );
-  }, [clientesPL, receita?.cliente_id]);
+  }, [clientesPL, clienteIdAtual]);
 
   const onSubmitReceita = async (values: EditarReceitaFormValues) => {
     if (!receita) return;
@@ -293,7 +294,7 @@ export default function EditarReceitaModal({
           <DialogDescription>
             Edite os dados da receita e seus ingredientes
           </DialogDescription>
-          {receita?.cliente_id ? (
+          {clienteIdAtual ? (
             <Badge
               variant="outline"
               className="w-fit border-purple-400 text-purple-700 bg-purple-50"
@@ -311,7 +312,75 @@ export default function EditarReceitaModal({
           {/* Formulário da Receita */}
           <Form {...receitaForm}>
             <form onSubmit={receitaForm.handleSubmit(onSubmitReceita)} className="space-y-4">
-              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <FormLabel>Tipo de receita</FormLabel>
+                  <Select
+                    value={clienteIdAtual ? "PL" : "MISCHAS"}
+                    onValueChange={(v) => {
+                      if (v === "MISCHAS") {
+                        receitaForm.setValue("cliente_id", null, { shouldDirty: true });
+                      } else if (clientesPL.length > 0) {
+                        receitaForm.setValue("cliente_id", clientesPL[0].id, { shouldDirty: true });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MISCHAS">Mischa's (própria)</SelectItem>
+                      <SelectItem value="PL">Private-Label (cliente consignante)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {clienteIdAtual !== null && (
+                  <FormField
+                    control={receitaForm.control}
+                    name="cliente_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Cliente consignante
+                          <Badge variant="outline" className="ml-2 border-purple-400 text-purple-700">
+                            PL
+                          </Badge>
+                        </FormLabel>
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={(v) => field.onChange(v || null)}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o cliente PL" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {clientesPL.length === 0 && (
+                              <div className="px-3 py-2 text-xs text-muted-foreground">
+                                Nenhum cliente industrial cadastrado
+                              </div>
+                            )}
+                            {clientesPL.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.nomeFantasia}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+              {clienteIdAtual && (
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Somente insumos consignados deste cliente poderão ser adicionados a esta receita.
+                </p>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={receitaForm.control}
