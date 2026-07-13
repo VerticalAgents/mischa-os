@@ -82,19 +82,35 @@ export default function InsumosSupabaseTab() {
     setIsAddModalOpen(false);
   };
 
-  // Filtrar insumos
-  const insumosFiltrados = insumos.filter((insumo) => {
-    const matchesSearch = searchTerm
-      ? insumo.nome.toLowerCase().includes(searchTerm.toLowerCase())
-      : true;
-    const matchesOwner =
-      ownerFilter === 'all'
-        ? true
-        : ownerFilter === 'mischas'
-          ? !insumo.cliente_id
-          : insumo.cliente_id === ownerFilter;
-    return matchesSearch && matchesOwner;
-  });
+  // Filtrar e ordenar insumos: proprietário (Mischa's antes dos PLs) e depois alfabético
+  const insumosFiltrados = insumos
+    .filter((insumo) => {
+      const matchesSearch = searchTerm
+        ? insumo.nome.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+      const matchesOwner =
+        ownerFilter === 'all'
+          ? true
+          : ownerFilter === 'mischas'
+            ? !insumo.cliente_id
+            : insumo.cliente_id === ownerFilter;
+      return matchesSearch && matchesOwner;
+    })
+    .sort((a, b) => {
+      // Mischa's (sem cliente_id) vem primeiro; depois clientes PL por nome do proprietário
+      const aIsMischas = !a.cliente_id;
+      const bIsMischas = !b.cliente_id;
+      if (aIsMischas && !bIsMischas) return -1;
+      if (!aIsMischas && bIsMischas) return 1;
+
+      // Ambos PL: ordenar pelo nome do proprietário
+      const aOwner = nomeClienteById(a.cliente_id) || '';
+      const bOwner = nomeClienteById(b.cliente_id) || '';
+      if (aOwner !== bOwner) return aOwner.localeCompare(bOwner, 'pt-BR');
+
+      // Mesmo proprietário: ordenar alfabeticamente pelo nome do insumo
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
 
   const nomeClienteById = (id?: string | null) =>
     id ? clientesIndustriais.find((c) => c.id === id)?.nomeFantasia : undefined;
