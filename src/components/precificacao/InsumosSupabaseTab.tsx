@@ -2,8 +2,16 @@
 import { useState } from "react";
 import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -37,6 +45,8 @@ export default function InsumosSupabaseTab() {
   } = useSupabaseInsumos();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const { clientes: clientesIndustriais } = useClientesIndustriais();
   const [editandoInsumo, setEditandoInsumo] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -73,11 +83,21 @@ export default function InsumosSupabaseTab() {
   };
 
   // Filtrar insumos
-  const insumosFiltrados = searchTerm
-    ? insumos.filter(insumo =>
-        insumo.nome.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : insumos;
+  const insumosFiltrados = insumos.filter((insumo) => {
+    const matchesSearch = searchTerm
+      ? insumo.nome.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+    const matchesOwner =
+      ownerFilter === 'all'
+        ? true
+        : ownerFilter === 'mischas'
+          ? !insumo.cliente_id
+          : insumo.cliente_id === ownerFilter;
+    return matchesSearch && matchesOwner;
+  });
+
+  const nomeClienteById = (id?: string | null) =>
+    id ? clientesIndustriais.find((c) => c.id === id)?.nomeFantasia : undefined;
 
   // Calcular métricas
   const metricas = {
@@ -157,15 +177,31 @@ export default function InsumosSupabaseTab() {
               </div>
             )}
 
-            {/* Filtro */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Filtrar insumos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            {/* Filtros */}
+            <div className="flex flex-col md:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Filtrar insumos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                <SelectTrigger className="w-full md:w-[240px]">
+                  <SelectValue placeholder="Proprietário" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os proprietários</SelectItem>
+                  <SelectItem value="mischas">Mischa's (próprio)</SelectItem>
+                  {clientesIndustriais.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nomeFantasia}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Tabela de Insumos */}
@@ -176,6 +212,7 @@ export default function InsumosSupabaseTab() {
                     <TableRow>
                       <TableHead className="min-w-[150px]">Nome</TableHead>
                       <TableHead className="min-w-[100px]">Categoria</TableHead>
+                      <TableHead className="min-w-[140px]">Proprietário</TableHead>
                       <TableHead className="min-w-[120px]">Volume Bruto</TableHead>
                       <TableHead className="min-w-[120px]">Custo Médio (R$)</TableHead>
                       <TableHead className="min-w-[120px]">Custo/g (R$)</TableHead>
@@ -186,7 +223,7 @@ export default function InsumosSupabaseTab() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           <div className="flex items-center justify-center gap-2">
                             <RefreshCw className="h-4 w-4 animate-spin" />
                             Carregando insumos...
@@ -195,7 +232,7 @@ export default function InsumosSupabaseTab() {
                       </TableRow>
                     ) : insumosFiltrados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           {searchTerm ? `Nenhum insumo encontrado para "${searchTerm}"` : "Nenhum insumo cadastrado"}
                         </TableCell>
                       </TableRow>
@@ -205,6 +242,15 @@ export default function InsumosSupabaseTab() {
                           <TableCell className="font-medium">{insumo.nome}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{insumo.categoria}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {insumo.cliente_id ? (
+                              <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200">
+                                {nomeClienteById(insumo.cliente_id) ?? 'Cliente PL'}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Mischa's</Badge>
+                            )}
                           </TableCell>
                           <TableCell>{insumo.volume_bruto}{insumo.unidade_medida}</TableCell>
                           <TableCell>R$ {(insumo.custo_medio || 0).toFixed(2)}</TableCell>
