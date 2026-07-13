@@ -205,19 +205,19 @@ export default function InsumosSupabaseTab() {
             </div>
 
             {/* Tabela de Insumos */}
-            <div className="w-full overflow-x-auto">
-              <div className="rounded-md border min-w-full">
-                <Table>
+            <div className="w-full">
+              <div className="rounded-md border w-full">
+                <Table className="w-full table-auto">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[150px]">Nome</TableHead>
-                      <TableHead className="min-w-[100px]">Categoria</TableHead>
-                      <TableHead className="min-w-[140px]">Proprietário</TableHead>
-                      <TableHead className="min-w-[120px]">Volume Bruto</TableHead>
-                      <TableHead className="min-w-[120px]">Custo Médio (R$)</TableHead>
-                      <TableHead className="min-w-[120px]">Custo/g (R$)</TableHead>
-                      <TableHead className="min-w-[80px]">Estoque</TableHead>
-                      <TableHead className="text-right min-w-[120px]">Ações</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="whitespace-nowrap">Categoria</TableHead>
+                      <TableHead className="whitespace-nowrap">Proprietário</TableHead>
+                      <TableHead className="whitespace-nowrap">Volume Bruto</TableHead>
+                      <TableHead className="whitespace-nowrap">Custo Médio (R$)</TableHead>
+                      <TableHead className="whitespace-nowrap">Custo/g (R$)</TableHead>
+                      <TableHead className="whitespace-nowrap">Estoque</TableHead>
+                      <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -241,15 +241,15 @@ export default function InsumosSupabaseTab() {
                         <TableRow key={insumo.id}>
                           <TableCell className="font-medium">{insumo.nome}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{insumo.categoria}</Badge>
+                            <Badge variant="outline" className="whitespace-nowrap">{insumo.categoria}</Badge>
                           </TableCell>
                           <TableCell>
                             {insumo.cliente_id ? (
-                              <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200">
+                              <Badge className="whitespace-nowrap bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200">
                                 {nomeClienteById(insumo.cliente_id) ?? 'Cliente PL'}
                               </Badge>
                             ) : (
-                              <Badge variant="secondary">Mischa's</Badge>
+                              <Badge variant="secondary" className="whitespace-nowrap">Mischa's</Badge>
                             )}
                           </TableCell>
                           <TableCell>{insumo.volume_bruto}{insumo.unidade_medida}</TableCell>
@@ -258,7 +258,7 @@ export default function InsumosSupabaseTab() {
                             R$ {calcularCustoUnitario(insumo).toFixed(4)}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={(insumo.estoque_atual || 0) > 0 ? "default" : "secondary"}>
+                            <Badge variant={(insumo.estoque_atual || 0) > 0 ? "default" : "secondary"} className="whitespace-nowrap">
                               {Number(insumo.estoque_atual || 0).toFixed(2)}
                             </Badge>
                           </TableCell>
