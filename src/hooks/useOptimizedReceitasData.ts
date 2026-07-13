@@ -14,6 +14,7 @@ export interface ReceitaCompleta {
   custo_unitario: number;
   user_id: string;
   ativo?: boolean;
+  cliente_id?: string | null;
   produtos_ativos_vinculados: number;
   itens: {
     id: string;
