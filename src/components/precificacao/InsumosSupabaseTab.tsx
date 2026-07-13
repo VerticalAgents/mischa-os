@@ -259,7 +259,7 @@ export default function InsumosSupabaseTab() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={(insumo.estoque_atual || 0) > 0 ? "default" : "secondary"}>
-                              {insumo.estoque_atual || 0}
+                              {Number(insumo.estoque_atual || 0).toFixed(2)}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
