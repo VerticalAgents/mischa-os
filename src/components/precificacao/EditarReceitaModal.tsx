@@ -312,69 +312,34 @@ export default function EditarReceitaModal({
           {/* Formulário da Receita */}
           <Form {...receitaForm}>
             <form onSubmit={receitaForm.handleSubmit(onSubmitReceita)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <FormLabel>Tipo de receita</FormLabel>
-                  <Select
-                    value={clienteIdAtual ? "PL" : "MISCHAS"}
-                    onValueChange={(v) => {
-                      if (v === "MISCHAS") {
-                        receitaForm.setValue("cliente_id", null, { shouldDirty: true });
-                      } else if (clientesPL.length > 0) {
-                        receitaForm.setValue("cliente_id", clientesPL[0].id, { shouldDirty: true });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MISCHAS">Mischa's (própria)</SelectItem>
-                      <SelectItem value="PL">Private-Label (cliente consignante)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {clienteIdAtual !== null && (
-                  <FormField
-                    control={receitaForm.control}
-                    name="cliente_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Cliente consignante
-                          <Badge variant="outline" className="ml-2 border-purple-400 text-purple-700">
-                            PL
-                          </Badge>
-                        </FormLabel>
-                        <Select
-                          value={field.value ?? ""}
-                          onValueChange={(v) => field.onChange(v || null)}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o cliente PL" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clientesPL.length === 0 && (
-                              <div className="px-3 py-2 text-xs text-muted-foreground">
-                                Nenhum cliente industrial cadastrado
-                              </div>
-                            )}
-                            {clientesPL.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.nomeFantasia}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={receitaForm.control}
+                name="cliente_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Proprietário da receita</FormLabel>
+                    <Select
+                      value={field.value ?? "MISCHAS"}
+                      onValueChange={(v) => field.onChange(v === "MISCHAS" ? null : v)}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="MISCHAS">Mischa's (própria)</SelectItem>
+                        {clientesPL.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nomeFantasia} (Private-Label)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
               {clienteIdAtual && (
                 <p className="text-xs text-muted-foreground -mt-2">
                   Somente insumos consignados deste cliente poderão ser adicionados a esta receita.
