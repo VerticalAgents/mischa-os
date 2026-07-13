@@ -21,12 +21,15 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
+import { Badge } from "@/components/ui/badge";
 
 interface ReceitaInput {
   nome: string;
   descricao?: string;
   rendimento: number;
   unidade_rendimento: string;
+  cliente_id: string | null;
 }
 
 interface CriarReceitaModalProps {
@@ -41,11 +44,14 @@ export default function CriarReceitaModal({
   onSuccess,
 }: CriarReceitaModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { clientes: clientesPL } = useClientesIndustriais();
+  const [tipoReceita, setTipoReceita] = useState<"MISCHAS" | "PL">("MISCHAS");
   const [formData, setFormData] = useState<ReceitaInput>({
     nome: "",
     descricao: "",
     rendimento: 1,
     unidade_rendimento: "unidades",
+    cliente_id: null,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +61,15 @@ export default function CriarReceitaModal({
       toast({
         title: "Erro",
         description: "Nome da receita é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (tipoReceita === "PL" && !formData.cliente_id) {
+      toast({
+        title: "Cliente obrigatório",
+        description: "Selecione o cliente Private-Label consignante",
         variant: "destructive",
       });
       return;
@@ -83,6 +98,7 @@ export default function CriarReceitaModal({
           rendimento: formData.rendimento,
           unidade_rendimento: formData.unidade_rendimento,
           user_id: user.id,
+          cliente_id: tipoReceita === "PL" ? formData.cliente_id : null,
         });
 
       if (error) {
@@ -106,7 +122,9 @@ export default function CriarReceitaModal({
         descricao: "",
         rendimento: 1,
         unidade_rendimento: "unidades",
+        cliente_id: null,
       });
+      setTipoReceita("MISCHAS");
 
       onSuccess();
       onClose();
@@ -128,7 +146,9 @@ export default function CriarReceitaModal({
       descricao: "",
       rendimento: 1,
       unidade_rendimento: "unidades",
+      cliente_id: null,
     });
+    setTipoReceita("MISCHAS");
     onClose();
   };
 
@@ -143,6 +163,63 @@ export default function CriarReceitaModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tipo de receita *</Label>
+            <Select
+              value={tipoReceita}
+              onValueChange={(v) => {
+                setTipoReceita(v as "MISCHAS" | "PL");
+                if (v === "MISCHAS") {
+                  setFormData((prev) => ({ ...prev, cliente_id: null }));
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MISCHAS">Mischa's (própria)</SelectItem>
+                <SelectItem value="PL">Private-Label (cliente consignante)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {tipoReceita === "PL" && (
+            <div className="space-y-2">
+              <Label htmlFor="cliente">
+                Cliente consignante *
+                <Badge variant="outline" className="ml-2 border-purple-400 text-purple-700">
+                  PL
+                </Badge>
+              </Label>
+              <Select
+                value={formData.cliente_id ?? ""}
+                onValueChange={(v) =>
+                  setFormData((prev) => ({ ...prev, cliente_id: v || null }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente PL" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientesPL.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      Nenhum cliente industrial cadastrado
+                    </div>
+                  )}
+                  {clientesPL.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nomeFantasia}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Somente insumos consignados deste cliente poderão ser adicionados a esta receita.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="nome">Nome da Receita *</Label>
             <Input
