@@ -42,12 +42,15 @@ import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { ReceitaCompleta, useOptimizedReceitasData } from "@/hooks/useOptimizedReceitasData";
 import { Plus, Trash2, Edit, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
+import { Badge } from "@/components/ui/badge";
 
 const editarReceitaSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   descricao: z.string().optional(),
   rendimento: z.number().min(0.01, "Rendimento deve ser maior que zero"),
   unidade_rendimento: z.string().min(1, "Unidade de rendimento é obrigatória"),
+  cliente_id: z.string().nullable().optional(),
 });
 
 const itemReceitaSchema = z.object({
@@ -72,6 +75,7 @@ export default function EditarReceitaModal({
   onSuccess,
 }: EditarReceitaModalProps) {
   const { insumos } = useSupabaseInsumos();
+  const { clientes: clientesPL } = useClientesIndustriais();
   const { adicionarItemReceita, removerItemReceita } = useOptimizedReceitasData();
   const [isAdicionandoItem, setIsAdicionandoItem] = useState(false);
   const [editandoItem, setEditandoItem] = useState<string | null>(null);
@@ -84,6 +88,7 @@ export default function EditarReceitaModal({
       descricao: "",
       rendimento: 0,
       unidade_rendimento: "",
+      cliente_id: null,
     },
   });
 
@@ -102,6 +107,7 @@ export default function EditarReceitaModal({
         descricao: receita.descricao || "",
         rendimento: receita.rendimento,
         unidade_rendimento: receita.unidade_rendimento,
+        cliente_id: receita.cliente_id ?? null,
       });
     }
   }, [receita, receitaForm]);
@@ -111,13 +117,35 @@ export default function EditarReceitaModal({
     return new Map(insumos.map(insumo => [insumo.id, insumo]));
   }, [insumos]);
 
+  // Filtrar insumos disponíveis conforme tipo da receita:
+  // - Receita PL (com cliente_id): apenas insumos consignados àquele cliente
+  // - Receita Mischa's (sem cliente_id): apenas insumos próprios (sem cliente_id)
+  const insumosDisponiveis = useMemo(() => {
+    const clienteReceita = receita?.cliente_id ?? null;
+    return insumos.filter((i) => (i.cliente_id ?? null) === clienteReceita);
+  }, [insumos, receita?.cliente_id]);
+
+  const clienteReceitaNome = useMemo(() => {
+    if (!receita?.cliente_id) return null;
+    return (
+      clientesPL.find((c) => c.id === receita.cliente_id)?.nomeFantasia ??
+      "Cliente PL"
+    );
+  }, [clientesPL, receita?.cliente_id]);
+
   const onSubmitReceita = async (values: EditarReceitaFormValues) => {
     if (!receita) return;
 
     try {
       const { error } = await supabase
         .from('receitas_base')
-        .update(values)
+        .update({
+          nome: values.nome,
+          descricao: values.descricao,
+          rendimento: values.rendimento,
+          unidade_rendimento: values.unidade_rendimento,
+          cliente_id: values.cliente_id ?? null,
+        })
         .eq('id', receita.id);
 
       if (error) {
