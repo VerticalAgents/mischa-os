@@ -293,6 +293,18 @@ export default function EditarReceitaModal({
           <DialogDescription>
             Edite os dados da receita e seus ingredientes
           </DialogDescription>
+          {receita?.cliente_id ? (
+            <Badge
+              variant="outline"
+              className="w-fit border-purple-400 text-purple-700 bg-purple-50"
+            >
+              Private-Label · {clienteReceitaNome}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="w-fit">
+              Receita Mischa's
+            </Badge>
+          )}
         </DialogHeader>
 
         <div className="space-y-6">
@@ -403,7 +415,14 @@ export default function EditarReceitaModal({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {insumos.map((insumo) => (
+                              {insumosDisponiveis.length === 0 && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">
+                                  {receita?.cliente_id
+                                    ? `Nenhum insumo consignado para ${clienteReceitaNome ?? "este cliente"}`
+                                    : "Nenhum insumo Mischa's cadastrado"}
+                                </div>
+                              )}
+                              {insumosDisponiveis.map((insumo) => (
                                 <SelectItem key={insumo.id} value={insumo.id}>
                                   {insumo.nome} ({insumo.unidade_medida})
                                 </SelectItem>
