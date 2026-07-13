@@ -1921,6 +1921,7 @@ export type Database = {
       receitas_base: {
         Row: {
           ativo: boolean
+          cliente_id: string | null
           created_at: string
           descricao: string | null
           id: string
@@ -1932,6 +1933,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          cliente_id?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
@@ -1943,6 +1945,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          cliente_id?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
@@ -1952,7 +1955,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "receitas_base_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receitas_base_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
       }
       rendimentos_receita_produto: {
         Row: {
