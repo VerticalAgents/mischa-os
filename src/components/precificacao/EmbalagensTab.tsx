@@ -299,7 +299,7 @@ export default function EmbalagensTab({ produtoId, produtoNome }: EmbalagensTabP
                 <TableHead>Nome</TableHead>
                 <TableHead>Abreviação</TableHead>
                 <TableHead>Unidades</TableHead>
-                <TableHead className="w-16">Ações</TableHead>
+                <TableHead className="w-24">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
