@@ -19,6 +19,7 @@ import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 import { useClientesIndustriais } from "@/hooks/useClientesIndustriais";
+import EmbalagensTab from "./EmbalagensTab";
 
 interface EditarProdutoModalProps {
   produto: ProdutoCompleto | null;
@@ -349,9 +350,10 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
         <div className="flex-1 overflow-hidden min-h-0">
           <Tabs defaultValue="dados" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
               <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
               <TabsTrigger value="componentes">Componentes</TabsTrigger>
+              <TabsTrigger value="embalagens">Embalagens</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 overflow-auto min-h-0">
