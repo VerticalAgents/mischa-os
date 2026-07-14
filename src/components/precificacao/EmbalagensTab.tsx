@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2 } from "lucide-react";
+import { Copy, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -16,18 +23,68 @@ import {
 } from "@/components/ui/table";
 import { useNiveisEmbalagemProduto } from "@/hooks/useNiveisEmbalagemProduto";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EmbalagensTabProps {
   produtoId: string;
+  produtoNome: string;
 }
 
-export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
-  const { niveis, loading, adicionar, remover } = useNiveisEmbalagemProduto(produtoId);
+interface ProdutoOpcao {
+  id: string;
+  nome: string;
+}
+
+export default function EmbalagensTab({ produtoId, produtoNome }: EmbalagensTabProps) {
+  const { niveis, loading, adicionar, remover, copiarDeProduto } = useNiveisEmbalagemProduto(produtoId);
   const { toast } = useToast();
 
   const [nome, setNome] = useState("");
   const [abreviacao, setAbreviacao] = useState("");
   const [unidadesPorNivel, setUnidadesPorNivel] = useState<number>(12);
+  const [produtoOrigemId, setProdutoOrigemId] = useState("");
+  const [produtosDisponiveis, setProdutosDisponiveis] = useState<ProdutoOpcao[]>([]);
+  const [carregandoProdutos, setCarregandoProdutos] = useState(false);
+  const [copiando, setCopiando] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    const carregarProdutos = async () => {
+      setCarregandoProdutos(true);
+      const { data, error } = await supabase
+        .from("produtos_finais")
+        .select("id, nome")
+        .neq("id", produtoId)
+        .order("nome", { ascending: true });
+
+      if (cancelado) return;
+      setCarregandoProdutos(false);
+
+      if (error) {
+        toast({
+          title: "Erro ao carregar produtos",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setProdutosDisponiveis((data || []) as ProdutoOpcao[]);
+    };
+
+    carregarProdutos();
+    setProdutoOrigemId("");
+
+    return () => {
+      cancelado = true;
+    };
+  }, [produtoId, toast]);
+
+  const produtoOrigemNome = useMemo(
+    () => produtosDisponiveis.find((produto) => produto.id === produtoOrigemId)?.nome,
+    [produtoOrigemId, produtosDisponiveis]
+  );
 
   const handleAdicionar = async (event?: MouseEvent<HTMLButtonElement>) => {
     event?.preventDefault();
@@ -53,6 +110,29 @@ export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
       setAbreviacao("");
       setUnidadesPorNivel(12);
       toast({ title: "Nível adicionado" });
+    }
+  };
+
+  const handleCopiar = async () => {
+    if (!produtoOrigemId) {
+      toast({
+        title: "Selecione um produto",
+        description: "Escolha de qual produto os níveis serão copiados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCopiando(true);
+    const resultado = await copiarDeProduto(produtoOrigemId);
+    setCopiando(false);
+
+    if (resultado.ok && resultado.copiados > 0) {
+      toast({
+        title: "Níveis copiados",
+        description: `${resultado.copiados} nível(is) copiado(s) de ${produtoOrigemNome || "outro produto"}.`,
+      });
+      setProdutoOrigemId("");
     }
   };
 
@@ -121,7 +201,57 @@ export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Copiar de outro produto</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+            <div className="space-y-2">
+              <Label>Produto de origem</Label>
+              <Select
+                value={produtoOrigemId}
+                onValueChange={setProdutoOrigemId}
+                disabled={carregandoProdutos || produtosDisponiveis.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      carregandoProdutos
+                        ? "Carregando produtos..."
+                        : produtosDisponiveis.length === 0
+                          ? "Nenhum outro produto disponível"
+                          : "Selecione o produto"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {produtosDisponiveis.map((produto) => (
+                    <SelectItem key={produto.id} value={produto.id}>
+                      {produto.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopiar}
+              disabled={!produtoOrigemId || copiando}
+              className="w-full sm:w-auto"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              {copiando ? "Copiando..." : "Copiar níveis"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Níveis configurados</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Estes níveis valem apenas para {produtoNome}. Outros produtos precisam ter seus próprios níveis ou copiar daqui.
+          </p>
         </CardHeader>
         <CardContent>
           <Table>
