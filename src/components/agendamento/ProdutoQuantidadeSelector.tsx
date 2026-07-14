@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,14 @@ import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseProporoesPadrao } from '@/hooks/useSupabaseProporoesPadrao';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  converterParaNivel,
+  converterParaUnidades,
+  inferirNivel,
+  niveisComUnidade,
+  NIVEL_UNIDADE,
+  type NivelEmbalagem,
+} from '@/utils/niveisEmbalagem';
 
 interface ProdutoQuantidade {
   produto: string;
@@ -42,6 +50,8 @@ export default function ProdutoQuantidadeSelector({
   const { getClientePorId } = useClienteStore();
   const { proporcoes, obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
   const [refreshing, setRefreshing] = useState(false);
+  const [niveisPorProdutoId, setNiveisPorProdutoId] = useState<Record<string, NivelEmbalagem[]>>({});
+  const [nivelSelecionadoPorIndex, setNivelSelecionadoPorIndex] = useState<Record<number, string>>({});
   const { toast } = useToast();
 
   const cliente = getClientePorId(clienteId);
@@ -66,6 +76,51 @@ export default function ProdutoQuantidadeSelector({
   const produtosDisponiveis = produtosFiltrados.filter(produto => {
     return !value.some(item => item.produto === produto.nome);
   });
+
+  const produtoPorNome = useMemo(() => {
+    return new Map(produtos.map((produto) => [produto.nome, produto]));
+  }, [produtos]);
+
+  useEffect(() => {
+    let cancelado = false;
+    const produtoIds = produtosFiltrados.map((produto) => produto.id);
+
+    if (produtoIds.length === 0) {
+      setNiveisPorProdutoId({});
+      return;
+    }
+
+    const carregarNiveis = async () => {
+      const { data, error } = await supabase
+        .from('niveis_embalagem_produto')
+        .select('id, produto_id, nome, abreviacao, unidades_por_nivel, ordem')
+        .in('produto_id', produtoIds)
+        .order('ordem', { ascending: true })
+        .order('unidades_por_nivel', { ascending: true });
+
+      if (cancelado) return;
+
+      if (error) {
+        console.error('Erro ao carregar níveis de embalagem:', error);
+        setNiveisPorProdutoId({});
+        return;
+      }
+
+      const agrupados = ((data || []) as NivelEmbalagem[]).reduce<Record<string, NivelEmbalagem[]>>((acc, nivel) => {
+        if (!acc[nivel.produto_id]) acc[nivel.produto_id] = [];
+        acc[nivel.produto_id].push(nivel);
+        return acc;
+      }, {});
+
+      setNiveisPorProdutoId(agrupados);
+    };
+
+    carregarNiveis();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [produtosFiltrados]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -190,12 +245,22 @@ export default function ProdutoQuantidadeSelector({
 
   const removerProduto = (index: number) => {
     onChange(value.filter((_, i) => i !== index));
+    setNivelSelecionadoPorIndex((atuais) => {
+      const proximos: Record<number, string> = {};
+      Object.entries(atuais).forEach(([key, nivelId]) => {
+        const itemIndex = Number(key);
+        if (itemIndex < index) proximos[itemIndex] = nivelId;
+        if (itemIndex > index) proximos[itemIndex - 1] = nivelId;
+      });
+      return proximos;
+    });
   };
 
   const atualizarProduto = (index: number, campo: 'produto' | 'quantidade', valor: string | number) => {
     const novosProdutos = [...value];
     if (campo === 'produto') {
       novosProdutos[index].produto = valor as string;
+      setNivelSelecionadoPorIndex((atuais) => ({ ...atuais, [index]: NIVEL_UNIDADE.id }));
     } else {
       novosProdutos[index].quantidade = Number(valor);
     }
@@ -206,6 +271,11 @@ export default function ProdutoQuantidadeSelector({
       const novaQuantidadeTotal = novosProdutos.reduce((soma, p) => soma + p.quantidade, 0);
       onQuantidadeTotalChange(novaQuantidadeTotal);
     }
+  };
+
+  const atualizarQuantidadePorNivel = (index: number, valor: string, nivel: NivelEmbalagem) => {
+    const quantidadeNivel = Number(valor);
+    atualizarProduto(index, 'quantidade', converterParaUnidades(quantidadeNivel, nivel));
   };
 
   const somaQuantidades = value.reduce((soma, produto) => soma + produto.quantidade, 0);
@@ -325,6 +395,13 @@ export default function ProdutoQuantidadeSelector({
             outroIndex !== index && outroItem.produto === produto.nome
           );
         });
+        const produtoSelecionado = produtoPorNome.get(item.produto);
+        const niveisExtras = produtoSelecionado ? (niveisPorProdutoId[produtoSelecionado.id] || []) : [];
+        const niveisProduto = produtoSelecionado ? niveisComUnidade(niveisExtras) : [NIVEL_UNIDADE];
+        const nivelInferido = inferirNivel(item.quantidade, niveisExtras);
+        const nivelSelecionadoId = nivelSelecionadoPorIndex[index] || nivelInferido.id;
+        const nivelSelecionado = niveisProduto.find((nivel) => nivel.id === nivelSelecionadoId) || NIVEL_UNIDADE;
+        const quantidadeNoNivel = converterParaNivel(item.quantidade, nivelSelecionado);
 
         return (
           <div key={index} className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg">
@@ -346,14 +423,34 @@ export default function ProdutoQuantidadeSelector({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 w-full sm:w-24">
+            <div className="space-y-2 w-full sm:w-36">
+              <Label htmlFor={`nivel-${index}`}>Nível</Label>
+              <Select
+                value={nivelSelecionado.id}
+                onValueChange={(nivelId) => setNivelSelecionadoPorIndex((atuais) => ({ ...atuais, [index]: nivelId }))}
+                disabled={!produtoSelecionado}
+              >
+                <SelectTrigger id={`nivel-${index}`}>
+                  <SelectValue placeholder="Nível" />
+                </SelectTrigger>
+                <SelectContent>
+                  {niveisProduto.map((nivel) => (
+                    <SelectItem key={nivel.id} value={nivel.id}>
+                      {nivel.abreviacao} · {nivel.unidades_por_nivel} un
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 w-full sm:w-28">
               <Label htmlFor={`quantidade-${index}`}>Quantidade</Label>
               <Input
                 id={`quantidade-${index}`}
                 type="number"
                 min="0"
-                value={item.quantidade}
-                onChange={(e) => atualizarProduto(index, 'quantidade', e.target.value)}
+                step={nivelSelecionado.unidades_por_nivel === 1 ? 1 : 0.01}
+                value={quantidadeNoNivel}
+                onChange={(e) => atualizarQuantidadePorNivel(index, e.target.value, nivelSelecionado)}
               />
             </div>
             <div className="flex justify-end sm:block">
