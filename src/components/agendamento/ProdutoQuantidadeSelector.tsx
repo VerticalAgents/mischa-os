@@ -72,10 +72,10 @@ export default function ProdutoQuantidadeSelector({
     return habilitadas.includes(produto.categoria_id || 0);
   }), [produtos, habilitadas]);
 
-  // Filtrar produtos que ainda não foram adicionados
-  const produtosDisponiveis = produtosFiltrados.filter(produto => {
-    return !value.some(item => item.produto === produto.nome);
-  });
+  // Permitimos adicionar o mesmo produto múltiplas vezes (para usar níveis
+  // diferentes, ex.: uma linha em Un. e outra em Display). Portanto,
+  // "disponíveis" = todos os produtos filtrados.
+  const produtosDisponiveis = produtosFiltrados;
 
   const produtoPorNome = useMemo(() => {
     return new Map(produtos.map((produto) => [produto.nome, produto]));
@@ -379,22 +379,12 @@ export default function ProdutoQuantidadeSelector({
         <div className="text-center py-4 text-muted-foreground">
           Nenhum produto ativo nas categorias habilitadas deste cliente.
         </div>
-      ) : produtosDisponiveis.length === 0 && value.length > 0 ? (
-        <div className="text-center py-2 text-amber-600 bg-amber-50 rounded-md border border-amber-200">
-          Todos os produtos disponíveis já foram adicionados.
-        </div>
       ) : null}
       
       {value.map((item, index) => {
-        // Para cada item, mostrar apenas produtos disponíveis + o produto já selecionado
-        const opcoesParaEsteItem = produtosFiltrados.filter(produto => {
-          // Incluir se é o produto já selecionado neste item
-          if (item.produto === produto.nome) return true;
-          // Incluir se não está sendo usado em nenhum outro item
-          return !value.some((outroItem, outroIndex) => 
-            outroIndex !== index && outroItem.produto === produto.nome
-          );
-        });
+        // Permitimos o mesmo produto em múltiplas linhas (níveis diferentes),
+        // então listamos todos os produtos filtrados.
+        const opcoesParaEsteItem = produtosFiltrados;
         const produtoSelecionado = produtoPorNome.get(item.produto);
         const niveisExtras = produtoSelecionado ? (niveisPorProdutoId[produtoSelecionado.id] || []) : [];
         const niveisProduto = produtoSelecionado ? niveisComUnidade(niveisExtras) : [NIVEL_UNIDADE];
