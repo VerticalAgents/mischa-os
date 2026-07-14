@@ -2,14 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { NivelEmbalagem } from "@/utils/niveisEmbalagem";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function useNiveisEmbalagemProduto(produtoId?: string | null) {
   const [niveis, setNiveis] = useState<NivelEmbalagem[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   const carregar = useCallback(async () => {
-    if (!produtoId) {
+    if (!produtoId || authLoading) {
+      setNiveis([]);
+      return;
+    }
+    if (!user) {
       setNiveis([]);
       return;
     }
@@ -23,10 +29,15 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     setLoading(false);
     if (error) {
       console.error("Erro ao carregar níveis:", error);
+      toast({
+        title: "Erro ao carregar níveis",
+        description: error.message,
+        variant: "destructive",
+      });
       return;
     }
     setNiveis((data || []) as NivelEmbalagem[]);
-  }, [produtoId]);
+  }, [produtoId, authLoading, user, toast]);
 
   useEffect(() => {
     carregar();
@@ -36,25 +47,28 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     nivel: Omit<NivelEmbalagem, "id" | "produto_id">
   ) => {
     if (!produtoId) return false;
-    const { data: authData } = await supabase.auth.getUser();
-    const uid = authData.user?.id;
-    if (!uid) {
+    if (authLoading) return false;
+    if (!user?.id) {
       toast({ title: "Sessão expirada", variant: "destructive" });
       return false;
     }
-    const { data: ownerId, error: ownerErr } = await supabase.rpc("get_owner_id", { _user_id: uid });
+    const { data: ownerId, error: ownerErr } = await supabase.rpc("get_owner_id", { _user_id: user.id });
     if (ownerErr || !ownerId) {
       toast({ title: "Erro ao identificar proprietário", description: ownerErr?.message, variant: "destructive" });
       return false;
     }
-    const { error } = await supabase.from("niveis_embalagem_produto").insert({
-      produto_id: produtoId,
-      nome: nivel.nome,
-      abreviacao: nivel.abreviacao,
-      unidades_por_nivel: nivel.unidades_por_nivel,
-      ordem: nivel.ordem,
-      user_id: ownerId as string,
-    });
+    const { data, error } = await supabase
+      .from("niveis_embalagem_produto")
+      .insert({
+        produto_id: produtoId,
+        nome: nivel.nome,
+        abreviacao: nivel.abreviacao,
+        unidades_por_nivel: nivel.unidades_por_nivel,
+        ordem: nivel.ordem,
+        user_id: ownerId as string,
+      })
+      .select("id, produto_id, nome, abreviacao, unidades_por_nivel, ordem")
+      .single();
     if (error) {
       toast({
         title: "Erro ao adicionar nível",
@@ -62,6 +76,13 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
         variant: "destructive",
       });
       return false;
+    }
+    if (data) {
+      setNiveis((atuais) =>
+        [...atuais.filter((n) => n.id !== data.id), data as NivelEmbalagem].sort(
+          (a, b) => a.ordem - b.ordem || a.unidades_por_nivel - b.unidades_por_nivel
+        )
+      );
     }
     await carregar();
     return true;
@@ -106,7 +127,7 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     return true;
   };
 
-  return { niveis, loading, adicionar, atualizar, remover, recarregar: carregar };
+  return { niveis, loading: loading || authLoading, adicionar, atualizar, remover, recarregar: carregar };
 }
 
 /**
