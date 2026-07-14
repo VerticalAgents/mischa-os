@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { MouseEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
   const [abreviacao, setAbreviacao] = useState("");
   const [unidadesPorNivel, setUnidadesPorNivel] = useState<number>(12);
 
-  const handleAdicionar = async (event?: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAdicionar = async (event?: MouseEvent<HTMLButtonElement>) => {
     event?.preventDefault();
     event?.stopPropagation();
     if (!nome.trim() || !abreviacao.trim() || unidadesPorNivel < 2) {
