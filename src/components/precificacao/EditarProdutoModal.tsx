@@ -342,7 +342,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   if (!produto) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Editar Produto: {produto.nome}</DialogTitle>

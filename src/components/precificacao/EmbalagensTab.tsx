@@ -21,14 +21,16 @@ interface EmbalagensTabProps {
 }
 
 export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
-  const { niveis, adicionar, remover } = useNiveisEmbalagemProduto(produtoId);
+  const { niveis, loading, adicionar, remover } = useNiveisEmbalagemProduto(produtoId);
   const { toast } = useToast();
 
   const [nome, setNome] = useState("");
   const [abreviacao, setAbreviacao] = useState("");
   const [unidadesPorNivel, setUnidadesPorNivel] = useState<number>(12);
 
-  const handleAdicionar = async () => {
+  const handleAdicionar = async (event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (!nome.trim() || !abreviacao.trim() || unidadesPorNivel < 2) {
       toast({
         title: "Dados inválidos",
@@ -108,7 +110,7 @@ export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
                 }
               />
             </div>
-            <Button onClick={handleAdicionar} className="w-full">
+            <Button type="button" onClick={handleAdicionar} className="w-full">
               <Plus className="h-4 w-4 mr-2" />
               Adicionar
             </Button>
@@ -141,7 +143,21 @@ export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
                   <span className="text-xs italic">padrão</span>
                 </TableCell>
               </TableRow>
-              {niveis.map((n) => (
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                    Carregando níveis configurados...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && niveis.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                    Nenhum nível extra configurado ainda.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && niveis.map((n) => (
                 <TableRow key={n.id}>
                   <TableCell>{n.nome}</TableCell>
                   <TableCell>{n.abreviacao}</TableCell>
@@ -150,6 +166,7 @@ export default function EmbalagensTab({ produtoId }: EmbalagensTabProps) {
                   </TableCell>
                   <TableCell>
                     <Button
+                      type="button"
                       variant="outline"
                       size="icon"
                       onClick={() => remover(n.id)}
