@@ -706,7 +706,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                 </Card>
               </TabsContent>
 
-              <TabsContent value="embalagens" className="mt-4 px-1 h-full">
+              <TabsContent value="embalagens" className="mt-4 px-1">
                 {produto?.id ? (
                   <EmbalagensTab produtoId={produto.id} produtoNome={produto.nome} />
                 ) : (

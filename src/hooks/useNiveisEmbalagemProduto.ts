@@ -89,13 +89,13 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     if (!ownerId) return false;
 
     const nomeNormalizado = nivel.nome.trim().toLowerCase();
-    const duplicadoLocal = niveis.some(
+    const duplicadoLocal = niveis.find(
       (n) => n.nome.trim().toLowerCase() === nomeNormalizado || n.unidades_por_nivel === nivel.unidades_por_nivel
     );
     if (duplicadoLocal) {
       toast({
         title: "Nível já configurado",
-        description: "Este produto já tem um nível com esse nome ou essa quantidade.",
+        description: `Já existe "${duplicadoLocal.nome}" (${duplicadoLocal.unidades_por_nivel} un) — role a lista de "Níveis configurados" para vê-lo.`,
         variant: "destructive",
       });
       return false;
@@ -119,6 +119,8 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
         description: normalizarErroDuplicado(error.message),
         variant: "destructive",
       });
+      // Estado local pode estar dessincronizado — recarrega para exibir o nível existente.
+      await carregar();
       return false;
     }
     if (data) {
