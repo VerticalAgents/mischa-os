@@ -705,6 +705,16 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="embalagens" className="mt-4 px-1 h-full">
+                {produto?.id ? (
+                  <EmbalagensTab produtoId={produto.id} />
+                ) : (
+                  <div className="text-sm text-muted-foreground p-4">
+                    Salve o produto antes de configurar níveis de embalagem.
+                  </div>
+                )}
+              </TabsContent>
             </div>
           </Tabs>
         </div>
