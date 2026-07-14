@@ -343,20 +343,20 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-4xl h-[calc(100vh-2rem)] max-h-[95vh] flex flex-col overflow-hidden p-0">
-        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-3">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl h-[calc(100dvh-2rem)] max-h-[95dvh] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0">
+        <DialogHeader className="px-6 pt-6 pb-3">
           <DialogTitle>Editar Produto: {produto.nome}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-hidden px-6">
-          <Tabs defaultValue="dados" className="h-full min-h-0 flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+          <Tabs defaultValue="dados" className="h-full min-h-0 grid grid-rows-[auto_minmax(0,1fr)]">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
               <TabsTrigger value="componentes">Componentes</TabsTrigger>
               <TabsTrigger value="embalagens">Embalagens</TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2 pb-4">
+            <div className="min-h-0 overflow-y-auto overflow-x-hidden pr-2 pb-6">
               <TabsContent value="dados" className="space-y-4 mt-4 px-1 h-full">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
