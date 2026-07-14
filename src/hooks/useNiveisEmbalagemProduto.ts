@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { NivelEmbalagem } from "@/utils/niveisEmbalagem";
@@ -9,8 +9,39 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const requestRef = useRef(0);
+
+  const getOwnerId = useCallback(async () => {
+    if (!user?.id) return null;
+    const { data: ownerId, error } = await supabase.rpc("get_owner_id", { _user_id: user.id });
+    if (error || !ownerId) {
+      toast({
+        title: "Erro ao identificar proprietário",
+        description: error?.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+    return ownerId as string;
+  }, [toast, user?.id]);
+
+  const normalizarErroDuplicado = (message: string) => {
+    if (message.includes("niveis_embalagem_produto_produto_id_nome_key")) {
+      return "Já existe um nível com esse nome para este produto.";
+    }
+    if (message.includes("niveis_embalagem_produto_produto_id_unidades_por_nivel_key")) {
+      return "Já existe um nível com essa quantidade de unidades para este produto.";
+    }
+    if (message.includes("duplicate key value")) {
+      return "Esse nível já existe para este produto.";
+    }
+    return message;
+  };
 
   const carregar = useCallback(async () => {
+    const requestId = requestRef.current + 1;
+    requestRef.current = requestId;
+
     if (!produtoId || authLoading) {
       setNiveis([]);
       return;
@@ -26,6 +57,8 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
       .eq("produto_id", produtoId)
       .order("ordem", { ascending: true })
       .order("unidades_por_nivel", { ascending: true });
+    if (requestRef.current !== requestId) return;
+
     setLoading(false);
     if (error) {
       console.error("Erro ao carregar níveis:", error);
@@ -52,11 +85,22 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
       toast({ title: "Sessão expirada", variant: "destructive" });
       return false;
     }
-    const { data: ownerId, error: ownerErr } = await supabase.rpc("get_owner_id", { _user_id: user.id });
-    if (ownerErr || !ownerId) {
-      toast({ title: "Erro ao identificar proprietário", description: ownerErr?.message, variant: "destructive" });
+    const ownerId = await getOwnerId();
+    if (!ownerId) return false;
+
+    const nomeNormalizado = nivel.nome.trim().toLowerCase();
+    const duplicadoLocal = niveis.some(
+      (n) => n.nome.trim().toLowerCase() === nomeNormalizado || n.unidades_por_nivel === nivel.unidades_por_nivel
+    );
+    if (duplicadoLocal) {
+      toast({
+        title: "Nível já configurado",
+        description: "Este produto já tem um nível com esse nome ou essa quantidade.",
+        variant: "destructive",
+      });
       return false;
     }
+
     const { data, error } = await supabase
       .from("niveis_embalagem_produto")
       .insert({
@@ -65,14 +109,14 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
         abreviacao: nivel.abreviacao,
         unidades_por_nivel: nivel.unidades_por_nivel,
         ordem: nivel.ordem,
-        user_id: ownerId as string,
+        user_id: ownerId,
       })
       .select("id, produto_id, nome, abreviacao, unidades_por_nivel, ordem")
       .single();
     if (error) {
       toast({
         title: "Erro ao adicionar nível",
-        description: error.message,
+        description: normalizarErroDuplicado(error.message),
         variant: "destructive",
       });
       return false;
@@ -86,6 +130,101 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     }
     await carregar();
     return true;
+  };
+
+  const copiarDeProduto = async (produtoOrigemId: string) => {
+    if (!produtoId || !produtoOrigemId || produtoOrigemId === produtoId) return { ok: false, copiados: 0, ignorados: 0 };
+    if (authLoading) return { ok: false, copiados: 0, ignorados: 0 };
+    if (!user?.id) {
+      toast({ title: "Sessão expirada", variant: "destructive" });
+      return { ok: false, copiados: 0, ignorados: 0 };
+    }
+
+    const ownerId = await getOwnerId();
+    if (!ownerId) return { ok: false, copiados: 0, ignorados: 0 };
+
+    const { data: origem, error: origemError } = await supabase
+      .from("niveis_embalagem_produto")
+      .select("nome, abreviacao, unidades_por_nivel, ordem")
+      .eq("produto_id", produtoOrigemId)
+      .order("ordem", { ascending: true })
+      .order("unidades_por_nivel", { ascending: true });
+
+    if (origemError) {
+      toast({
+        title: "Erro ao carregar níveis de origem",
+        description: origemError.message,
+        variant: "destructive",
+      });
+      return { ok: false, copiados: 0, ignorados: 0 };
+    }
+
+    if (!origem || origem.length === 0) {
+      toast({ title: "Produto sem níveis extras", description: "O produto selecionado não tem níveis para copiar." });
+      return { ok: true, copiados: 0, ignorados: 0 };
+    }
+
+    const { data: atuaisDb, error: atuaisError } = await supabase
+      .from("niveis_embalagem_produto")
+      .select("nome, unidades_por_nivel, ordem")
+      .eq("produto_id", produtoId);
+
+    if (atuaisError) {
+      toast({
+        title: "Erro ao conferir níveis atuais",
+        description: atuaisError.message,
+        variant: "destructive",
+      });
+      return { ok: false, copiados: 0, ignorados: 0 };
+    }
+
+    const atuais = atuaisDb || [];
+    const nomesAtuais = new Set(atuais.map((n) => n.nome.trim().toLowerCase()));
+    const unidadesAtuais = new Set(atuais.map((n) => n.unidades_por_nivel));
+    const ordemInicial = atuais.reduce((max, n) => Math.max(max, n.ordem || 0), 0);
+
+    const paraCopiar = origem.filter(
+      (n) => !nomesAtuais.has(n.nome.trim().toLowerCase()) && !unidadesAtuais.has(n.unidades_por_nivel)
+    );
+
+    if (paraCopiar.length === 0) {
+      toast({ title: "Nada novo para copiar", description: "Este produto já possui os mesmos níveis configurados." });
+      await carregar();
+      return { ok: true, copiados: 0, ignorados: origem.length };
+    }
+
+    const registros = paraCopiar.map((nivel, index) => ({
+      produto_id: produtoId,
+      user_id: ownerId,
+      nome: nivel.nome,
+      abreviacao: nivel.abreviacao,
+      unidades_por_nivel: nivel.unidades_por_nivel,
+      ordem: ordemInicial + index + 1,
+    }));
+
+    const { data, error } = await supabase
+      .from("niveis_embalagem_produto")
+      .insert(registros)
+      .select("id, produto_id, nome, abreviacao, unidades_por_nivel, ordem");
+
+    if (error) {
+      toast({
+        title: "Erro ao copiar níveis",
+        description: normalizarErroDuplicado(error.message),
+        variant: "destructive",
+      });
+      return { ok: false, copiados: 0, ignorados: origem.length - paraCopiar.length };
+    }
+
+    if (data) {
+      setNiveis((atuaisLista) =>
+        [...atuaisLista, ...(data as NivelEmbalagem[])].sort(
+          (a, b) => a.ordem - b.ordem || a.unidades_por_nivel - b.unidades_por_nivel
+        )
+      );
+    }
+    await carregar();
+    return { ok: true, copiados: data?.length || 0, ignorados: origem.length - paraCopiar.length };
   };
 
   const atualizar = async (id: string, patch: Partial<NivelEmbalagem>) => {
@@ -127,7 +266,7 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     return true;
   };
 
-  return { niveis, loading: loading || authLoading, adicionar, atualizar, remover, recarregar: carregar };
+  return { niveis, loading: loading || authLoading, adicionar, atualizar, remover, copiarDeProduto, recarregar: carregar };
 }
 
 /**

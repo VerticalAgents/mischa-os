@@ -1,66 +1,41 @@
-## Objetivo
+Vou corrigir isso tratando o problema como fluxo completo, não só como botão de adicionar.
 
-Permitir configurar níveis de agrupamento/embalagem por produto (ex.: Unidade → Display 12un → Caixa 72un) e escolher o nível ao lançar quantidades no agendamento. Internamente, tudo continua sendo salvo/processado em unidades — nenhum outro módulo (estoque, PCP, expedição, impressão, preços) precisa mudar.
+## Diagnóstico atual
+- A tabela `niveis_embalagem_produto` existe e já tem pelo menos um nível salvo: `Display`, `12 un`, vinculado ao produto **Brownie Tradicional Odara**.
+- No replay, esse nível chega a aparecer na aba **Níveis configurados** para esse produto.
+- Depois, ao abrir outro produto (**Brownie Doce de Leite Odara**), a lista aparece vazia porque o nível está salvo por produto, não globalmente.
+- A UI hoje não deixa isso claro e também não tem uma forma prática de reaproveitar/copiar níveis entre produtos parecidos.
 
-## 1. Banco de dados
+## Plano de correção
+1. **Deixar explícito que os níveis são do produto atual**
+   - Mostrar no card de níveis configurados que aqueles níveis pertencem somente ao produto aberto.
+   - Evitar a sensação de que o nível “sumiu” ao trocar de produto.
 
-Nova tabela `niveis_embalagem_produto` (uma linha por nível, por produto):
+2. **Melhorar o carregamento da lista**
+   - Ajustar o hook para manter o estado correto por `produtoId`.
+   - Evitar que uma recarga antiga sobrescreva a lista quando o usuário troca rapidamente de produto/modal.
+   - Manter o nível recém-adicionado visível imediatamente após salvar.
 
-- `produto_id` → `produtos_finais(id)` on delete cascade
-- `nome` (ex.: "Unidade", "Display", "Caixa")
-- `abreviacao` (ex.: "Un.", "Disp.", "Cx.")
-- `unidades_por_nivel` (int, ≥ 1 — quantas unidades unitárias esse nível representa)
-- `ordem` (int, para ordenar do menor pro maior)
-- timestamps + `created_by`
-- Índice único (`produto_id`, `nome`) e (`produto_id`, `unidades_por_nivel`)
-- GRANTs padrão + RLS espelhando `produtos_finais` (mesmo owner via `get_owner_id`)
+3. **Não fechar o modal ao adicionar nível**
+   - Garantir que o botão **Adicionar** só salve o nível e limpe os campos.
+   - O modal de produto só deve fechar se clicar em **Cancelar**, fechar o diálogo ou **Salvar Alterações**.
 
-Não altero `produtos_finais` nem `agendamentos_clientes`/itens — quantidade continua sendo salva sempre em unidades.
+4. **Tratar duplicidade de forma amigável**
+   - Se já existir um nível com o mesmo nome ou mesma quantidade para aquele produto, mostrar uma mensagem clara.
+   - Não deixar o usuário achar que falhou silenciosamente.
 
-## 2. Modal de edição do produto (`EditarProdutoModal`)
+5. **Adicionar uma ação para copiar níveis de outro produto**
+   - Na aba **Embalagens**, adicionar uma opção tipo “Copiar níveis de outro produto”.
+   - Isso resolve o caso dos brownies da Odara: você configura `Display`/`Caixa` em um e replica no outro sem cadastrar tudo de novo.
+   - Ao copiar, respeitar duplicidades e não criar registros repetidos.
 
-- Adicionar 3ª aba **"Embalagens"** ao lado de "Componentes".
-- Conteúdo da aba:
-  - Linha fixa "Unidade (Un.) — 1 un" (não editável, sempre existe implicitamente).
-  - Lista das configurações extras: `Nome`, `Abreviação`, `Unidades por [nível]` (int), botão remover.
-  - Botão "+ Adicionar nível".
-  - Validação: unidades_por_nivel > 1, nomes únicos.
-- Mesma aba também no `CriarProdutoModal`.
-- Novo hook `useNiveisEmbalagemProduto(produtoId)` (CRUD via Supabase).
+6. **Validar no produto certo**
+   - Testar abrindo o produto que já tem `Display` salvo.
+   - Testar abrindo outro produto sem níveis.
+   - Adicionar/copiar níveis e confirmar que eles aparecem na lista sem fechar o modal.
 
-## 3. Agendamento — seletor de nível
-
-No editor de itens do agendamento (`ProdutoQuantidadeSelector` e demais pontos em `AgendamentoEditModal`):
-
-- Buscar níveis do produto selecionado.
-- Se o produto **não tem** níveis extras → campo travado em "Un." (comportamento atual).
-- Se **tem** níveis:
-  - Novo `Select` compacto à esquerda do input de quantidade: `Un.`, `Display`, `Caixa`, etc. (ordenado por `ordem` / `unidades_por_nivel`).
-  - Ao digitar quantidade `Q` no nível `N` (fator `F`), persiste `Q * F` unidades no item.
-  - Ao reabrir/editar, inferir o nível: maior `F` que divide exatamente a quantidade salva; senão cai em "Un.".
-  - Texto auxiliar embaixo: `= X unidades`.
-
-Nenhuma mudança em cards de separação/despacho, impressão, PCP, estoque, preço.
-
-## 4. Múltiplas linhas do mesmo produto (novo)
-
-Hoje o agendamento bloqueia adicionar o mesmo produto duas vezes. Vamos flexibilizar:
-
-- **Se o produto tem ≥ 2 níveis de embalagem cadastrados** → permitido adicionar múltiplas linhas do mesmo produto, uma por nível (ex.: 1 linha em Un., 1 em Display, 1 em Caixa).
-  - Validação: **um nível por linha** — não pode haver duas linhas do mesmo produto no mesmo nível (mostra erro/tooltip e desabilita a opção já usada no seletor de nível das outras linhas).
-  - No dropdown de "Adicionar produto", o produto continua selecionável enquanto ainda existir nível não usado.
-- **Se o produto só tem "Un."** → mantém o bloqueio atual (uma linha por produto).
-- Ao salvar o agendamento, as linhas são convertidas para unidades e **somadas por produto** antes de persistir em `itens` (o resto do sistema — estoque, PCP, expedição, impressão — segue vendo um total único por produto, sem qualquer mudança).
-- Validação de estoque/limites usa a soma total em unidades.
-
-## 5. Detalhes técnicos
-
-- Hook `useNiveisEmbalagemProduto` com cache por `produtoId`; pré-carregar em batch para os produtos do modal de agendamento (evitar N+1).
-- Helpers em `src/utils/niveisEmbalagem.ts`: `converterParaUnidades(qtd, nivel)`, `inferirNivel(unidades, niveis)`, `niveisDisponiveisRestantes(produtoId, linhasAtuais)`.
-- Nível escolhido fica só no estado local do editor; a persistência continua em unidades agregadas.
-
-## 6. Fora de escopo
-
-- Persistir o nível escolhido junto do item para exibir "2 caixas" nos cards/impressão.
-- Preço por nível (desconto por caixa).
-- Aplicar a bonificações/trocas (por ora ficam em Un., uma linha por produto).
+## Resultado esperado
+- O nível salvo aparece corretamente no produto onde foi cadastrado.
+- Ao trocar de produto, fica claro se aquele produto ainda não tem níveis.
+- Você consegue cadastrar vários níveis em sequência sem reabrir o modal.
+- Para produtos parecidos, consegue copiar os níveis rapidamente.

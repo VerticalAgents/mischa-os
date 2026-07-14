@@ -708,7 +708,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
               <TabsContent value="embalagens" className="mt-4 px-1 h-full">
                 {produto?.id ? (
-                  <EmbalagensTab produtoId={produto.id} />
+                  <EmbalagensTab produtoId={produto.id} produtoNome={produto.nome} />
                 ) : (
                   <div className="text-sm text-muted-foreground p-4">
                     Salve o produto antes de configurar níveis de embalagem.
