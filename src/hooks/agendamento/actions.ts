@@ -7,7 +7,6 @@ import {
   convertToAgendamentoItem, 
   convertAgendamentoToDbFormat 
 } from './utils';
-import { isRowClienteOperacional } from '@/utils/clienteTipo';
 
 export const createAgendamentoActions = (
   get: () => any,
@@ -31,10 +30,8 @@ export const createAgendamentoActions = (
         throw error;
       }
 
-      // Blindagem PL: excluir agendamentos de clientes puramente industriais
-      const dataOperacional = (data || []).filter((row: any) =>
-        isRowClienteOperacional(row.clientes)
-      );
+      // Incluir todos os agendamentos (inclusive clientes industriais / PL)
+      const dataOperacional = (data || []);
 
       const agendamentosConvertidos = dataOperacional.map((row: any) =>
         convertToAgendamentoItem(row, row.clientes)
