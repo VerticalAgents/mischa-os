@@ -36,12 +36,24 @@ export function useNiveisEmbalagemProduto(produtoId?: string | null) {
     nivel: Omit<NivelEmbalagem, "id" | "produto_id">
   ) => {
     if (!produtoId) return false;
+    const { data: authData } = await supabase.auth.getUser();
+    const uid = authData.user?.id;
+    if (!uid) {
+      toast({ title: "Sessão expirada", variant: "destructive" });
+      return false;
+    }
+    const { data: ownerId, error: ownerErr } = await supabase.rpc("get_owner_id", { _user_id: uid });
+    if (ownerErr || !ownerId) {
+      toast({ title: "Erro ao identificar proprietário", description: ownerErr?.message, variant: "destructive" });
+      return false;
+    }
     const { error } = await supabase.from("niveis_embalagem_produto").insert({
       produto_id: produtoId,
       nome: nivel.nome,
       abreviacao: nivel.abreviacao,
       unidades_por_nivel: nivel.unidades_por_nivel,
       ordem: nivel.ordem,
+      user_id: ownerId as string,
     });
     if (error) {
       toast({
