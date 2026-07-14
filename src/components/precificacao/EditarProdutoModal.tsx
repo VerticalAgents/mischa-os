@@ -348,7 +348,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
           <DialogTitle>Editar Produto: {produto.nome}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden px-6">
+        <div className="h-full min-h-0 overflow-hidden px-6">
           <Tabs defaultValue="dados" className="h-full min-h-0 grid grid-rows-[auto_minmax(0,1fr)]">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
