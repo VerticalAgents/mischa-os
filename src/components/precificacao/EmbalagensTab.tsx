@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Plus, Trash2 } from "lucide-react";
+import { Pencil, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -36,7 +37,7 @@ interface ProdutoOpcao {
 }
 
 export default function EmbalagensTab({ produtoId, produtoNome }: EmbalagensTabProps) {
-  const { niveis, loading, adicionar, remover, copiarDeProduto } = useNiveisEmbalagemProduto(produtoId);
+  const { niveis, loading, adicionar, atualizar, remover, copiarDeProduto } = useNiveisEmbalagemProduto(produtoId);
   const { toast } = useToast();
 
   const [nome, setNome] = useState("");
@@ -46,6 +47,44 @@ export default function EmbalagensTab({ produtoId, produtoNome }: EmbalagensTabP
   const [produtosDisponiveis, setProdutosDisponiveis] = useState<ProdutoOpcao[]>([]);
   const [carregandoProdutos, setCarregandoProdutos] = useState(false);
   const [copiando, setCopiando] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editAbreviacao, setEditAbreviacao] = useState("");
+  const [editUnidades, setEditUnidades] = useState<number>(0);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+
+  const iniciarEdicao = (n: { id: string; nome: string; abreviacao: string; unidades_por_nivel: number }) => {
+    setEditandoId(n.id);
+    setEditNome(n.nome);
+    setEditAbreviacao(n.abreviacao);
+    setEditUnidades(n.unidades_por_nivel);
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+  };
+
+  const salvarEdicao = async (id: string) => {
+    if (!editNome.trim() || !editAbreviacao.trim() || editUnidades < 2) {
+      toast({
+        title: "Dados inválidos",
+        description: "Preencha nome, abreviação e quantidade (mínimo 2).",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSalvandoEdicao(true);
+    const ok = await atualizar(id, {
+      nome: editNome.trim(),
+      abreviacao: editAbreviacao.trim(),
+      unidades_por_nivel: editUnidades,
+    });
+    setSalvandoEdicao(false);
+    if (ok) {
+      toast({ title: "Nível atualizado" });
+      setEditandoId(null);
+    }
+  };
 
   useEffect(() => {
     let cancelado = false;
@@ -260,7 +299,7 @@ export default function EmbalagensTab({ produtoId, produtoNome }: EmbalagensTabP
                 <TableHead>Nome</TableHead>
                 <TableHead>Abreviação</TableHead>
                 <TableHead>Unidades</TableHead>
-                <TableHead className="w-16">Ações</TableHead>
+                <TableHead className="w-24">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -290,21 +329,75 @@ export default function EmbalagensTab({ produtoId, produtoNome }: EmbalagensTabP
               )}
               {!loading && niveis.map((n) => (
                 <TableRow key={n.id}>
-                  <TableCell>{n.nome}</TableCell>
-                  <TableCell>{n.abreviacao}</TableCell>
-                  <TableCell>
-                    <Badge>{n.unidades_por_nivel} un</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => remover(n.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+                  {editandoId === n.id ? (
+                    <>
+                      <TableCell>
+                        <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} />
+                      </TableCell>
+                      <TableCell>
+                        <Input value={editAbreviacao} onChange={(e) => setEditAbreviacao(e.target.value)} maxLength={8} />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={2}
+                          step={1}
+                          value={editUnidades}
+                          onChange={(e) => setEditUnidades(parseInt(e.target.value) || 0)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => salvarEdicao(n.id)}
+                            disabled={salvandoEdicao}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={cancelarEdicao}
+                            disabled={salvandoEdicao}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell>{n.nome}</TableCell>
+                      <TableCell>{n.abreviacao}</TableCell>
+                      <TableCell>
+                        <Badge>{n.unidades_por_nivel} un</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => iniciarEdicao(n)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => remover(n.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
