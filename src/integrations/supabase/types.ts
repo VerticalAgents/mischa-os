@@ -1408,6 +1408,50 @@ export type Database = {
         }
         Relationships: []
       }
+      niveis_embalagem_produto: {
+        Row: {
+          abreviacao: string
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          produto_id: string
+          unidades_por_nivel: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          abreviacao: string
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          produto_id: string
+          unidades_por_nivel: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          abreviacao?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          produto_id?: string
+          unidades_por_nivel?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "niveis_embalagem_produto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_finais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parcelamentos: {
         Row: {
           cartao_id: string
