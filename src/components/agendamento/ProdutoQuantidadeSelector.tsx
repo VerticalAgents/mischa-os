@@ -66,11 +66,11 @@ export default function ProdutoQuantidadeSelector({
       ? categoriasHabilitadas
       : cliente?.categoriasHabilitadas ?? [];
 
-  const produtosFiltrados = produtos.filter(produto => {
+  const produtosFiltrados = useMemo(() => produtos.filter(produto => {
     if (!produto.ativo) return false;
     if (habilitadas.length === 0) return false;
     return habilitadas.includes(produto.categoria_id || 0);
-  });
+  }), [produtos, habilitadas]);
 
   // Filtrar produtos que ainda não foram adicionados
   const produtosDisponiveis = produtosFiltrados.filter(produto => {
