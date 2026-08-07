@@ -174,6 +174,31 @@ export default function TodosAgendamentos() {
     }
   };
 
+  const handleAdiar7Dias = async (agendamento: AgendamentoItem) => {
+    try {
+      const novaData = await adiarAgendamentoDias(
+        agendamento.cliente.id,
+        obterAgendamento,
+        salvarAgendamento
+      );
+      await carregarTodosAgendamentos();
+      await carregarClientes();
+      toast({
+        title: "Reagendado",
+        description: novaData
+          ? `${agendamento.cliente.nome} adiado para ${format(novaData, "dd/MM/yyyy")}`
+          : `${agendamento.cliente.nome} adiado em 7 dias`,
+      });
+    } catch (error) {
+      console.error('Erro ao reagendar +7 dias:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao reagendar agendamento",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleSelecao = (clienteId: string) => {
     setAgendamentosSelecionados(prev => {
       const newSet = new Set(prev);
@@ -353,6 +378,16 @@ export default function TodosAgendamentos() {
                       Confirmar
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAdiar7Dias(agendamento)}
+                    disabled={!canEdit}
+                    title={!canEdit ? "Ação não habilitada pelo administrador" : "Adiar 7 dias (mantém Previsto)"}
+                  >
+                    <CalendarPlus className="mr-2 h-4 w-4" />
+                    +7d
+                  </Button>
                   <Button
                     variant="secondary"
                     size="sm"
