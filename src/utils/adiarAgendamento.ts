@@ -14,8 +14,9 @@ export async function adiarAgendamentoDias(
   const atual = await obterAgendamento(clienteId);
   if (!atual) return null;
 
-  const dataOriginal = atual.data_proxima_reposicao
-    ? new Date(atual.data_proxima_reposicao)
+  const raw = atual.data_proxima_reposicao;
+  const dataOriginal = raw
+    ? new Date(typeof raw === 'string' && raw.length === 10 ? `${raw}T12:00:00` : raw)
     : new Date();
   const novaData = addDays(dataOriginal, dias);
 
