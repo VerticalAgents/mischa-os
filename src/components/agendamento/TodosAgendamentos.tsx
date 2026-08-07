@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, CheckCheck, Search, Calendar } from "lucide-react";
+import { Edit, CheckCheck, Search, Calendar, CalendarPlus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 import AgendamentoFilters from "./AgendamentoFilters";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
+import { adiarAgendamentoDias } from "@/utils/adiarAgendamento";
 
 export default function TodosAgendamentos() {
   const { canEdit } = useEditPermission();
@@ -174,6 +175,7 @@ export default function TodosAgendamentos() {
   };
 
   const toggleSelecao = (clienteId: string) => {
+    // seleção em massa
     setAgendamentosSelecionados(prev => {
       const newSet = new Set(prev);
       if (newSet.has(clienteId)) {
