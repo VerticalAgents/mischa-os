@@ -643,7 +643,6 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   };
 
   const toggleSelecao = (clienteId: string) => {
-    // seleção
     setAgendamentosSelecionados(prev => {
       const novaSeleção = new Set(prev);
       if (novaSeleção.has(clienteId)) {
