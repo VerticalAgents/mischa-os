@@ -175,7 +175,6 @@ export default function TodosAgendamentos() {
   };
 
   const toggleSelecao = (clienteId: string) => {
-    // seleção em massa
     setAgendamentosSelecionados(prev => {
       const newSet = new Set(prev);
       if (newSet.has(clienteId)) {
