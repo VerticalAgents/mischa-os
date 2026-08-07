@@ -9,7 +9,7 @@ import { useConfirmationScore } from "@/hooks/useConfirmationScore";
 import ConfirmationScoreBadge from "./ConfirmationScoreBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, CheckCheck, Search } from "lucide-react";
+import { Edit, CheckCheck, Search, CalendarPlus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import SortableTableHeader from "@/components/common/SortableTableHeader";
 import { useTableSort } from "@/hooks/useTableSort";
+import { adiarAgendamentoDias } from "@/utils/adiarAgendamento";
 
 export default function AgendamentosPrevistos() {
   const { canEdit } = useEditPermission();
@@ -112,6 +113,31 @@ export default function AgendamentosPrevistos() {
       toast({
         title: "Erro",
         description: "Erro ao confirmar agendamento",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAdiar7Dias = async (agendamento: AgendamentoItem) => {
+    try {
+      const novaData = await adiarAgendamentoDias(
+        agendamento.cliente.id,
+        obterAgendamento,
+        salvarAgendamento
+      );
+      await carregarTodosAgendamentos();
+      await carregarClientes();
+      toast({
+        title: "Reagendado",
+        description: novaData
+          ? `${agendamento.cliente.nome} adiado para ${format(novaData, "dd/MM/yyyy")}`
+          : `${agendamento.cliente.nome} adiado em 7 dias`,
+      });
+    } catch (error) {
+      console.error('Erro ao reagendar +7 dias:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao reagendar agendamento",
         variant: "destructive",
       });
     }
@@ -204,6 +230,16 @@ export default function AgendamentosPrevistos() {
                   >
                     <CheckCheck className="mr-2 h-4 w-4" />
                     Confirmar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAdiar7Dias(agendamento)}
+                    disabled={!canEdit}
+                    title={!canEdit ? "Ação não habilitada pelo administrador" : "Adiar 7 dias (mantém Previsto)"}
+                  >
+                    <CalendarPlus className="mr-2 h-4 w-4" />
+                    +7d
                   </Button>
                   <Button
                     variant="secondary"
