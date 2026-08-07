@@ -9,7 +9,7 @@ import { useConfirmationScore } from "@/hooks/useConfirmationScore";
 import ConfirmationScoreBadge from "./ConfirmationScoreBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, CheckCheck, Search } from "lucide-react";
+import { Edit, CheckCheck, Search, CalendarPlus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import SortableTableHeader from "@/components/common/SortableTableHeader";
 import { useTableSort } from "@/hooks/useTableSort";
+import { adiarAgendamentoDias } from "@/utils/adiarAgendamento";
 
 export default function AgendamentosPrevistos() {
   const { canEdit } = useEditPermission();
@@ -74,6 +75,7 @@ export default function AgendamentosPrevistos() {
   };
 
   const handleConfirmarAgendamento = async (agendamento: AgendamentoItem) => {
+    // confirma
     try {
       console.log('AgendamentosPrevistos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
 
