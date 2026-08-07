@@ -75,7 +75,6 @@ export default function AgendamentosPrevistos() {
   };
 
   const handleConfirmarAgendamento = async (agendamento: AgendamentoItem) => {
-    // confirma
     try {
       console.log('AgendamentosPrevistos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
 
