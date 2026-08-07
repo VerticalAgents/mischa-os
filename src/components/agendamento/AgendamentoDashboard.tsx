@@ -21,6 +21,7 @@ import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
+import { adiarAgendamentoDias } from "@/utils/adiarAgendamento";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import jsPDF from 'jspdf';
@@ -642,6 +643,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   };
 
   const toggleSelecao = (clienteId: string) => {
+    // seleção
     setAgendamentosSelecionados(prev => {
       const novaSeleção = new Set(prev);
       if (novaSeleção.has(clienteId)) {
