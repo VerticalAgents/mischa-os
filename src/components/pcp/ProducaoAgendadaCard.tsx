@@ -82,7 +82,7 @@ export default function ProducaoAgendadaCard({
       const afetados = new Set(v?.produtosFaltantes || []);
       const alvo = registrosSelecionadosDoDia(dia).filter((r) => !afetados.has(r.id));
       for (const reg of alvo) {
-        const sucesso = await confirmarProducao(reg.id);
+        const sucesso = (await confirmarProducao(reg.id)).ok;
         if (sucesso) ok++;
         else falhas++;
       }
@@ -108,7 +108,7 @@ export default function ProducaoAgendadaCard({
         const afetados = new Set(v?.produtosFaltantes || []);
         for (const reg of registrosSelecionadosDoDia(dia)) {
           if (afetados.has(reg.id)) continue; // pula produtos com falta
-          const sucesso = await confirmarProducao(reg.id);
+          const sucesso = (await confirmarProducao(reg.id)).ok;
           if (sucesso) ok++;
           else falhas++;
         }

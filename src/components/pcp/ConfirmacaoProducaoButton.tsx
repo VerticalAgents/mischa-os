@@ -13,7 +13,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useConfirmacaoProducao } from '@/hooks/useConfirmacaoProducao';
+import { useConfirmacaoProducao, type InsumoInsuficiente } from '@/hooks/useConfirmacaoProducao';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ConfirmacaoProducaoButtonProps {
   registroId: string;
@@ -34,12 +35,28 @@ export function ConfirmacaoProducaoButton({
 }: ConfirmacaoProducaoButtonProps) {
   const { confirmarProducao, loading } = useConfirmacaoProducao();
   const [showDialog, setShowDialog] = useState(false);
+  const [faltantes, setFaltantes] = useState<InsumoInsuficiente[] | null>(null);
+  const [cienteReposicao, setCienteReposicao] = useState(false);
 
   const handleConfirmar = async () => {
-    const sucesso = await confirmarProducao(registroId);
-    if (sucesso) {
+    const resultado = await confirmarProducao(registroId);
+    if (resultado.ok) {
       onConfirmado();
       setShowDialog(false);
+      return;
+    }
+    if (resultado.motivo === 'insumos_insuficientes') {
+      setShowDialog(false);
+      setCienteReposicao(false);
+      setFaltantes(resultado.insumos || []);
+    }
+  };
+
+  const handleConfirmarForcado = async () => {
+    const resultado = await confirmarProducao(registroId, { reporInsumosFaltantes: true });
+    if (resultado.ok) {
+      onConfirmado();
+      setFaltantes(null);
     }
   };
 
@@ -49,6 +66,7 @@ export function ConfirmacaoProducaoButton({
   }
 
   return (
+    <>
     <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
       <AlertDialogTrigger asChild>
         <Button 
@@ -117,5 +135,77 @@ export function ConfirmacaoProducaoButton({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <AlertDialog
+      open={!!faltantes}
+      onOpenChange={(open) => {
+        if (!open) {
+          setFaltantes(null);
+          setCienteReposicao(false);
+        }
+      }}
+    >
+      <AlertDialogContent className="max-w-lg">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Saldo insuficiente de insumos
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                A produção de <strong>{produtoNome}</strong> ({formasProducidas} formas) precisa de mais
+                insumos do que o disponível em estoque:
+              </p>
+              <div className="rounded-md border border-destructive/30 divide-y divide-border max-h-64 overflow-y-auto">
+                {(faltantes || []).map((item) => (
+                  <div key={item.insumo_id} className="p-3 space-y-1">
+                    <p className="font-medium text-foreground">{item.nome}</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <span>Necessário: <strong>{item.necessario.toLocaleString('pt-BR')} {item.unidade}</strong></span>
+                      <span>Disponível: <strong>{item.disponivel.toLocaleString('pt-BR')} {item.unidade}</strong></span>
+                      <span className="text-destructive">Falta: <strong>{item.faltante.toLocaleString('pt-BR')} {item.unidade}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-start gap-2 rounded-md bg-amber-500/10 p-3">
+                <Checkbox
+                  id="ciente-reposicao"
+                  checked={cienteReposicao}
+                  onCheckedChange={(v) => setCienteReposicao(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="ciente-reposicao" className="text-sm text-foreground cursor-pointer">
+                  Confirmar mesmo assim. O sistema irá lançar automaticamente a entrada das quantidades
+                  faltantes no estoque de insumos antes de confirmar a produção.
+                </label>
+              </div>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              handleConfirmarForcado();
+            }}
+            disabled={!cienteReposicao || loading}
+            className="bg-destructive hover:bg-destructive/90"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Confirmando...
+              </>
+            ) : (
+              'Repor e confirmar'
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

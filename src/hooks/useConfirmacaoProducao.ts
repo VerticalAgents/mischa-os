@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-interface InsumoInsuficiente {
+export interface InsumoInsuficiente {
+  insumo_id: string;
   nome: string;
   necessario: number;
   disponivel: number;
@@ -11,10 +12,19 @@ interface InsumoInsuficiente {
   unidade: string;
 }
 
+export interface ResultadoConfirmacao {
+  ok: boolean;
+  motivo?: 'insumos_insuficientes' | 'erro';
+  insumos?: InsumoInsuficiente[];
+}
+
 export const useConfirmacaoProducao = () => {
   const [loading, setLoading] = useState(false);
 
-  const confirmarProducao = async (registroId: string) => {
+  const confirmarProducao = async (
+    registroId: string,
+    opcoes?: { reporInsumosFaltantes?: boolean }
+  ): Promise<ResultadoConfirmacao> => {
     setLoading(true);
     try {
       console.log('Iniciando confirmação de produção para registro:', registroId);
@@ -39,7 +49,7 @@ export const useConfirmacaoProducao = () => {
           description: "Apenas registros com status 'Registrado' podem ser confirmados",
           variant: "destructive"
         });
-        return false;
+        return { ok: false, motivo: 'erro' };
       }
 
       // 2. Verificar se já existe movimentação (idempotência)
@@ -68,7 +78,7 @@ export const useConfirmacaoProducao = () => {
             title: "Produção confirmada com sucesso",
             description: `Registro de ${registro.produto_nome} atualizado para confirmado.`
           });
-          return true;
+          return { ok: true };
         }
 
         toast({
@@ -76,7 +86,7 @@ export const useConfirmacaoProducao = () => {
           description: "Este registro já foi confirmado anteriormente",
           variant: "destructive"
         });
-        return false;
+        return { ok: false, motivo: 'erro' };
       }
 
       // 3. Buscar a receita base do produto
@@ -101,7 +111,7 @@ export const useConfirmacaoProducao = () => {
           description: "Não foi possível encontrar a receita para este produto",
           variant: "destructive"
         });
-        return false;
+        return { ok: false, motivo: 'erro' };
       }
 
       const itensReceita = receitaBase.receitas_base.itens_receita;
@@ -125,6 +135,7 @@ export const useConfirmacaoProducao = () => {
         
         if (saldoAtual < consumoTotal) {
           insumosInsuficientes.push({
+            insumo_id: item.insumo_id,
             nome: item.insumos.nome,
             necessario: consumoTotal,
             disponivel: saldoAtual,
@@ -134,18 +145,30 @@ export const useConfirmacaoProducao = () => {
         }
       }
 
-      // 5. Se houver insumos insuficientes, bloquear operação
+      // 5. Se houver insumos insuficientes: devolver para a UI ou repor automaticamente
       if (insumosInsuficientes.length > 0) {
-        const detalhes = insumosInsuficientes
-          .map(item => `• ${item.nome}: necessário ${item.necessario} ${item.unidade}, disponível ${item.disponivel} ${item.unidade} (falta ${item.faltante} ${item.unidade})`)
-          .join('\n');
+        if (!opcoes?.reporInsumosFaltantes) {
+          return { ok: false, motivo: 'insumos_insuficientes', insumos: insumosInsuficientes };
+        }
 
-        toast({
-          title: "Saldo insuficiente de insumos",
-          description: `Os seguintes insumos não possuem saldo suficiente:\n${detalhes}`,
-          variant: "destructive"
-        });
-        return false;
+        // Repor automaticamente o faltante como entrada de ajuste
+        for (const item of insumosInsuficientes) {
+          const { error: reposicaoError } = await supabase
+            .from('movimentacoes_estoque_insumos')
+            .insert({
+              insumo_id: item.insumo_id,
+              tipo: 'entrada',
+              quantidade: item.faltante,
+              data_movimentacao: new Date().toISOString(),
+              referencia_tipo: 'ajuste_producao',
+              referencia_id: registroId,
+              observacao: `Reposição automática para confirmar produção (faltavam ${item.faltante} ${item.unidade})`
+            });
+
+          if (reposicaoError) {
+            throw new Error(`Erro ao repor insumo ${item.nome}: ${reposicaoError.message}`);
+          }
+        }
       }
 
       // 6. Executar transação manual para criar movimentações
@@ -207,7 +230,7 @@ export const useConfirmacaoProducao = () => {
         description: `${registro.formas_producidas} formas de ${registro.produto_nome} confirmadas. Estoque atualizado.`
       });
 
-      return true;
+      return { ok: true };
 
     } catch (error) {
       console.error('Erro ao confirmar produção:', error);
@@ -216,7 +239,7 @@ export const useConfirmacaoProducao = () => {
         description: error instanceof Error ? error.message : "Ocorreu um erro inesperado",
         variant: "destructive"
       });
-      return false;
+      return { ok: false, motivo: 'erro' };
     } finally {
       setLoading(false);
     }
