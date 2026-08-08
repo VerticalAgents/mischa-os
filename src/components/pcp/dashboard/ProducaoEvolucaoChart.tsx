@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
@@ -10,16 +9,16 @@ interface ProducaoEvolucaoChartProps {
   dados: Record<string, any>[];
   categorias: CategoriaInfo[];
   unidade: UnidadeMedida;
-  meses: string;
-  onMesesChange: (v: string) => void;
+  granularidade: 'dia' | 'semana' | 'mes';
+  textoPeriodo: string;
 }
 
 export default function ProducaoEvolucaoChart({
   dados,
   categorias,
   unidade,
-  meses,
-  onMesesChange,
+  granularidade,
+  textoPeriodo,
 }: ProducaoEvolucaoChartProps) {
   const config = categorias.reduce((acc, c) => {
     acc[c.chave] = { label: c.nome, color: c.cor };
@@ -31,27 +30,14 @@ export default function ProducaoEvolucaoChart({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1 min-w-0">
+        <div className="space-y-1 min-w-0">
             <CardTitle className="flex items-center gap-2 text-base">
               <BarChart3 className="h-4 w-4 shrink-0" />
               Evolução da produção
             </CardTitle>
             <CardDescription className="text-left">
-              {eixoLabel} por mês, empilhado por categoria
+              {eixoLabel} {granularidade === 'dia' ? 'por dia' : granularidade === 'semana' ? 'por semana' : 'por mês'}, empilhado por categoria — {textoPeriodo.toLowerCase()}
             </CardDescription>
-          </div>
-          <Select value={meses} onValueChange={onMesesChange}>
-            <SelectTrigger className="h-9 w-[168px] shrink-0 [&>span]:truncate">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              <SelectItem value="3">Últimos 3 meses</SelectItem>
-              <SelectItem value="6">Últimos 6 meses</SelectItem>
-              <SelectItem value="12">Últimos 12 meses</SelectItem>
-              <SelectItem value="24">Últimos 24 meses</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </CardHeader>
       <CardContent>

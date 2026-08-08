@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { startOfDay, startOfMonth, endOfMonth, subDays, subMonths, subYears, format, isWithinInterval } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subMonths, subYears, addDays, addWeeks, format, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useSupabaseHistoricoProducao, HistoricoProducaoSupabase } from './useSupabaseHistoricoProducao';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
@@ -36,7 +36,6 @@ export interface CategoriaInfo {
 
 export interface ProducaoDashboardParams {
   dias: number;
-  meses: number;
   unidade: UnidadeMedida;
   categoriasSelecionadas: number[]; // vazio = todas
   apenasComProporcao?: boolean;
@@ -64,7 +63,6 @@ export const formatarValor = (valor: number, unidade: UnidadeMedida) => {
 
 export const useProducaoDashboard = ({
   dias,
-  meses,
   unidade,
   categoriasSelecionadas,
   apenasComProporcao = false,
@@ -225,24 +223,43 @@ export const useProducaoDashboard = ({
     };
   }, [registrosPeriodo, registros, dias, hoje, unidade]);
 
-  // Série mensal empilhada por categoria
-  const serieMensal = useMemo(() => {
-    const mesesArr: Date[] = [];
-    for (let i = meses - 1; i >= 0; i--) mesesArr.push(startOfMonth(subMonths(hoje, i)));
+  // Série temporal empilhada por categoria (granularidade derivada do período do topo)
+  const granularidade: 'dia' | 'semana' | 'mes' = dias <= 14 ? 'dia' : dias <= 90 ? 'semana' : 'mes';
 
-    return mesesArr.map(mesInicio => {
-      const mesFim = endOfMonth(mesInicio);
-      const linha: Record<string, any> = {
-        mes: format(mesInicio, 'MMM/yy', { locale: ptBR }),
-        total: 0,
-      };
+  const serieMensal = useMemo(() => {
+    const buckets: { inicio: Date; fim: Date; label: string }[] = [];
+
+    if (granularidade === 'dia') {
+      const primeiro = startOfDay(subDays(hoje, dias - 1));
+      for (let i = 0; i < dias; i++) {
+        const d = addDays(primeiro, i);
+        buckets.push({ inicio: startOfDay(d), fim: endOfDay(d), label: format(d, 'dd/MM', { locale: ptBR }) });
+      }
+    } else if (granularidade === 'semana') {
+      let cursor = startOfWeek(subDays(hoje, dias - 1), { weekStartsOn: 1 });
+      const limite = endOfWeek(hoje, { weekStartsOn: 1 });
+      while (cursor <= limite) {
+        const fim = endOfWeek(cursor, { weekStartsOn: 1 });
+        buckets.push({ inicio: cursor, fim, label: format(cursor, 'dd/MM', { locale: ptBR }) });
+        cursor = addWeeks(cursor, 1);
+      }
+    } else {
+      const totalMeses = Math.max(1, Math.ceil(dias / 30));
+      for (let i = totalMeses - 1; i >= 0; i--) {
+        const inicio = startOfMonth(subMonths(hoje, i));
+        buckets.push({ inicio, fim: endOfMonth(inicio), label: format(inicio, 'MMM/yy', { locale: ptBR }) });
+      }
+    }
+
+    return buckets.map(({ inicio, fim, label }) => {
+      const linha: Record<string, any> = { mes: label, total: 0 };
       categoriasDisponiveis.forEach(c => {
         if (categoriaAtiva(c.id)) linha[c.chave] = 0;
       });
 
       registros.forEach(r => {
         if (!passaFiltros(r)) return;
-        if (!isWithinInterval(r.data, { start: mesInicio, end: mesFim })) return;
+        if (!isWithinInterval(r.data, { start: inicio, end: fim })) return;
         const cat = categoriasDisponiveis.find(c => c.id === r.categoriaId);
         if (!cat) return;
         const valor = valorDe(r);
@@ -260,7 +277,7 @@ export const useProducaoDashboard = ({
 
       return linha;
     });
-  }, [registros, meses, hoje, unidade, categoriasDisponiveis, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
+  }, [registros, dias, granularidade, hoje, unidade, categoriasDisponiveis, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
 
   // Quebra por categoria
   const porCategoria = useMemo<QuebraItem[]>(() => {
@@ -341,6 +358,7 @@ export const useProducaoDashboard = ({
     categoriasDisponiveis,
     kpis,
     serieMensal,
+    granularidade,
     porCategoria,
     porProduto,
     produtosSemPeso,
