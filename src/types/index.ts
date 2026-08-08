@@ -133,6 +133,8 @@ export interface ConfiguracoesProducao {
   estoqueAlvoCoberturaDias?: number;
   /** Mapa produto_id → unidades fixas quando modo = 'fixo'. */
   estoqueAlvoFixoPorProduto?: Record<string, number>;
+  /** IDs de categorias de produto excluídas da Projeção de Produção da semana. Vazio = todas incluídas. */
+  projecaoCategoriasExcluidas?: number[];
 }
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
