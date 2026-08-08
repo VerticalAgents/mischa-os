@@ -12,10 +12,11 @@ export interface InsumoInsuficiente {
   unidade: string;
 }
 
-export type ResultadoConfirmacao =
-  | { ok: true }
-  | { ok: false; motivo: 'insumos_insuficientes'; insumos: InsumoInsuficiente[] }
-  | { ok: false; motivo: 'erro' };
+export interface ResultadoConfirmacao {
+  ok: boolean;
+  motivo?: 'insumos_insuficientes' | 'erro';
+  insumos?: InsumoInsuficiente[];
+}
 
 export const useConfirmacaoProducao = () => {
   const [loading, setLoading] = useState(false);
