@@ -253,6 +253,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
                   <li key={item.path}>
                     <Link
                       to={item.path}
+                      onPointerDown={closeNow}
                       onClick={closeNow}
                       className={cn(
                         "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
