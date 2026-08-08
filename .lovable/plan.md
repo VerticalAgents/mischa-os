@@ -1,24 +1,43 @@
-Plano para corrigir a rolagem do modal e revelar a lista de níveis configurados:
+# Dashboard do PCP: layout unificado com filtros
 
-1. **Transformar o modal em layout de altura fixa**
-   - Ajustar o `DialogContent` do modal de edição de produto para usar altura real baseada na viewport, não apenas `max-height`.
-   - Manter `overflow-hidden` no contêiner principal para impedir que o footer sobreponha o conteúdo.
+## O que muda
 
-2. **Criar uma área central realmente rolável**
-   - Fazer somente o corpo entre o cabeçalho e o rodapé rolar verticalmente.
-   - Deixar o cabeçalho, as abas e os botões `Cancelar / Salvar Alterações` visíveis e estáveis.
-   - Garantir `min-h-0` nos wrappers flex para o navegador permitir overflow interno.
+Hoje o dashboard tem cards separados por categoria (Revenda, Food-Service e o card de Private Label que acabei de adicionar), cada um com seu próprio total e seus próprios gráficos. Isso fica repetitivo e esconde o total real da fábrica.
 
-3. **Ajustar a aba Embalagens**
-   - Remover qualquer altura artificial que impeça o conteúdo de crescer.
-   - Garantir que os cards “Sobre”, “Adicionar nível”, “Copiar de outro produto” e “Níveis configurados” fiquem dentro da área rolável.
-   - A lista de níveis deve aparecer ao rolar para baixo, sem precisar fechar o modal.
+A proposta é um dashboard único, com dois filtros no topo que valem para **tudo** na tela:
 
-4. **Melhorar responsividade**
-   - Em telas menores, reduzir a altura do modal para caber melhor na viewport.
-   - Manter a tabela sem rolagem lateral desnecessária e sem quebrar o layout.
+- **Unidade de medida:** Formas / Unidades / Peso (kg)
+- **Categorias:** seleção múltipla (Revenda Padrão, Food Service, Especiais, Odara Alfajores, Morena Cacau), com "Todas" por padrão
 
-5. **Validar no preview**
-   - Abrir o produto `Brownie Tradicional Odara`.
-   - Entrar na aba `Embalagens`.
-   - Confirmar que a rolagem vertical funciona e que o card `Níveis configurados` aparece abaixo do card de cópia.
+Trocar a unidade reescreve todos os números, gráficos e eixos. Trocar as categorias refiltra todo o dashboard.
+
+## Novo layout (inspirado no dashboard de Agendamento)
+
+```text
+[ Filtros: Período | Unidade de medida | Categorias ]
+
+[ KPI Produzido ] [ KPI Mês atual ] [ KPI vs ano ant. ] [ KPI Média/semana ]
+
+[ Evolução da produção (barras por mês, 3/6/12/24 meses) ]
+
+[ Produção por categoria         ] [ Produção por produto        ]
+[ (barras horizontais + % share) ] [ (ranking com barra de %)    ]
+```
+
+- Barra de filtros compacta no topo, no mesmo espírito da barra de filtros do Agendamento (linha única no desktop, empilhada no mobile).
+- Faixa de KPIs em cards pequenos e densos, com variação vs. período anterior (seta verde/vermelha).
+- Um único gráfico de evolução, com uma barra por categoria selecionada (empilhada), em vez de dois gráficos duplicados.
+- Bloco "Produção por categoria" substitui os cards fixos de Revenda/Food-Service/Private Label: as categorias aparecem dinamicamente, então categorias novas entram sozinhas.
+- Bloco "Produção por produto" mantém o detalhamento e o toggle "Apenas com proporção" (hoje só existe no card de Revenda).
+- Cores por categoria via tokens HSL do design system; Private Label continua com o roxo já usado no resto do sistema.
+
+## Detalhes técnicos
+
+- Reescrever `src/components/pcp/HistoricoAnalytics.tsx` como composição de subcomponentes em `src/components/pcp/dashboard/` (barra de filtros, faixa de KPIs, gráfico de evolução, bloco por categoria, bloco por produto), para o arquivo não voltar a passar de 700 linhas.
+- Criar um hook `useProducaoDashboard` que centraliza a agregação: recebe período, unidade e categorias selecionadas e devolve KPIs, série mensal e quebras por categoria/produto. Fonte de dados: `historico_producao` (via `useSupabaseHistoricoProducao`) cruzado com `produtos_finais` (via `useSupabaseProdutos`) para `categoria_id`, `cliente_id` e `peso_unitario`.
+- Métricas: formas = `formas_producidas`; unidades = `unidades_calculadas`; peso (kg) = `unidades_calculadas * peso_unitario / 1000`. Produtos sem `peso_unitario` cadastrado ficam de fora do modo peso e o card mostra um aviso discreto de quantos produtos foram ignorados.
+- A categorização passa a ser sempre por `categoria_id` do produto (não mais por palavra no nome, que era o motivo de a Odara cair dentro de "Revenda" no gráfico).
+- Registros sem `produto_id` ou sem categoria entram em um grupo "Sem categoria", visível no filtro.
+- Filtro de categorias no padrão dos filtros já existentes (`RepresentantesFilter` / `RotasFilter`), com `selectedIds` + `onSelectionChange`.
+- Manter os KPIs de Taxa de Confirmação e Rendimento Médio, movidos para a faixa de KPIs.
+- Nenhuma mudança de banco de dados.
