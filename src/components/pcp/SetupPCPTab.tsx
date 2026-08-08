@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Target, Info, Loader2, Save, AlertTriangle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Target, Info, Loader2, Save, AlertTriangle, Filter } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfigStore } from "@/hooks/useConfigStore";
 import { useMediaVendasSemanais } from "@/hooks/useMediaVendasSemanais";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { cn } from "@/lib/utils";
 
 type Modo = "fixo" | "percentual" | "cobertura";
@@ -39,6 +41,7 @@ const MODOS: { id: Modo; titulo: string; descricao: string }[] = [
 export default function SetupPCPTab() {
   const { configuracoesProducao, atualizarConfiguracoesProducao } = useConfigStore();
   const { mediaVendasPorProduto } = useMediaVendasSemanais();
+  const { categorias: categoriasProduto, loading: loadingCategorias } = useSupabaseCategoriasProduto();
 
   const [modo, setModo] = useState<Modo>(configuracoesProducao?.estoqueAlvoModo ?? "cobertura");
   const [percentual, setPercentual] = useState<number>(configuracoesProducao?.estoqueAlvoPercentual ?? 20);
@@ -53,6 +56,9 @@ export default function SetupPCPTab() {
   );
   const [margemAlvoPercentual, setMargemAlvoPercentual] = useState<number>(
     (configuracoesProducao as any)?.estoqueAlvoMargemPercentual ?? 20
+  );
+  const [categoriasExcluidas, setCategoriasExcluidas] = useState<number[]>(
+    (configuracoesProducao as any)?.projecaoCategoriasExcluidas ?? []
   );
 
   const [produtos, setProdutos] = useState<ProdutoAtivo[]>([]);
@@ -108,6 +114,7 @@ export default function SetupPCPTab() {
       estoqueAlvoFixoPorProduto: fixoPorProduto,
       estoqueAlertaCriticoPercentual: alertaPercentual,
       estoqueAlvoMargemPercentual: margemAlvoPercentual,
+      projecaoCategoriasExcluidas: categoriasExcluidas,
       coberturaAlvoDias: coberturaDias, // compat
     });
     toast({
