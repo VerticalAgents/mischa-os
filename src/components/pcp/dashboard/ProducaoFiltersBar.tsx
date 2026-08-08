@@ -28,9 +28,9 @@ export default function ProducaoFiltersBar({
       <CardContent className="p-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <Select value={periodo} onValueChange={onPeriodoChange}>
-            <SelectTrigger className="h-9">
-              <span className="flex items-center gap-2 truncate">
-                <CalendarRange className="h-4 w-4 shrink-0" />
+            <SelectTrigger className="h-9 gap-2 [&>svg]:shrink-0">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-left [&>span]:truncate">
+                <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </span>
             </SelectTrigger>
@@ -45,9 +45,9 @@ export default function ProducaoFiltersBar({
           </Select>
 
           <Select value={unidade} onValueChange={v => onUnidadeChange(v as UnidadeMedida)}>
-            <SelectTrigger className="h-9">
-              <span className="flex items-center gap-2 truncate">
-                <Ruler className="h-4 w-4 shrink-0" />
+            <SelectTrigger className="h-9 gap-2 [&>svg]:shrink-0">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-left [&>span]:truncate">
+                <Ruler className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </span>
             </SelectTrigger>

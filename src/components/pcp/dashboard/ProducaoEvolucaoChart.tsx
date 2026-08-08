@@ -42,7 +42,7 @@ export default function ProducaoEvolucaoChart({
             </CardDescription>
           </div>
           <Select value={meses} onValueChange={onMesesChange}>
-            <SelectTrigger className="w-[150px] h-9 shrink-0">
+            <SelectTrigger className="h-9 w-[168px] shrink-0 [&>span]:truncate">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
