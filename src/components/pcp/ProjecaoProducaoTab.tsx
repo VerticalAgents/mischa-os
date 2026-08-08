@@ -295,6 +295,16 @@ export default function ProjecaoProducaoTab() {
                       : `Confirmados + ${percentualPrevistos}% dos previstos`)
                   : "Quantidades para pedidos confirmados"}
               </CardDescription>
+              {categoriasExcluidasNomes.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Filtro ativo (Setup):{" "}
+                  <span className="font-medium text-foreground">
+                    {categoriasExcluidasNomes.length === 1
+                      ? `${categoriasExcluidasNomes[0]} fora da projeção`
+                      : `${categoriasExcluidasNomes.length} categorias fora da projeção`}
+                  </span>
+                </p>
+              )}
             </div>
           </CardHeader>
           <CardContent className="flex-1">
