@@ -190,10 +190,17 @@ export default function HistoricoAnalytics() {
       let unidadesRevenda = 0;
       let unidadesFoodService = 0;
       let pesoFoodServiceKg = 0;
+      let unidadesPrivateLabel = 0;
+      let formasPrivateLabel = 0;
 
       registrosMes.forEach(record => {
-        const categoria = categorizarProduto(record.produto_nome);
         const unidades = record.unidades_calculadas || 0;
+        if (isRegistroPrivateLabel(record)) {
+          unidadesPrivateLabel += unidades;
+          formasPrivateLabel += record.formas_producidas;
+          return;
+        }
+        const categoria = categorizarProduto(record.produto_nome);
         const pesoUnitG = pesoUnitarioMap.get(record.produto_nome) || 0;
         const pesoKg = (unidades * pesoUnitG) / 1000;
         if (categoria === 'revenda') {
@@ -212,7 +219,9 @@ export default function HistoricoAnalytics() {
         mes: mesLabel,
         revenda: unidadesRevenda,
         foodService: unidadesFoodService,
-        foodServicePeso: Number(pesoFoodServiceKg.toFixed(2))
+        foodServicePeso: Number(pesoFoodServiceKg.toFixed(2)),
+        privateLabel: unidadesPrivateLabel,
+        privateLabelFormas: formasPrivateLabel
       };
     });
 
@@ -226,7 +235,7 @@ export default function HistoricoAnalytics() {
     });
 
     return dados;
-  }, [historico, hoje, numeroMeses, periodoSelecionado, pesoUnitarioMap]);
+  }, [historico, hoje, numeroMeses, periodoSelecionado, pesoUnitarioMap, produtoPrivateLabelIds, produtoPrivateLabelNomes]);
 
 
   // Cálculos de variação
