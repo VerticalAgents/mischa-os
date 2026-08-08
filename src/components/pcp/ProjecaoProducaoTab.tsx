@@ -22,6 +22,8 @@ import { useSupabaseHistoricoProducao } from "@/hooks/useSupabaseHistoricoProduc
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
 import { useProducaoAgendada } from "@/hooks/useProducaoAgendada";
 import { useValidacaoInsumosProducaoAgendada } from "@/hooks/useValidacaoInsumosProducaoAgendada";
+import { useConfigStore } from "@/hooks/useConfigStore";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -41,6 +43,24 @@ export default function ProjecaoProducaoTab() {
   const [quantidadesPrevistosProvaveis, setQuantidadesPrevistosProvaveis] = useState<Record<string, ProdutoQuantidade>>({});
 
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { configuracoesProducao } = useConfigStore();
+  const { categorias: categoriasProduto } = useSupabaseCategoriasProduto();
+  const categoriasExcluidas = useMemo<number[]>(
+    () => (configuracoesProducao as any)?.projecaoCategoriasExcluidas ?? [],
+    [configuracoesProducao]
+  );
+  const [categoriaPorProduto, setCategoriaPorProduto] = useState<Record<string, number | null>>({});
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      const { data, error } = await supabase.from("produtos_finais").select("id, categoria_id");
+      if (error || !data) return;
+      const mapa: Record<string, number | null> = {};
+      data.forEach((p: any) => { mapa[p.id] = p.categoria_id ?? null; });
+      setCategoriaPorProduto(mapa);
+    };
+    fetchCategorias();
+  }, []);
 
   useEffect(() => {
     if (agendamentos.length === 0) {
@@ -130,8 +150,23 @@ export default function ProjecaoProducaoTab() {
         }
       }
     }
+    if (categoriasExcluidas.length > 0) {
+      for (const id of Object.keys(resultado)) {
+        const catId = categoriaPorProduto[id];
+        if (catId != null && categoriasExcluidas.includes(catId)) {
+          delete resultado[id];
+        }
+      }
+    }
     return resultado;
-  }, [quantidadesConfirmados, quantidadesPrevistos, quantidadesPrevistosProvaveis, incluirPrevistos, modoPrevistos, percentualPrevistos]);
+  }, [quantidadesConfirmados, quantidadesPrevistos, quantidadesPrevistosProvaveis, incluirPrevistos, modoPrevistos, percentualPrevistos, categoriasExcluidas, categoriaPorProduto]);
+
+  const categoriasExcluidasNomes = useMemo(
+    () => categoriasExcluidas
+      .map(id => categoriasProduto.find(c => c.id === id)?.nome)
+      .filter(Boolean) as string[],
+    [categoriasExcluidas, categoriasProduto]
+  );
 
   const produtosOrdenados = useMemo(
     () => Object.values(quantidadesPorProduto).sort((a, b) => b.quantidade - a.quantidade),
@@ -260,6 +295,16 @@ export default function ProjecaoProducaoTab() {
                       : `Confirmados + ${percentualPrevistos}% dos previstos`)
                   : "Quantidades para pedidos confirmados"}
               </CardDescription>
+              {categoriasExcluidasNomes.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Filtro ativo (Setup):{" "}
+                  <span className="font-medium text-foreground">
+                    {categoriasExcluidasNomes.length === 1
+                      ? `${categoriasExcluidasNomes[0]} fora da projeção`
+                      : `${categoriasExcluidasNomes.length} categorias fora da projeção`}
+                  </span>
+                </p>
+              )}
             </div>
           </CardHeader>
           <CardContent className="flex-1">
