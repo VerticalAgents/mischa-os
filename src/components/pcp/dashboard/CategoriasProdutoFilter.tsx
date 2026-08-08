@@ -46,8 +46,8 @@ export default function CategoriasProdutoFilter({
           variant="outline"
           className={cn("h-9 justify-between gap-2 font-normal", className)}
         >
-          <span className="flex items-center gap-2 truncate">
-            <Tags className="h-4 w-4 shrink-0" />
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <Tags className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{texto()}</span>
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
