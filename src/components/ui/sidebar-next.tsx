@@ -104,11 +104,12 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
     setHoveredVariant(null);
   }, [pathname, location.search, location.key]);
 
-  // Libera o hover novamente quando o ponteiro sai da região da sidebar
+  // Após a navegação, libera o hover ao voltar para o rail ou sair para o conteúdo.
+  // Assim o flyout não reabre sob o ponteiro, mas outra área continua acessível.
   useEffect(() => {
     function handlePointerMove(e: PointerEvent) {
       if (!suppressHoverRef.current) return;
-      if (e.clientX > 340) suppressHoverRef.current = false;
+      if (e.clientX <= 49 || e.clientX > 340) suppressHoverRef.current = false;
     }
     window.addEventListener("pointermove", handlePointerMove);
     return () => window.removeEventListener("pointermove", handlePointerMove);
