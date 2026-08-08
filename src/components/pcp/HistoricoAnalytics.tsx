@@ -551,6 +551,68 @@ export default function HistoricoAnalytics() {
 
       </div>
 
+      {/* Produção Private Label / Consignada */}
+      {privateLabelPeriodo.totalUnidades > 0 && (
+        <Card className="border-purple-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Factory className="h-5 w-5 text-purple-600" />
+              Produção Private Label
+            </CardTitle>
+            <CardDescription className="text-left">
+              {textoPeriodo} — produção consignada para clientes industriais
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-purple-500/10 p-4 rounded-lg border border-purple-500/20">
+                <p className="text-sm text-muted-foreground mb-1">Total Produzido</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {privateLabelPeriodo.totalUnidades.toLocaleString('pt-BR')} un
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {privateLabelPeriodo.totalFormas.toLocaleString('pt-BR')} formas
+                </p>
+              </div>
+
+              <Collapsible open={isPrivateLabelDetailsOpen} onOpenChange={setIsPrivateLabelDetailsOpen}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2">
+                      {isPrivateLabelDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent className="space-y-3">
+                  {privateLabelPeriodo.produtos.map(produto => (
+                    <div key={produto.productName} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{produto.productName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-sm px-2 py-0.5">
+                            {produto.totalUnits.toLocaleString('pt-BR')} un
+                          </Badge>
+                          <Badge variant="outline" className="text-sm">
+                            {produto.totalForms.toLocaleString('pt-BR')} formas
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${produto.percentage}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Gráfico Comparativo - Evolução da Produção */}
       <div className="grid gap-4 lg:grid-cols-2 items-stretch">
         {/* Card Revenda */}
