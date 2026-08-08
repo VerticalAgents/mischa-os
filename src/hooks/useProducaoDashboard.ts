@@ -252,7 +252,8 @@ export const useProducaoDashboard = ({
     }
 
     return buckets.map(({ inicio, fim, label }) => {
-      const linha: Record<string, any> = { mes: label, total: 0 };
+      const parcial = hoje >= inicio && hoje <= fim;
+      const linha: Record<string, any> = { mes: label, total: 0, parcial };
       categoriasDisponiveis.forEach(c => {
         if (categoriaAtiva(c.id)) linha[c.chave] = 0;
       });
@@ -269,7 +270,7 @@ export const useProducaoDashboard = ({
 
       if (unidade === 'peso') {
         Object.keys(linha).forEach(k => {
-          if (k !== 'mes' && typeof linha[k] === 'number') {
+          if (k !== 'mes' && k !== 'parcial' && typeof linha[k] === 'number') {
             linha[k] = Number(linha[k].toFixed(1));
           }
         });
