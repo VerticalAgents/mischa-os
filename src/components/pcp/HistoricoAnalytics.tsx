@@ -13,7 +13,6 @@ import ProducaoQuebraCard from "@/components/pcp/dashboard/ProducaoQuebraCard";
 
 export default function HistoricoAnalytics() {
   const [periodo, setPeriodo] = useState("30");
-  const [mesesGrafico, setMesesGrafico] = useState("12");
   const [unidade, setUnidade] = useState<UnidadeMedida>("unidades");
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<number[]>([]);
   const [apenasComProporcao, setApenasComProporcao] = useState(false);
@@ -31,18 +30,17 @@ export default function HistoricoAnalytics() {
   );
 
   const dias = parseInt(periodo) || 30;
-  const meses = parseInt(mesesGrafico) || 12;
 
   const {
     categoriasDisponiveis,
     kpis,
     serieMensal,
+    granularidade,
     porCategoria,
     porProduto,
     produtosSemPeso,
   } = useProducaoDashboard({
     dias,
-    meses,
     unidade,
     categoriasSelecionadas,
     apenasComProporcao,
@@ -89,8 +87,8 @@ export default function HistoricoAnalytics() {
         dados={serieMensal}
         categorias={categoriasVisiveis}
         unidade={unidade}
-        meses={mesesGrafico}
-        onMesesChange={setMesesGrafico}
+        granularidade={granularidade}
+        textoPeriodo={textoPeriodo}
       />
 
       <div className="grid gap-4 lg:grid-cols-2 items-stretch">
