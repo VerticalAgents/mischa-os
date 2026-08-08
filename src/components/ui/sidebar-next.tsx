@@ -224,16 +224,12 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
 
   // ==== Desktop flyout ====
   const desktopFlyout = (
-    <AnimatePresence>
+    <>
       {activeGroup && (
-        <motion.div
+        <div
           key={activeGroup.variant}
-          className="fixed left-[3.05rem] z-40 hidden lg:block"
+          className="fixed left-[3.05rem] z-40 hidden lg:block animate-in fade-in-0 slide-in-from-left-2 duration-150"
           style={{ top: flyoutTop }}
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -8 }}
-          transition={{ duration: 0.12, ease: "easeOut" }}
           onMouseEnter={cancelClose}
           onMouseLeave={() => {
             suppressHoverRef.current = false;
@@ -272,9 +268,9 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
               })}
             </ul>
           </div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 
   // ==== Mobile sidebar (full panel) ====
