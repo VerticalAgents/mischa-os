@@ -153,9 +153,40 @@ export default function HistoricoAnalytics() {
 
   // Texto do período para exibição
   const textoPeriodo = useMemo(() => {
+
     if (diasPeriodo >= 365) return "Último ano";
     return `Últimos ${diasPeriodo} dias`;
   }, [diasPeriodo]);
+
+  // Private Label (consignado) - Período selecionado
+  const privateLabelPeriodo = useMemo(() => {
+    const registros = (historico || []).filter(record => {
+      const d = startOfDay(new Date(record.data_producao));
+      return d >= startOfDay(inicioPeriodo) && d <= hoje && isRegistroPrivateLabel(record);
+    });
+
+    const totalUnidades = registros.reduce((s, r) => s + (r.unidades_calculadas || 0), 0);
+    const totalFormas = registros.reduce((s, r) => s + (r.formas_producidas || 0), 0);
+
+    const porProduto = new Map<string, { unidades: number; formas: number }>();
+    registros.forEach(r => {
+      const atual = porProduto.get(r.produto_nome) || { unidades: 0, formas: 0 };
+      atual.unidades += r.unidades_calculadas || 0;
+      atual.formas += r.formas_producidas || 0;
+      porProduto.set(r.produto_nome, atual);
+    });
+
+    const produtos = Array.from(porProduto.entries())
+      .map(([nome, v]) => ({
+        productName: nome,
+        totalUnits: v.unidades,
+        totalForms: v.formas,
+        percentage: totalFormas > 0 ? (v.formas / totalFormas) * 100 : 0
+      }))
+      .sort((a, b) => b.totalForms - a.totalForms);
+
+    return { totalUnidades, totalFormas, produtos };
+  }, [historico, inicioPeriodo, hoje, produtoPrivateLabelIds, produtoPrivateLabelNomes]);
 
   // Quantidade de meses exibidos no gráfico de evolução (independente do filtro de período acima)
   const numeroMeses = useMemo(() => {
