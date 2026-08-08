@@ -57,6 +57,12 @@ export default function ProducaoEvolucaoChart({
                   tickFormatter={(v: number) => Number(v).toLocaleString('pt-BR')}
                 />
                 <ChartTooltip
+                  cursor={{
+                    stroke: 'hsl(var(--foreground))',
+                    strokeWidth: 1,
+                    strokeDasharray: '4 4',
+                    fill: 'transparent',
+                  }}
                   content={
                     <ChartTooltipContent
                       formatter={(value: any, name: any) => [
