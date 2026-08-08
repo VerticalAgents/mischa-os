@@ -48,7 +48,7 @@ export function ConfirmacaoProducaoButton({
     if (resultado.motivo === 'insumos_insuficientes') {
       setShowDialog(false);
       setCienteReposicao(false);
-      setFaltantes(resultado.insumos);
+      setFaltantes(resultado.insumos || []);
     }
   };
 
