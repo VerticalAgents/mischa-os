@@ -1,10 +1,11 @@
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, Suspense, useState, useEffect } from "react";
 import { useThemeStore } from "@/lib/theme";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { SessionNavBar } from "@/components/ui/sidebar-next";
 import TopHeader from "@/components/layout/TopHeader";
 import { RouteStateManager } from "@/components/common/RouteStateManager";
+import PageSkeleton from "@/components/layout/PageSkeleton";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -47,7 +48,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content — no left margin on mobile (sidebar hidden), margin on desktop */}
       <main className="flex-1 overflow-auto pt-14 lg:pt-0 lg:ml-[3.05rem] transition-all">
         <div className="container py-4 lg:py-6 px-3 lg:px-8 max-w-7xl mx-auto">
-          {children}
+          <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
         </div>
       </main>
     </div>
