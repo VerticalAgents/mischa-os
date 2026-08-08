@@ -363,6 +363,74 @@ export default function SetupPCPTab() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-blue-500" />
+            <CardTitle>Categorias na Projeção de Produção</CardTitle>
+          </div>
+          <CardDescription>
+            Escolha quais categorias de produto entram na <strong>Projeção de Produção</strong> da semana.
+            Categorias desmarcadas ficam fora dos Produtos Necessários, do Estoque Disponível e da Sugestão de Produção.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">
+              {categoriasExcluidas.length === 0
+                ? "Todas as categorias incluídas"
+                : `${categoriasExcluidas.length} ${categoriasExcluidas.length === 1 ? "categoria fora" : "categorias fora"} da projeção`}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCategoriasExcluidas([])}>
+                Selecionar todas
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCategoriasExcluidas(categoriasProduto.map((c) => c.id))}
+              >
+                Limpar
+              </Button>
+            </div>
+          </div>
+          <div className="border rounded-md divide-y max-h-[280px] overflow-y-auto">
+            {loadingCategorias ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : categoriasProduto.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground text-center">Nenhuma categoria cadastrada.</p>
+            ) : (
+              categoriasProduto.map((c) => {
+                const incluida = !categoriasExcluidas.includes(c.id);
+                return (
+                  <label
+                    key={c.id}
+                    className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40"
+                  >
+                    <Checkbox
+                      checked={incluida}
+                      onCheckedChange={() =>
+                        setCategoriasExcluidas((prev) =>
+                          prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                        )
+                      }
+                    />
+                    <span className={cn("text-sm flex-1 truncate", !incluida && "text-muted-foreground line-through")}>
+                      {c.nome}
+                    </span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Produtos sem categoria definida são sempre incluídos na projeção.
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button onClick={handleSalvar} className="gap-2">
           <Save className="h-4 w-4" />
