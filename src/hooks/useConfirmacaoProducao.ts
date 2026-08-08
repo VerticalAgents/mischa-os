@@ -132,14 +132,15 @@ export const useConfirmacaoProducao = () => {
         }
 
         const saldoAtual = Number(saldo || 0);
-        
-        if (saldoAtual < consumoTotal) {
+
+        // Tolerância para evitar falso negativo por arredondamento de ponto flutuante
+        if (saldoAtual + 1e-6 < consumoTotal) {
           insumosInsuficientes.push({
             insumo_id: item.insumo_id,
             nome: item.insumos.nome,
             necessario: consumoTotal,
             disponivel: saldoAtual,
-            faltante: consumoTotal - saldoAtual,
+            faltante: Number((consumoTotal - saldoAtual).toFixed(4)),
             unidade: item.insumos.unidade_medida
           });
         }
@@ -153,12 +154,14 @@ export const useConfirmacaoProducao = () => {
 
         // Repor automaticamente o faltante como entrada de ajuste
         for (const item of insumosInsuficientes) {
+          // Pequena folga para evitar bloqueio por arredondamento de ponto flutuante
+          const quantidadeReposicao = Number((item.faltante + 0.01).toFixed(4));
           const { error: reposicaoError } = await supabase
             .from('movimentacoes_estoque_insumos')
             .insert({
               insumo_id: item.insumo_id,
               tipo: 'entrada',
-              quantidade: item.faltante,
+              quantidade: quantidadeReposicao,
               data_movimentacao: new Date().toISOString(),
               referencia_tipo: 'ajuste_producao',
               referencia_id: registroId,
