@@ -51,7 +51,7 @@ export default function ProducoesAtrasadasCard({ onChange }: Props) {
 
   const handleConfirmar = async (id: string) => {
     setAcaoEm(id);
-    const ok = await confirmarProducao(id);
+    const ok = (await confirmarProducao(id)).ok;
     setAcaoEm(null);
     if (ok) {
       await recarregar();
