@@ -50,7 +50,12 @@ export default function ProducaoKpiStrip({ unidade, textoPeriodo, kpis }: Produc
       icon: CalendarDays,
       label: "Mês atual",
       valor: formatarValor(kpis.mesAtual, unidade),
-      rodape: <Variacao valor={kpis.variacaoMes} sufixo="vs mês anterior" />,
+      rodape: (
+        <>
+          <Variacao valor={kpis.variacaoMes} sufixo="vs mês anterior" />
+          <p className="text-[11px] text-muted-foreground truncate">mês em andamento</p>
+        </>
+      ),
     },
     {
       icon: Repeat,
