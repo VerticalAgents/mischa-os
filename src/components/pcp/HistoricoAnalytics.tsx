@@ -21,6 +21,7 @@ export default function HistoricoAnalytics() {
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
   const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
+  const [isPrivateLabelDetailsOpen, setIsPrivateLabelDetailsOpen] = useState(false);
   const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
   const [mesesGrafico, setMesesGrafico] = useState("12");
   const [foodServiceMetrica, setFoodServiceMetrica] = useState<"unidades" | "peso">("unidades");
@@ -39,6 +40,27 @@ export default function HistoricoAnalytics() {
     });
     return m;
   }, [produtos]);
+
+  // Produtos de private label (consignados a um cliente industrial)
+  const produtoPrivateLabelIds = useMemo(() => {
+    const s = new Set<string>();
+    (produtos || []).forEach((p: any) => {
+      if (p?.cliente_id) s.add(p.id);
+    });
+    return s;
+  }, [produtos]);
+
+  const produtoPrivateLabelNomes = useMemo(() => {
+    const s = new Set<string>();
+    (produtos || []).forEach((p: any) => {
+      if (p?.cliente_id && p?.nome) s.add(p.nome);
+    });
+    return s;
+  }, [produtos]);
+
+  const isRegistroPrivateLabel = (record: any) =>
+    (record.produto_id && produtoPrivateLabelIds.has(record.produto_id)) ||
+    produtoPrivateLabelNomes.has(record.produto_nome);
   
   // Função para categorizar produtos baseado no nome
   const categorizarProduto = (nomeProduto: string): 'revenda' | 'foodservice' => {
