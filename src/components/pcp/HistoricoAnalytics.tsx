@@ -21,6 +21,7 @@ export default function HistoricoAnalytics() {
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
   const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
+  const [isPrivateLabelDetailsOpen, setIsPrivateLabelDetailsOpen] = useState(false);
   const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
   const [mesesGrafico, setMesesGrafico] = useState("12");
   const [foodServiceMetrica, setFoodServiceMetrica] = useState<"unidades" | "peso">("unidades");
@@ -39,6 +40,27 @@ export default function HistoricoAnalytics() {
     });
     return m;
   }, [produtos]);
+
+  // Produtos de private label (consignados a um cliente industrial)
+  const produtoPrivateLabelIds = useMemo(() => {
+    const s = new Set<string>();
+    (produtos || []).forEach((p: any) => {
+      if (p?.cliente_id) s.add(p.id);
+    });
+    return s;
+  }, [produtos]);
+
+  const produtoPrivateLabelNomes = useMemo(() => {
+    const s = new Set<string>();
+    (produtos || []).forEach((p: any) => {
+      if (p?.cliente_id && p?.nome) s.add(p.nome);
+    });
+    return s;
+  }, [produtos]);
+
+  const isRegistroPrivateLabel = (record: any) =>
+    (record.produto_id && produtoPrivateLabelIds.has(record.produto_id)) ||
+    produtoPrivateLabelNomes.has(record.produto_nome);
   
   // Função para categorizar produtos baseado no nome
   const categorizarProduto = (nomeProduto: string): 'revenda' | 'foodservice' => {
@@ -131,9 +153,40 @@ export default function HistoricoAnalytics() {
 
   // Texto do período para exibição
   const textoPeriodo = useMemo(() => {
+
     if (diasPeriodo >= 365) return "Último ano";
     return `Últimos ${diasPeriodo} dias`;
   }, [diasPeriodo]);
+
+  // Private Label (consignado) - Período selecionado
+  const privateLabelPeriodo = useMemo(() => {
+    const registros = (historico || []).filter(record => {
+      const d = startOfDay(new Date(record.data_producao));
+      return d >= startOfDay(inicioPeriodo) && d <= hoje && isRegistroPrivateLabel(record);
+    });
+
+    const totalUnidades = registros.reduce((s, r) => s + (r.unidades_calculadas || 0), 0);
+    const totalFormas = registros.reduce((s, r) => s + (r.formas_producidas || 0), 0);
+
+    const porProduto = new Map<string, { unidades: number; formas: number }>();
+    registros.forEach(r => {
+      const atual = porProduto.get(r.produto_nome) || { unidades: 0, formas: 0 };
+      atual.unidades += r.unidades_calculadas || 0;
+      atual.formas += r.formas_producidas || 0;
+      porProduto.set(r.produto_nome, atual);
+    });
+
+    const produtos = Array.from(porProduto.entries())
+      .map(([nome, v]) => ({
+        productName: nome,
+        totalUnits: v.unidades,
+        totalForms: v.formas,
+        percentage: totalFormas > 0 ? (v.formas / totalFormas) * 100 : 0
+      }))
+      .sort((a, b) => b.totalForms - a.totalForms);
+
+    return { totalUnidades, totalFormas, produtos };
+  }, [historico, inicioPeriodo, hoje, produtoPrivateLabelIds, produtoPrivateLabelNomes]);
 
   // Quantidade de meses exibidos no gráfico de evolução (independente do filtro de período acima)
   const numeroMeses = useMemo(() => {
@@ -168,10 +221,17 @@ export default function HistoricoAnalytics() {
       let unidadesRevenda = 0;
       let unidadesFoodService = 0;
       let pesoFoodServiceKg = 0;
+      let unidadesPrivateLabel = 0;
+      let formasPrivateLabel = 0;
 
       registrosMes.forEach(record => {
-        const categoria = categorizarProduto(record.produto_nome);
         const unidades = record.unidades_calculadas || 0;
+        if (isRegistroPrivateLabel(record)) {
+          unidadesPrivateLabel += unidades;
+          formasPrivateLabel += record.formas_producidas;
+          return;
+        }
+        const categoria = categorizarProduto(record.produto_nome);
         const pesoUnitG = pesoUnitarioMap.get(record.produto_nome) || 0;
         const pesoKg = (unidades * pesoUnitG) / 1000;
         if (categoria === 'revenda') {
@@ -190,7 +250,9 @@ export default function HistoricoAnalytics() {
         mes: mesLabel,
         revenda: unidadesRevenda,
         foodService: unidadesFoodService,
-        foodServicePeso: Number(pesoFoodServiceKg.toFixed(2))
+        foodServicePeso: Number(pesoFoodServiceKg.toFixed(2)),
+        privateLabel: unidadesPrivateLabel,
+        privateLabelFormas: formasPrivateLabel
       };
     });
 
@@ -204,7 +266,7 @@ export default function HistoricoAnalytics() {
     });
 
     return dados;
-  }, [historico, hoje, numeroMeses, periodoSelecionado, pesoUnitarioMap]);
+  }, [historico, hoje, numeroMeses, periodoSelecionado, pesoUnitarioMap, produtoPrivateLabelIds, produtoPrivateLabelNomes]);
 
 
   // Cálculos de variação
@@ -488,6 +550,68 @@ export default function HistoricoAnalytics() {
         </Card>
 
       </div>
+
+      {/* Produção Private Label / Consignada */}
+      {privateLabelPeriodo.totalUnidades > 0 && (
+        <Card className="border-purple-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Factory className="h-5 w-5 text-purple-600" />
+              Produção Private Label
+            </CardTitle>
+            <CardDescription className="text-left">
+              {textoPeriodo} — produção consignada para clientes industriais
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-purple-500/10 p-4 rounded-lg border border-purple-500/20">
+                <p className="text-sm text-muted-foreground mb-1">Total Produzido</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {privateLabelPeriodo.totalUnidades.toLocaleString('pt-BR')} un
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {privateLabelPeriodo.totalFormas.toLocaleString('pt-BR')} formas
+                </p>
+              </div>
+
+              <Collapsible open={isPrivateLabelDetailsOpen} onOpenChange={setIsPrivateLabelDetailsOpen}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2">
+                      {isPrivateLabelDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent className="space-y-3">
+                  {privateLabelPeriodo.produtos.map(produto => (
+                    <div key={produto.productName} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{produto.productName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-sm px-2 py-0.5">
+                            {produto.totalUnits.toLocaleString('pt-BR')} un
+                          </Badge>
+                          <Badge variant="outline" className="text-sm">
+                            {produto.totalForms.toLocaleString('pt-BR')} formas
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${produto.percentage}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gráfico Comparativo - Evolução da Produção */}
       <div className="grid gap-4 lg:grid-cols-2 items-stretch">
