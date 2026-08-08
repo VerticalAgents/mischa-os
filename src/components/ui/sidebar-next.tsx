@@ -67,6 +67,9 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
   const [hoveredVariant, setHoveredVariant] = useState<MenuGroup["variant"] | null>(null);
   const [flyoutTop, setFlyoutTop] = useState<number>(0);
   const closeTimer = useRef<number | null>(null);
+  // Após navegar por um item do flyout, bloqueia reabertura por hover
+  // até o mouse realmente sair da área da sidebar/flyout.
+  const suppressHoverRef = useRef(false);
 
   const filteredMenuGroups = useMemo(() => {
     if (userRole === "admin") return menuGroups;
@@ -92,14 +95,36 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
     };
   }, []);
 
-  // Close flyout when route changes
+  // Fecha o flyout quando a rota (ou os parâmetros) mudam
   useEffect(() => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
     setHoveredVariant(null);
-  }, [pathname]);
+  }, [pathname, location.search, location.key]);
+
+  // Libera o hover novamente quando o ponteiro sai da região da sidebar
+  useEffect(() => {
+    function handlePointerMove(e: PointerEvent) {
+      if (!suppressHoverRef.current) return;
+      if (e.clientX > 340) suppressHoverRef.current = false;
+    }
+    window.addEventListener("pointermove", handlePointerMove);
+    return () => window.removeEventListener("pointermove", handlePointerMove);
+  }, []);
 
   const scheduleClose = () => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     closeTimer.current = window.setTimeout(() => setHoveredVariant(null), 120);
+  };
+  const closeNow = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    suppressHoverRef.current = true;
+    setHoveredVariant(null);
   };
   const cancelClose = () => {
     if (closeTimer.current) {
@@ -118,7 +143,10 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
     <aside
       className="fixed left-0 top-0 z-40 hidden h-full w-[3.05rem] shrink-0 border-r lg:flex flex-col"
       style={{ backgroundColor: "#d1193a", borderColor: "rgba(255,255,255,0.15)" }}
-      onMouseLeave={scheduleClose}
+      onMouseLeave={() => {
+        suppressHoverRef.current = false;
+        scheduleClose();
+      }}
     >
       {/* Logo */}
       <div
@@ -144,6 +172,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
               key={group.variant + group.title}
               type="button"
               onMouseEnter={(e) => {
+                if (suppressHoverRef.current) return;
                 cancelClose();
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 setFlyoutTop(rect.top);
@@ -206,7 +235,10 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
           exit={{ opacity: 0, x: -8 }}
           transition={{ duration: 0.12, ease: "easeOut" }}
           onMouseEnter={cancelClose}
-          onMouseLeave={scheduleClose}
+          onMouseLeave={() => {
+            suppressHoverRef.current = false;
+            scheduleClose();
+          }}
         >
           <div className="ml-2 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
             <div className="px-3 pb-2 pt-1">
@@ -225,7 +257,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
                   <li key={item.path}>
                     <Link
                       to={item.path}
-                      onClick={() => setHoveredVariant(null)}
+                      onClick={closeNow}
                       className={cn(
                         "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                         "hover:bg-accent hover:text-accent-foreground",
