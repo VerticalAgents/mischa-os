@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClienteStore } from '@/hooks/useClienteStore';
-import { isClienteOperacional } from '@/utils/clienteTipo';
+import { isClienteOperacional, isClienteIndustrialPuro } from '@/utils/clienteTipo';
 
 const CATEGORIA_DISTRIBUIDOR_ID = 16;
 
@@ -64,6 +64,16 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     return { distribuidoresAtivosIds: distribuidores, pdvsDiretos: diretos };
   }, [clientesAtivos]);
 
+  // IDs de clientes industriais puros — devem ser excluídos do cálculo de giro (PDV)
+  const clientesIndustriaisIds = useMemo(
+    () => clientes.filter(isClienteIndustrialPuro).map(c => c.id),
+    [clientes]
+  );
+  const industriaisKey = useMemo(
+    () => [...clientesIndustriaisIds].sort().join(','),
+    [clientesIndustriaisIds]
+  );
+
   // Helper para obter número da semana ISO
   const getISOWeek = (date: Date): string => {
     const tempDate = new Date(date.getTime());
@@ -76,7 +86,7 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
   // Query para buscar entregas e expositores
   const { data, isLoading, error } = useQuery({
-    queryKey: ['giro-semanal-total', representanteId],
+    queryKey: ['giro-semanal-total', representanteId, industriaisKey],
     queryFn: async () => {
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() - 84);
@@ -85,7 +95,7 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
       const [entregasResult, expositoresResult] = await Promise.all([
         supabase
           .from('historico_entregas')
-          .select('quantidade, data')
+          .select('quantidade, data, cliente_id')
           .gte('data', dataLimite.toISOString())
           .eq('tipo', 'entrega'),
         supabase
@@ -96,7 +106,10 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
       if (entregasResult.error) throw entregasResult.error;
       if (expositoresResult.error) throw expositoresResult.error;
 
-      const entregas = entregasResult.data;
+      const industriaisSet = new Set(clientesIndustriaisIds);
+      const entregas = (entregasResult.data || []).filter(
+        e => !e.cliente_id || !industriaisSet.has(e.cliente_id)
+      );
       const expositores = expositoresResult.data;
 
       // Agrupar entregas por semana
