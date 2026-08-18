@@ -28,6 +28,7 @@ function TooltipConteudo({
   if (!active || !payload?.length) return null;
 
   const parcial = Boolean(payload[0]?.payload?.parcial);
+  const agendado = Number(payload[0]?.payload?.agendado) || 0;
   const itens = payload
     .map((p: any) => ({
       nome: config[p.name as string]?.label ?? p.name,
@@ -74,6 +75,14 @@ function TooltipConteudo({
               {formatarNumero(total, unidade)}
             </span>
           </div>
+          {agendado > 0 && (
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">Agendado (não confirmado)</span>
+              <span className="font-medium tabular-nums text-muted-foreground">
+                {formatarNumero(agendado, unidade)}
+              </span>
+            </div>
+          )}
         </>
       )}
     </div>
