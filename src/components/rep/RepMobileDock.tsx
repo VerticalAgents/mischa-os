@@ -22,10 +22,10 @@ export default function RepMobileDock() {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-xl lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed bottom-0 left-0 right-0 z-50 px-3 lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
-        <div className="flex items-stretch justify-around px-1 py-1.5">
+        <div className="flex items-stretch justify-around gap-1 rounded-3xl border border-border/60 bg-background/80 px-2 py-2 shadow-[0_8px_30px_hsl(var(--foreground)/0.15)] backdrop-blur-2xl">
           {dockItems.map(({ to, label, Icon }) => {
             const isActive = pathname === to || pathname.startsWith(to + "/");
             return (
@@ -33,8 +33,10 @@ export default function RepMobileDock() {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-1.5 transition-colors",
+                  isActive
+                    ? "bg-muted text-foreground dark:bg-muted/70"
+                    : "text-muted-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -48,8 +50,8 @@ export default function RepMobileDock() {
             onClick={() => setMenuOpen(true)}
             aria-label="Mais opções"
             className={cn(
-              "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5 transition-colors",
-              menuOpen ? "text-primary" : "text-muted-foreground"
+              "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-1.5 transition-colors",
+              menuOpen ? "bg-muted text-foreground dark:bg-muted/70" : "text-muted-foreground"
             )}
           >
             <MoreHorizontal className="h-5 w-5" />
