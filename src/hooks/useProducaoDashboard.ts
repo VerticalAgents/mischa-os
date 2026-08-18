@@ -129,6 +129,7 @@ export const useProducaoDashboard = ({
     unidades: number;
     pesoKg: number;
     temPeso: boolean;
+    agendado: boolean;
   }
 
   const registros = useMemo<RegistroEnriquecido[]>(() => {
@@ -148,6 +149,7 @@ export const useProducaoDashboard = ({
         unidades,
         pesoKg: (unidades * pesoUnit) / 1000,
         temPeso: pesoUnit > 0,
+        agendado: (record.status || 'Registrado') !== 'Confirmado',
       };
     });
   }, [historico, categoriasDisponiveis, produtoInfo]);
@@ -169,6 +171,18 @@ export const useProducaoDashboard = ({
 
   const hoje = useMemo(() => new Date(), [historico]);
 
+  // Limite superior de datas consideradas: hoje ou a última produção agendada do mês vigente
+  const limiteSuperior = useMemo(() => {
+    const fimMes = endOfMonth(hoje);
+    let limite = endOfDay(hoje);
+    registros.forEach(r => {
+      if (!r.agendado) return;
+      if (r.data <= limite || r.data > fimMes) return;
+      limite = endOfDay(r.data);
+    });
+    return limite;
+  }, [registros, hoje]);
+
   const somaPeriodo = (inicio: Date, fim: Date) =>
     registros
       .filter(r => passaFiltros(r) && r.data >= startOfDay(inicio) && r.data <= fim)
@@ -176,8 +190,8 @@ export const useProducaoDashboard = ({
 
   const registrosPeriodo = useMemo(() => {
     const inicio = startOfDay(subDays(hoje, dias));
-    return registros.filter(r => passaFiltros(r) && r.data >= inicio && r.data <= hoje);
-  }, [registros, dias, hoje, unidade, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
+    return registros.filter(r => passaFiltros(r) && r.data >= inicio && r.data <= limiteSuperior);
+  }, [registros, dias, hoje, limiteSuperior, unidade, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
 
   const kpis = useMemo(() => {
     const total = registrosPeriodo.reduce((s, r) => s + valorDe(r), 0);
@@ -231,13 +245,18 @@ export const useProducaoDashboard = ({
 
     if (granularidade === 'dia') {
       const primeiro = startOfDay(subDays(hoje, dias - 1));
-      for (let i = 0; i < dias; i++) {
+      const ultimo = startOfDay(limiteSuperior);
+      const totalDias = Math.max(
+        dias,
+        Math.round((ultimo.getTime() - primeiro.getTime()) / 86400000) + 1
+      );
+      for (let i = 0; i < totalDias; i++) {
         const d = addDays(primeiro, i);
         buckets.push({ inicio: startOfDay(d), fim: endOfDay(d), label: format(d, 'dd/MM', { locale: ptBR }) });
       }
     } else if (granularidade === 'semana') {
       let cursor = startOfWeek(subDays(hoje, dias - 1), { weekStartsOn: 1 });
-      const limite = endOfWeek(hoje, { weekStartsOn: 1 });
+      const limite = endOfWeek(limiteSuperior, { weekStartsOn: 1 });
       while (cursor <= limite) {
         const fim = endOfWeek(cursor, { weekStartsOn: 1 });
         buckets.push({ inicio: cursor, fim, label: format(cursor, 'dd/MM', { locale: ptBR }) });
@@ -252,8 +271,8 @@ export const useProducaoDashboard = ({
     }
 
     return buckets.map(({ inicio, fim, label }) => {
-      const parcial = hoje >= inicio && hoje <= fim;
-      const linha: Record<string, any> = { mes: label, total: 0, parcial };
+      const parcial = (hoje >= inicio && hoje <= fim) || inicio > hoje;
+      const linha: Record<string, any> = { mes: label, total: 0, parcial, agendado: 0 };
       categoriasDisponiveis.forEach(c => {
         if (categoriaAtiva(c.id)) linha[c.chave] = 0;
       });
@@ -266,6 +285,7 @@ export const useProducaoDashboard = ({
         const valor = valorDe(r);
         linha[cat.chave] = (linha[cat.chave] || 0) + valor;
         linha.total += valor;
+        if (r.agendado) linha.agendado += valor;
       });
 
       if (unidade === 'peso') {
@@ -278,7 +298,7 @@ export const useProducaoDashboard = ({
 
       return linha;
     });
-  }, [registros, dias, granularidade, hoje, unidade, categoriasDisponiveis, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
+  }, [registros, dias, granularidade, hoje, limiteSuperior, unidade, categoriasDisponiveis, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
 
   // Quebra por categoria
   const porCategoria = useMemo<QuebraItem[]>(() => {
@@ -348,11 +368,11 @@ export const useProducaoDashboard = ({
     registros.forEach(r => {
       if (r.temPeso) return;
       if (!categoriaAtiva(r.categoriaId)) return;
-      if (r.data < inicio || r.data > hoje) return;
+      if (r.data < inicio || r.data > limiteSuperior) return;
       nomes.add(r.record.produto_nome);
     });
     return Array.from(nomes);
-  }, [registros, unidade, dias, hoje, categoriasSelecionadas]);
+  }, [registros, unidade, dias, hoje, limiteSuperior, categoriasSelecionadas]);
 
   return {
     loading: loadingHistorico || loadingProdutos,
