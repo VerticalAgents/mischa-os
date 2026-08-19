@@ -63,6 +63,7 @@ const RepClientes = lazy(() => import('@/pages/rep/RepClientes'));
 const RepAgendamentos = lazy(() => import('@/pages/rep/RepAgendamentos'));
 const RepConfiguracoes = lazy(() => import('@/pages/rep/RepConfiguracoes'));
 const RepEstatisticas = lazy(() => import('@/pages/rep/RepEstatisticas'));
+const RepInadimplencia = lazy(() => import('@/pages/rep/RepInadimplencia'));
 import RepLayout from '@/layouts/RepLayout';
 import { RepGuard } from '@/components/rep/RepGuard';
 import { Navigate } from 'react-router-dom';
@@ -135,6 +136,15 @@ function App() {
                         <RepGuard>
                           <RepLayout>
                             <RepEstatisticas />
+                          </RepLayout>
+                        </RepGuard>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rep/inadimplencia" element={
+                      <ProtectedRoute>
+                        <RepGuard>
+                          <RepLayout>
+                            <RepInadimplencia />
                           </RepLayout>
                         </RepGuard>
                       </ProtectedRoute>
@@ -283,6 +293,15 @@ function App() {
                         <AppLayout>
                           <RoleBasedRoute allowedRoles={['admin', 'user']}>
                             <PontoEquilibrio />
+                          </RoleBasedRoute>
+                        </AppLayout>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/gestao-financeira/inadimplencia" element={
+                      <ProtectedRoute>
+                        <AppLayout>
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Inadimplencia />
                           </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
