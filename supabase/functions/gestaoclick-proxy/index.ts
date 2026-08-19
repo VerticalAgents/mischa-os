@@ -2334,6 +2334,62 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'buscar_venda_por_codigo': {
+        // Resolver o ID interno da venda a partir do numero/codigo (ex.: "Venda de nº 1765946984")
+        const { access_token, secret_token, codigo } = params;
+
+        if (!access_token || !secret_token || !codigo) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens ou codigo nao fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const vendaResp = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?codigo=${encodeURIComponent(String(codigo))}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+
+        if (!vendaResp.ok) {
+          const errorText = await vendaResp.text();
+          console.error('[gestaoclick-proxy] buscar_venda_por_codigo error:', vendaResp.status, errorText);
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar venda: ${vendaResp.status}`, details: errorText }),
+            { status: vendaResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const vendaJson = await vendaResp.json();
+        const lista = vendaJson?.data || [];
+        const venda = (lista[0]?.Venda || lista[0]) ?? null;
+
+        if (!venda?.id) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Venda nao encontrada no GestaoClick' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            venda: {
+              id: String(venda.id),
+              codigo: venda.codigo,
+              hash: venda.hash,
+              nome_cliente: venda.nome_cliente,
+              valor_total: venda.valor_total,
+              nota_fiscal_id: venda.nota_fiscal_id || null,
+            },
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'buscar_recebimentos_abertos': {
         // Buscar TODOS os recebimentos em aberto (liquidado=ab) com paginacao
         const { access_token, secret_token, meses_retroativos } = params;
