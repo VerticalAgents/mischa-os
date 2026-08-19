@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Calendar, BarChart3, Settings, LogOut, X } from "lucide-react";
+import { Home, Users, Calendar, BarChart3, Settings, LogOut, X, AlertTriangle } from "lucide-react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ export const repMenuItems = [
   { to: "/rep/agendamentos", label: "Agendamentos", Icon: Calendar },
   { to: "/rep/estatisticas", label: "Estatísticas", Icon: BarChart3 },
   { to: "/rep/clientes", label: "Meus Clientes", Icon: Users },
+  { to: "/rep/inadimplencia", label: "Inadimplência", Icon: AlertTriangle },
   { to: "/rep/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
