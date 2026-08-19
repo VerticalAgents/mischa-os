@@ -2222,6 +2222,7 @@ Deno.serve(async (req) => {
       }
 
       case 'buscar_recebimentos_venda': {
+        // (ver case 'buscar_venda_por_codigo' abaixo para resolver o ID interno da venda)
         // Buscar recebimentos (boletos) de uma venda
         const { access_token, secret_token, cliente_id, data_venda, valor_venda } = params;
         
