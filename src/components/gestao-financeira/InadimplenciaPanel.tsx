@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -180,9 +180,8 @@ export default function InadimplenciaPanel() {
                   lista.map((c) => {
                     const aberto = expandido === c.gestaoClickClienteId;
                     return (
-                      <>
+                      <Fragment key={c.gestaoClickClienteId}>
                         <TableRow
-                          key={c.gestaoClickClienteId}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() =>
                             setExpandido(aberto ? null : c.gestaoClickClienteId)
@@ -211,7 +210,7 @@ export default function InadimplenciaPanel() {
                           </TableCell>
                         </TableRow>
                         {aberto && (
-                          <TableRow key={`${c.gestaoClickClienteId}-det`}>
+                          <TableRow>
                             <TableCell colSpan={5} className="bg-muted/30">
                               <div className="space-y-2">
                                 {c.titulos.map((t) => (
@@ -256,7 +255,7 @@ export default function InadimplenciaPanel() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })
                 )}
