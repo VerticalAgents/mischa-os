@@ -40,6 +40,7 @@ const AnaliseGiro = lazy(() => import('@/pages/AnaliseGiro'));
 const GestaoFinanceira = lazy(() => import('@/pages/GestaoFinanceira'));
 const ProjecaoResultadosPDV = lazy(() => import('@/pages/gestao-financeira/ProjecaoResultadosPDV'));
 const PontoEquilibrio = lazy(() => import('@/pages/gestao-financeira/PontoEquilibrio'));
+const Inadimplencia = lazy(() => import('@/pages/gestao-financeira/Inadimplencia'));
 const Configuracoes = lazy(() => import('@/pages/Configuracoes'));
 const AgentesIA = lazy(() => import('@/pages/AgentesIA'));
 const AgenteIAPage = lazy(() => import('@/pages/AgenteIAPage'));
