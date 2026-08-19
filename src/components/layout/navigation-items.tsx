@@ -66,6 +66,11 @@ export const menuGroups: MenuGroup[] = [
         path: "/reagendamentos",
         icon: <CalendarClock className="h-4 w-4" />,
       },
+      {
+        label: "Inadimplência",
+        path: "/gestao-financeira/inadimplencia",
+        icon: <AlertTriangle className="h-4 w-4" />,
+      },
     ]
   },
   {
