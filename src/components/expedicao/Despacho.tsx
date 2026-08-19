@@ -521,6 +521,37 @@ export const Despacho = () => {
         onConfirm={handleConfirmarEntregaEmMassa}
       />
 
+      {/* Aviso de inadimplência antes de despachar */}
+      <AlertDialog
+        open={!!avisoInadimplencia}
+        onOpenChange={(open) => !open && setAvisoInadimplencia(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clientes com pagamento em atraso</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Os clientes abaixo possuem títulos vencidos e não pagos no GestãoClick.
+                  Deseja despachar mesmo assim?
+                </p>
+                <ul className="list-disc pl-5 text-foreground">
+                  {avisoInadimplencia?.nomes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={prosseguirDespachoComAtraso}>
+              Despachar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };
