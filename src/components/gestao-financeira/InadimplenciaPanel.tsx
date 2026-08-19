@@ -24,6 +24,7 @@ import {
   Search,
 } from "lucide-react";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { RepresentantesFilter } from "@/components/expedicao/components/RepresentantesFilter";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -36,9 +37,10 @@ const dataBR = (iso: string) => {
 };
 
 export default function InadimplenciaPanel() {
-  const { clientes, loading, error, refetch } = useInadimplencia();
+  const { clientes, loading, error, refetch, isRepresentante } = useInadimplencia();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"atrasados" | "todos">("atrasados");
+  const [filtroRepresentantes, setFiltroRepresentantes] = useState<number[]>([]);
   const [expandido, setExpandido] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<string | null>(null);
 
@@ -88,22 +90,33 @@ export default function InadimplenciaPanel() {
     }
   };
 
+  const clientesPorRepresentante = useMemo(() => {
+    if (filtroRepresentantes.length === 0) return clientes;
+    const incluiSemRepresentante = filtroRepresentantes.includes(-1);
+    const idsReais = filtroRepresentantes.filter((id) => id !== -1);
+    return clientes.filter((c) =>
+      c.representanteId === null
+        ? incluiSemRepresentante
+        : idsReais.includes(c.representanteId)
+    );
+  }, [clientes, filtroRepresentantes]);
+
   const lista = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    return clientes
+    return clientesPorRepresentante
       .filter((c) => (filtro === "atrasados" ? c.qtdAtrasados > 0 : true))
       .filter((c) => (termo ? c.clienteNome.toLowerCase().includes(termo) : true));
-  }, [clientes, busca, filtro]);
+  }, [clientesPorRepresentante, busca, filtro]);
 
   const totais = useMemo(() => {
-    const comAtraso = clientes.filter((c) => c.qtdAtrasados > 0);
+    const comAtraso = clientesPorRepresentante.filter((c) => c.qtdAtrasados > 0);
     return {
       clientesAtrasados: comAtraso.length,
       valorAtrasado: comAtraso.reduce((s, c) => s + c.valorAtrasado, 0),
-      valorEmAberto: clientes.reduce((s, c) => s + c.valorEmAberto, 0),
+      valorEmAberto: clientesPorRepresentante.reduce((s, c) => s + c.valorEmAberto, 0),
       maiorAtraso: comAtraso.reduce((m, c) => Math.max(m, c.maiorAtraso), 0),
     };
-  }, [clientes]);
+  }, [clientesPorRepresentante]);
 
   if (loading) {
     return (
@@ -192,6 +205,13 @@ export default function InadimplenciaPanel() {
                   <TabsTrigger value="todos">Todos em aberto</TabsTrigger>
                 </TabsList>
               </Tabs>
+              {!isRepresentante && (
+                <RepresentantesFilter
+                  selectedIds={filtroRepresentantes}
+                  onSelectionChange={setFiltroRepresentantes}
+                  className="h-10 w-full sm:w-auto"
+                />
+              )}
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
