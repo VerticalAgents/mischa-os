@@ -5,7 +5,7 @@ import {
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
   BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin,
-  Shield, RefreshCw, CalendarClock, Blocks, Factory
+  Shield, RefreshCw, CalendarClock, Blocks, Factory, AlertTriangle
 } from "lucide-react";
 
 export type MenuItem = {
