@@ -19,10 +19,13 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  Loader2,
   RefreshCw,
   Search,
 } from "lucide-react";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,6 +40,53 @@ export default function InadimplenciaPanel() {
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"atrasados" | "todos">("atrasados");
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [abrindo, setAbrindo] = useState<string | null>(null);
+
+  // O ID do recebimento da API nao corresponde a uma pagina web do GestaoClick.
+  // Extraimos o numero da venda da descricao ("Venda de nº 1765946984") e
+  // resolvemos o ID interno da venda via API para abrir a venda correta.
+  const abrirNoGestaoClick = async (titulo: { id: string; descricao?: string }) => {
+    const numero = titulo.descricao?.match(/(\d{3,})/)?.[1];
+    if (!numero) {
+      toast.error("Não foi possível identificar a venda deste título");
+      return;
+    }
+
+    setAbrindo(titulo.id);
+    try {
+      const { data: configData } = await supabase
+        .from("integracoes_config")
+        .select("config")
+        .eq("integracao", "gestaoclick")
+        .maybeSingle();
+
+      const config = (configData?.config || {}) as { access_token?: string; secret_token?: string };
+      if (!config.access_token || !config.secret_token) {
+        toast.error("Integração com o GestãoClick não configurada");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("gestaoclick-proxy", {
+        body: {
+          action: "buscar_venda_por_codigo",
+          access_token: config.access_token,
+          secret_token: config.secret_token,
+          codigo: numero,
+        },
+      });
+
+      const vendaId = (data as any)?.venda?.id;
+      if (error || !vendaId) {
+        console.error("Erro ao resolver venda no GestãoClick:", error, data);
+        toast.error("Venda não encontrada no GestãoClick");
+        return;
+      }
+
+      window.open(`https://app.gestaoclick.com/vendas/visualizar/${vendaId}`, "_blank");
+    } finally {
+      setAbrindo(null);
+    }
+  };
 
   const lista = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -238,15 +288,18 @@ export default function InadimplenciaPanel() {
                                       <Button
                                         size="sm"
                                         variant="ghost"
+                                        disabled={abrindo === t.id}
+                                        title="Abrir venda no GestãoClick"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          window.open(
-                                            `https://app.gestaoclick.com/recebimentos/visualizar/${t.id}`,
-                                            "_blank"
-                                          );
+                                          abrirNoGestaoClick(t);
                                         }}
                                       >
-                                        <ExternalLink className="h-4 w-4" />
+                                        {abrindo === t.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <ExternalLink className="h-4 w-4" />
+                                        )}
                                       </Button>
                                     </div>
                                   </div>
