@@ -5,7 +5,7 @@ import {
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
   BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin,
-  Shield, RefreshCw, CalendarClock, Blocks, Factory
+  Shield, RefreshCw, CalendarClock, Blocks, Factory, AlertTriangle
 } from "lucide-react";
 
 export type MenuItem = {
@@ -201,5 +201,10 @@ export const gestaoFinanceiraItems = [
     label: "Ponto de Equilíbrio",
     path: "/gestao-financeira/ponto-equilibrio",
     icon: <Calculator className="h-4 w-4" />,
+  },
+  {
+    label: "Inadimplência",
+    path: "/gestao-financeira/inadimplencia",
+    icon: <AlertTriangle className="h-4 w-4" />,
   }
 ];

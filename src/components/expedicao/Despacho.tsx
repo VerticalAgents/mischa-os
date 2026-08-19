@@ -22,6 +22,17 @@ import { Truck, Package, Loader2, Download, MapPin } from "lucide-react";
 import { ExportCSVDialog } from "./components/ExportCSVDialog";
 import { useExportCSVDialog } from "@/hooks/useExportCSVDialog";
 import { startOfDay, startOfWeek, endOfWeek, isBefore, format } from "date-fns";
+import { useInadimplencia } from "@/hooks/useInadimplencia";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Despacho = () => {
   const {
@@ -56,6 +67,11 @@ export const Despacho = () => {
   const [filtroTipoLogistica, setFiltroTipoLogistica] = useState<string[]>([]);
   const [despachoEmMassaOpen, setDespachoEmMassaOpen] = useState(false);
   const [entregaEmMassaOpen, setEntregaEmMassaOpen] = useState(false);
+  const { clientes: clientesInadimplentes } = useInadimplencia();
+  const [avisoInadimplencia, setAvisoInadimplencia] = useState<{
+    pedidoIds: string[];
+    nomes: string[];
+  } | null>(null);
   
   const {
     filtroRepresentantes,
@@ -263,6 +279,33 @@ export const Despacho = () => {
   // Handler para confirmar despacho em massa
   const handleConfirmarDespachoEmMassa = async (pedidoIds: string[]) => {
     const pedidosSelecionados = pedidosFiltrados.filter(p => pedidoIds.includes(String(p.id)));
+
+    const atrasadosPorCliente = new Map<string, string>();
+    clientesInadimplentes
+      .filter(c => c.qtdAtrasados > 0 && c.clienteId)
+      .forEach(c => atrasadosPorCliente.set(String(c.clienteId), c.clienteNome));
+
+    const nomes = Array.from(
+      new Set(
+        pedidosSelecionados
+          .map(p => atrasadosPorCliente.get(String(p.cliente_id)))
+          .filter((n): n is string => !!n)
+      )
+    );
+
+    if (nomes.length > 0) {
+      setAvisoInadimplencia({ pedidoIds: pedidoIds.map(String), nomes });
+      return;
+    }
+
+    await confirmarDespachoEmMassa(pedidosSelecionados);
+  };
+
+  const prosseguirDespachoComAtraso = async () => {
+    if (!avisoInadimplencia) return;
+    const ids = avisoInadimplencia.pedidoIds;
+    setAvisoInadimplencia(null);
+    const pedidosSelecionados = pedidosFiltrados.filter(p => ids.includes(String(p.id)));
     await confirmarDespachoEmMassa(pedidosSelecionados);
   };
 
@@ -477,6 +520,37 @@ export const Despacho = () => {
         pedidosDisponiveis={pedidosFiltrados}
         onConfirm={handleConfirmarEntregaEmMassa}
       />
+
+      {/* Aviso de inadimplência antes de despachar */}
+      <AlertDialog
+        open={!!avisoInadimplencia}
+        onOpenChange={(open) => !open && setAvisoInadimplencia(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clientes com pagamento em atraso</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Os clientes abaixo possuem títulos vencidos e não pagos no GestãoClick.
+                  Deseja despachar mesmo assim?
+                </p>
+                <ul className="list-disc pl-5 text-foreground">
+                  {avisoInadimplencia?.nomes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={prosseguirDespachoComAtraso}>
+              Despachar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
