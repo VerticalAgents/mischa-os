@@ -2335,7 +2335,7 @@ Deno.serve(async (req) => {
       }
 
       case 'buscar_recebimentos_abertos': {
-        // Buscar TODOS os recebimentos em aberto (liquidado=ab) com paginação
+        // Buscar TODOS os recebimentos em aberto (liquidado=ab) com paginacao
         const { access_token, secret_token, meses_retroativos } = params;
 
         if (!access_token || !secret_token) {
