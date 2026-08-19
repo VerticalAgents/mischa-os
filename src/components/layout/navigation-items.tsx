@@ -201,5 +201,10 @@ export const gestaoFinanceiraItems = [
     label: "Ponto de Equilíbrio",
     path: "/gestao-financeira/ponto-equilibrio",
     icon: <Calculator className="h-4 w-4" />,
+  },
+  {
+    label: "Inadimplência",
+    path: "/gestao-financeira/inadimplencia",
+    icon: <AlertTriangle className="h-4 w-4" />,
   }
 ];
