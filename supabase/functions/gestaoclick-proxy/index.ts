@@ -2333,6 +2333,86 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'buscar_recebimentos_abertos': {
+        // Buscar TODOS os recebimentos em aberto (liquidado=ab) com paginação
+        const { access_token, secret_token, meses_retroativos } = params;
+
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const mesesRetro = Number(meses_retroativos) > 0 ? Number(meses_retroativos) : 12;
+        const hoje = new Date();
+        const dataInicio = formatDate(addDays(hoje, -30 * mesesRetro));
+        const dataFim = formatDate(addDays(hoje, 120));
+
+        const todos: any[] = [];
+        let paginaAtual = 1;
+        let totalPaginas = 1;
+
+        do {
+          const url = `${GESTAOCLICK_BASE_URL}/recebimentos?liquidado=ab&data_inicio=${dataInicio}&data_fim=${dataFim}&pagina=${paginaAtual}`;
+          const resp = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': access_token,
+              'secret-access-token': secret_token,
+            },
+          });
+
+          if (!resp.ok) {
+            const errorText = await resp.text();
+            console.error('[gestaoclick-proxy] recebimentos abertos error:', errorText);
+            return new Response(
+              JSON.stringify({ error: `Erro ao buscar recebimentos: ${resp.status}` }),
+              { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          const json = await resp.json();
+          if (hasGCError(JSON.stringify(json), resp.status)) {
+            return new Response(
+              JSON.stringify({ error: 'Erro do GestaoClick ao buscar recebimentos' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          const lista = json?.data || [];
+          lista.forEach((r: any) => todos.push(r.Recebimento || r));
+
+          if (json?.meta?.total_paginas) totalPaginas = json.meta.total_paginas;
+          if (lista.length === 0) break;
+          paginaAtual++;
+        } while (paginaAtual <= totalPaginas && paginaAtual <= 50);
+
+        console.log(`[gestaoclick-proxy] recebimentos abertos: ${todos.length} títulos`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            periodo: { data_inicio: dataInicio, data_fim: dataFim },
+            recebimentos: todos
+              .filter((rec: any) => String(rec.liquidado ?? '0') !== '1')
+              .map((rec: any) => ({
+                id: rec.id,
+                codigo: rec.codigo,
+                descricao: rec.descricao,
+                valor: rec.valor,
+                cliente_id: rec.cliente_id,
+                nome_cliente: rec.nome_cliente,
+                data_vencimento: rec.data_vencimento,
+                liquidado: rec.liquidado,
+                hash: rec.hash,
+              })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Ação desconhecida: ${action}` }),
