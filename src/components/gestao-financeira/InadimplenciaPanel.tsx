@@ -457,10 +457,14 @@ export default function InadimplenciaPanel() {
                                       <div className="truncate font-medium">
                                         {t.descricao || `Título ${t.codigo || t.id}`}
                                       </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Vencimento {dataBR(t.dataVencimento)}
-                                        {t.atrasado ? ` · ${t.diasAtraso} dias em atraso` : ""}
-                                        {t.formaPagamento ? ` · ${t.formaPagamento}` : ""}
+                                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        <span>
+                                          Vencimento {dataBR(t.dataVencimento)}
+                                          {t.atrasado ? ` · ${t.diasAtraso} dias em atraso` : ""}
+                                        </span>
+                                        {t.formaPagamento && (
+                                          <FormaPagamentoBadge forma={t.formaPagamento} />
+                                        )}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3">
