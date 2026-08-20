@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -149,16 +156,43 @@ export default function InadimplenciaPanel() {
   const [salvando, setSalvando] = useState(false);
   const [clienteMassa, setClienteMassa] = useState<ClienteInadimplente | null>(null);
   const [situacaoTitulo, setSituacaoTitulo] = useState<
-    { id: string; descricao?: string; valor: number } | null
+    { id: string; descricao?: string; valor: number; formaPagamento?: string } | null
   >(null);
   const [dataLiquidacao, setDataLiquidacao] = useState(hojeISO());
-  const { alterarSituacao } = useAcoesRecebimentos();
+  const [formasGC, setFormasGC] = useState<{ id: string; nome: string }[]>([]);
+  const [carregandoFormas, setCarregandoFormas] = useState(false);
+  const [formaSelecionada, setFormaSelecionada] = useState<string>("");
+  const { alterarSituacao, listarFormasPagamento } = useAcoesRecebimentos();
+
+  // Carrega formas de pagamento do GestãoClick ao abrir o modal de recebimento
+  useEffect(() => {
+    if (!situacaoTitulo || formasGC.length > 0 || carregandoFormas) return;
+    setCarregandoFormas(true);
+    listarFormasPagamento()
+      .then(setFormasGC)
+      .catch(() => setFormasGC([]))
+      .finally(() => setCarregandoFormas(false));
+  }, [situacaoTitulo, formasGC.length, carregandoFormas, listarFormasPagamento]);
+
+  // Pré-seleciona a forma atual do título quando as opções chegarem
+  useEffect(() => {
+    if (!situacaoTitulo || !formasGC.length) return;
+    const atual = formasGC.find(
+      (f) => normalizeForma(f.nome) === normalizeForma(situacaoTitulo.formaPagamento)
+    );
+    setFormaSelecionada((prev) => prev || atual?.id || "");
+  }, [situacaoTitulo, formasGC]);
 
   const salvarSituacao = async () => {
     if (!situacaoTitulo) return;
     setSalvando(true);
     try {
-      await alterarSituacao(situacaoTitulo.id, "recebido", dataLiquidacao);
+      await alterarSituacao(
+        situacaoTitulo.id,
+        "recebido",
+        dataLiquidacao,
+        formaSelecionada || undefined
+      );
       toast.success(`Título marcado como recebido em ${dataBR(dataLiquidacao)}`);
       setSituacaoTitulo(null);
       await refetch();
@@ -561,8 +595,10 @@ export default function InadimplenciaPanel() {
                                             id: t.id,
                                             descricao: t.descricao,
                                             valor: t.valor,
+                                            formaPagamento: t.formaPagamento,
                                           });
                                           setDataLiquidacao(hojeISO());
+                                          setFormaSelecionada("");
                                         }}
                                       >
                                         <CheckCircle2 className="h-4 w-4" />
@@ -667,7 +703,15 @@ export default function InadimplenciaPanel() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!situacaoTitulo} onOpenChange={(o) => !o && setSituacaoTitulo(null)}>
+      <Dialog
+        open={!!situacaoTitulo}
+        onOpenChange={(o) => {
+          if (!o) {
+            setSituacaoTitulo(null);
+            setFormaSelecionada("");
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Marcar como recebido</DialogTitle>
@@ -691,6 +735,36 @@ export default function InadimplenciaPanel() {
                 value={dataLiquidacao}
                 onChange={(e) => setDataLiquidacao(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="forma-pagamento">Forma de pagamento</Label>
+              <Select
+                value={formaSelecionada}
+                onValueChange={setFormaSelecionada}
+                disabled={carregandoFormas || formasGC.length === 0}
+              >
+                <SelectTrigger id="forma-pagamento">
+                  <SelectValue
+                    placeholder={
+                      carregandoFormas
+                        ? "Carregando formas..."
+                        : situacaoTitulo?.formaPagamento || "Manter forma atual"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  {formasGC.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {situacaoTitulo?.formaPagamento
+                  ? `Atual no GestãoClick: ${situacaoTitulo.formaPagamento}`
+                  : "Sem forma de pagamento definida no título"}
+              </p>
             </div>
             <p className="text-xs text-muted-foreground">
               A situação é gravada direto no GestãoClick (título a receber).
