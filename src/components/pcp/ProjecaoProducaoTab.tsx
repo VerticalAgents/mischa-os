@@ -218,7 +218,7 @@ export default function ProjecaoProducaoTab() {
 
   const handleSalvarProducao = async (dados: any) => {
     await adicionarRegistro({
-      data_producao: format(dados.dataProducao, 'yyyy-MM-dd'),
+      data_producao: dados.dataProducao.toISOString().split('T')[0],
       produto_id: dados.produtoId,
       produto_nome: dados.produtoNome,
       formas_producidas: dados.formasProducidas,

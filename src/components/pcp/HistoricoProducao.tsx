@@ -41,14 +41,14 @@ export default function HistoricoProducao() {
   const handleEditarRegistro = (registro: any) => {
     setRegistroEditando({
       ...registro,
-      dataProducao: new Date(`${registro.data_producao}T12:00:00`)
+      dataProducao: new Date(registro.data_producao)
     });
     setModalAberto(true);
   };
 
   const handleSalvarRegistro = async (dados: any) => {
     const registro = {
-      data_producao: format(dados.dataProducao, 'yyyy-MM-dd'),
+      data_producao: dados.dataProducao.toISOString().split('T')[0],
       produto_id: dados.produtoId,
       produto_nome: dados.produtoNome,
       formas_producidas: dados.formasProducidas,
