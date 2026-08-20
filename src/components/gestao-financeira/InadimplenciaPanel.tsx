@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ExternalLink,
   Loader2,
+  Receipt,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -36,6 +37,28 @@ const dataBR = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
+const URL_RECEBIMENTOS_PADRAO =
+  "https://gestaoclick.com/financeiro/movimentacoes_financeiras/index_recebimento/?venda={vendaId}&loja={lojaId}";
+const URL_VENDA_PADRAO =
+  "https://gestaoclick.com/vendas/visualizar/{vendaId}?loja={lojaId}";
+
+/** Extrai o código da venda a partir da descrição do título ("Venda de nº 1765946977"). */
+const extrairCodigoVenda = (descricao?: string): string | null => {
+  if (!descricao) return null;
+  const ancorado = descricao.match(/venda\s+de\s+n[ºo°.]?\s*(\d+)/i)?.[1];
+  if (ancorado) return ancorado;
+  return descricao.match(/(\d{3,})/)?.[1] ?? null;
+};
+
+const montarUrl = (
+  template: string,
+  valores: { vendaId: string; lojaId: string; hash: string }
+) =>
+  template
+    .replace(/\{vendaId\}/g, encodeURIComponent(valores.vendaId))
+    .replace(/\{lojaId\}/g, encodeURIComponent(valores.lojaId))
+    .replace(/\{hash\}/g, encodeURIComponent(valores.hash));
+
 export default function InadimplenciaPanel() {
   const { clientes, loading, error, refetch, isRepresentante } = useInadimplencia();
   const [busca, setBusca] = useState("");
@@ -43,18 +66,25 @@ export default function InadimplenciaPanel() {
   const [filtroRepresentantes, setFiltroRepresentantes] = useState<number[]>([]);
   const [expandido, setExpandido] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<string | null>(null);
+  // cache codigo da venda -> dados resolvidos (evita rechamar a API no mesmo sessão)
+  const cacheVendas = useRef<Map<string, { id: string; hash: string; lojaId: string }>>(
+    new Map()
+  );
 
   // O ID do recebimento da API nao corresponde a uma pagina web do GestaoClick.
-  // Extraimos o numero da venda da descricao ("Venda de nº 1765946984") e
-  // resolvemos o ID interno da venda via API para abrir a venda correta.
-  const abrirNoGestaoClick = async (titulo: { id: string; descricao?: string }) => {
-    const numero = titulo.descricao?.match(/(\d{3,})/)?.[1];
+  // Extraimos o codigo da venda da descricao ("Venda de nº 1765946984") e
+  // resolvemos o ID interno da venda via API para montar a URL correta.
+  const abrirNoGestaoClick = async (
+    titulo: { id: string; descricao?: string },
+    destino: "recebimentos" | "venda"
+  ) => {
+    const numero = extrairCodigoVenda(titulo.descricao);
     if (!numero) {
-      toast.error("Não foi possível identificar a venda deste título");
+      toast.error("Este título não tem venda vinculada");
       return;
     }
 
-    setAbrindo(titulo.id);
+    setAbrindo(`${titulo.id}:${destino}`);
     try {
       const { data: configData } = await supabase
         .from("integracoes_config")
@@ -62,29 +92,58 @@ export default function InadimplenciaPanel() {
         .eq("integracao", "gestaoclick")
         .maybeSingle();
 
-      const config = (configData?.config || {}) as { access_token?: string; secret_token?: string };
+      const config = (configData?.config || {}) as {
+        access_token?: string;
+        secret_token?: string;
+        loja_id?: string | number;
+        url_recebimentos_venda?: string;
+        url_venda?: string;
+      };
       if (!config.access_token || !config.secret_token) {
         toast.error("Integração com o GestãoClick não configurada");
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke("gestaoclick-proxy", {
-        body: {
-          action: "buscar_venda_por_codigo",
-          access_token: config.access_token,
-          secret_token: config.secret_token,
-          codigo: numero,
-        },
-      });
+      let venda = cacheVendas.current.get(numero);
 
-      const vendaId = (data as any)?.venda?.id;
-      if (error || !vendaId) {
-        console.error("Erro ao resolver venda no GestãoClick:", error, data);
-        toast.error("Venda não encontrada no GestãoClick");
-        return;
+      if (!venda) {
+        const { data, error } = await supabase.functions.invoke("gestaoclick-proxy", {
+          body: {
+            action: "buscar_venda_por_codigo",
+            access_token: config.access_token,
+            secret_token: config.secret_token,
+            codigo: numero,
+          },
+        });
+
+        const encontrada = (data as any)?.venda;
+        if (error || !encontrada?.id) {
+          console.error("Erro ao resolver venda no GestãoClick:", error, data);
+          toast.error(`Venda nº ${numero} não encontrada no GestãoClick`);
+          return;
+        }
+
+        venda = {
+          id: String(encontrada.id),
+          hash: String(encontrada.hash || ""),
+          lojaId: String(encontrada.loja_id || config.loja_id || ""),
+        };
+        cacheVendas.current.set(numero, venda);
       }
 
-      window.open(`https://app.gestaoclick.com/vendas/visualizar/${vendaId}`, "_blank");
+      const template =
+        destino === "recebimentos"
+          ? config.url_recebimentos_venda || URL_RECEBIMENTOS_PADRAO
+          : config.url_venda || URL_VENDA_PADRAO;
+
+      window.open(
+        montarUrl(template, {
+          vendaId: venda.id,
+          lojaId: venda.lojaId,
+          hash: venda.hash,
+        }),
+        "_blank"
+      );
     } finally {
       setAbrindo(null);
     }
