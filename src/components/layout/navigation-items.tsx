@@ -71,6 +71,11 @@ export const menuGroups: MenuGroup[] = [
         path: "/gestao-financeira/inadimplencia",
         icon: <AlertTriangle className="h-4 w-4" />,
       },
+      {
+        label: "Fluxo de Caixa",
+        path: "/gestao-financeira/fluxo-caixa",
+        icon: <Wallet className="h-4 w-4" />,
+      },
     ]
   },
   {
@@ -211,5 +216,10 @@ export const gestaoFinanceiraItems = [
     label: "Inadimplência",
     path: "/gestao-financeira/inadimplencia",
     icon: <AlertTriangle className="h-4 w-4" />,
+  },
+  {
+    label: "Fluxo de Caixa",
+    path: "/gestao-financeira/fluxo-caixa",
+    icon: <Wallet className="h-4 w-4" />,
   }
 ];
