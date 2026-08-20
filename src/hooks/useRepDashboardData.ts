@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfWeek, endOfWeek } from "date-fns";
+import { startOfWeek, endOfWeek, format } from "date-fns";
 
 export interface RepAgendamentoLite {
   id: string;
@@ -14,9 +14,15 @@ export interface RepAgendamentoLite {
 export interface RepDashboardData {
   totalClientesAtivos: number;
   totalClientes: number;
+  agendamentosSemanaAtual: number;
+  confirmadosSemanaAtual: number;
+  entreguesSemanaAtual: number;
   previstosSemanaAtual: RepAgendamentoLite[];
   totalBrowniesPrevistosSemana: number;
+  totalUnidadesSemanaAtual: number;
+  taxaConfirmacaoSemana: number; // 0-1
   agendamentosPendentes: RepAgendamentoLite[];
+  semanaAtualLabel: string;
 }
 
 /**
@@ -27,9 +33,15 @@ export function useRepDashboardData() {
   const [data, setData] = useState<RepDashboardData>({
     totalClientesAtivos: 0,
     totalClientes: 0,
+    agendamentosSemanaAtual: 0,
+    confirmadosSemanaAtual: 0,
+    entreguesSemanaAtual: 0,
     previstosSemanaAtual: [],
     totalBrowniesPrevistosSemana: 0,
+    totalUnidadesSemanaAtual: 0,
+    taxaConfirmacaoSemana: 0,
     agendamentosPendentes: [],
+    semanaAtualLabel: "",
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,13 +80,33 @@ export function useRepDashboardData() {
         quantidade_total: a.quantidade_total,
       }));
 
-      const previstosSemana = enriched
-        .filter((a) => {
-          if (a.status_agendamento !== "Previsto") return false;
-          if (!a.data_proxima_reposicao) return false;
-          const d = new Date(a.data_proxima_reposicao + "T00:00:00");
-          return d >= inicioSemana && d <= fimSemana;
-        })
+      const agendamentosNaSemana = enriched.filter((a) => {
+        if (!a.data_proxima_reposicao) return false;
+        const d = new Date(a.data_proxima_reposicao + "T00:00:00");
+        return d >= inicioSemana && d <= fimSemana;
+      });
+
+      const confirmadosSemana = agendamentosNaSemana.filter(
+        (a) => a.status_agendamento === "Confirmado"
+      ).length;
+      const entreguesSemana = agendamentosNaSemana.filter(
+        (a) => a.status_agendamento === "Entregue"
+      ).length;
+      const confirmadosOuAvancados = agendamentosNaSemana.filter((a) =>
+        ["Confirmado", "Separado", "Despachado", "Entregue"].includes(a.status_agendamento)
+      ).length;
+      const totalUnidadesSemana = agendamentosNaSemana.reduce(
+        (sum, a) => sum + (a.quantidade_total || 0),
+        0
+      );
+      const taxaConfirmacaoSemana =
+        agendamentosNaSemana.length > 0
+          ? Math.round((confirmadosOuAvancados / agendamentosNaSemana.length) * 100) / 100
+          : 0;
+
+
+      const previstosSemana = agendamentosNaSemana
+        .filter((a) => a.status_agendamento === "Previsto")
         .sort((a, b) =>
           (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || "")
         );
@@ -93,9 +125,15 @@ export function useRepDashboardData() {
       setData({
         totalClientesAtivos: ativos,
         totalClientes: total,
+        agendamentosSemanaAtual: agendamentosNaSemana.length,
+        confirmadosSemanaAtual: confirmadosSemana,
+        entreguesSemanaAtual: entreguesSemana,
         previstosSemanaAtual: previstosSemana,
         totalBrowniesPrevistosSemana,
+        totalUnidadesSemanaAtual: totalUnidadesSemana,
+        taxaConfirmacaoSemana,
         agendamentosPendentes: pendentes.slice(0, 10),
+        semanaAtualLabel: `${format(inicioSemana, "dd/MM")} – ${format(fimSemana, "dd/MM")}`,
       });
     } catch (err: any) {
       console.error("Erro ao carregar dashboard do representante:", err);
