@@ -1593,7 +1593,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             </div>
 
                             {/* Botões — mobile: full width grandes / desktop: ícones compactos */}
-                            <div className="grid grid-cols-3 gap-2 w-full pt-2 border-t sm:flex sm:w-auto sm:border-t-0 sm:pt-0 sm:gap-1">
+                            <div className={cn(
+                              "grid gap-2 w-full pt-2 border-t sm:flex sm:w-auto sm:border-t-0 sm:pt-0 sm:gap-1",
+                              agendamento.statusAgendamento === "Previsto" ? "grid-cols-3" : "grid-cols-2"
+                            )}>
                               {agendamento.statusAgendamento === "Previsto" && (
                                 <Button
                                   variant="default"
