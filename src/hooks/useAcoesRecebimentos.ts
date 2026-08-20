@@ -51,15 +51,29 @@ export function useAcoesRecebimentos() {
   );
 
   const alterarSituacao = useCallback(
-    (recebimentoId: string, situacao: SituacaoRecebimento, dataLiquidacao?: string) =>
+    (
+      recebimentoId: string,
+      situacao: SituacaoRecebimento,
+      dataLiquidacao?: string,
+      formaPagamentoId?: string
+    ) =>
       chamar({
         action: "atualizar_situacao_recebimento",
         recebimento_id: recebimentoId,
         situacao,
         data_liquidacao: dataLiquidacao,
+        forma_pagamento_id: formaPagamentoId || undefined,
       }),
     [chamar]
   );
+
+  /** Lista as formas de pagamento cadastradas no GestãoClick. */
+  const listarFormasPagamento = useCallback(async (): Promise<
+    { id: string; nome: string }[]
+  > => {
+    const data = await chamar({ action: "listar_formas_pagamento_gc" });
+    return (data?.formas_pagamento || []) as { id: string; nome: string }[];
+  }, [chamar]);
 
   /** Executa uma ação em vários títulos, um a um, coletando falhas. */
   const executarLote = useCallback(
@@ -86,5 +100,12 @@ export function useAcoesRecebimentos() {
     []
   );
 
-  return { alterarVencimento, alterarSituacao, executarLote, processando, progresso };
+  return {
+    alterarVencimento,
+    alterarSituacao,
+    listarFormasPagamento,
+    executarLote,
+    processando,
+    progresso,
+  };
 }
