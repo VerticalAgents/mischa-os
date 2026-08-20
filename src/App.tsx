@@ -41,6 +41,7 @@ const GestaoFinanceira = lazy(() => import('@/pages/GestaoFinanceira'));
 const ProjecaoResultadosPDV = lazy(() => import('@/pages/gestao-financeira/ProjecaoResultadosPDV'));
 const PontoEquilibrio = lazy(() => import('@/pages/gestao-financeira/PontoEquilibrio'));
 const Inadimplencia = lazy(() => import('@/pages/gestao-financeira/Inadimplencia'));
+const FluxoCaixa = lazy(() => import('@/pages/gestao-financeira/FluxoCaixa'));
 const Configuracoes = lazy(() => import('@/pages/Configuracoes'));
 const AgentesIA = lazy(() => import('@/pages/AgentesIA'));
 const AgenteIAPage = lazy(() => import('@/pages/AgenteIAPage'));
@@ -303,6 +304,15 @@ function App() {
                         <AppLayout>
                           <RoleBasedRoute allowedRoles={['admin', 'user']}>
                             <Inadimplencia />
+                          </RoleBasedRoute>
+                        </AppLayout>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/gestao-financeira/fluxo-caixa" element={
+                      <ProtectedRoute>
+                        <AppLayout>
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <FluxoCaixa />
                           </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
