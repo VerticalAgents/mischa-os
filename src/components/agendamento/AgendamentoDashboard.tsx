@@ -1068,16 +1068,29 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </TooltipProvider>
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: "Total Sem.", value: totalUnidadesSemana, dot: "bg-purple-500", Icon: Package, suffix: "un" },
           { label: "Confirmados", value: indicadoresSemana.confirmados, dot: "bg-emerald-500", Icon: CheckCircle, suffix: "ped" },
           { label: "Previstos", value: indicadoresSemana.previstos, dot: "bg-amber-500", Icon: Clock, suffix: "ped" },
           { label: "Entregues", value: indicadoresSemana.entregasRealizadas, dot: "bg-blue-500", Icon: Truck, suffix: "ped" },
-        ].map(({ label, value, dot, Icon, suffix }) => (
+          {
+            label: "Inadimplentes",
+            value: inadimplentesSemana.clientes,
+            dot: "bg-red-500",
+            Icon: AlertTriangle,
+            suffix: inadimplentesSemana.valor > 0
+              ? inadimplentesSemana.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+              : "em atraso",
+            alerta: inadimplentesSemana.clientes > 0,
+          },
+        ].map(({ label, value, dot, Icon, suffix, alerta }: any) => (
           <div
             key={label}
-            className="rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm"
+            className={cn(
+              "rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm",
+              alerta && "border-destructive/40 bg-destructive/5"
+            )}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -1088,8 +1101,11 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
               </div>
               <Icon className="h-4 w-4 text-muted-foreground/60" />
             </div>
-            <div className="text-3xl font-bold tabular-nums text-foreground leading-none">{value}</div>
-            <div className="text-xs text-muted-foreground mt-1.5">{suffix}</div>
+            <div className={cn(
+              "text-3xl font-bold tabular-nums leading-none",
+              alerta ? "text-destructive" : "text-foreground"
+            )}>{value}</div>
+            <div className="text-xs text-muted-foreground mt-1.5 truncate">{suffix}</div>
           </div>
         ))}
       </div>
