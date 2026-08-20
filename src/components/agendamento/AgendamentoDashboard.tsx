@@ -304,6 +304,40 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     });
   }, [agendamentosFiltrados, semanaAtual]);
 
+  // ===== Inadimplência (títulos atrasados no GestãoClick) =====
+  const { clientes: clientesInadimplentes } = useInadimplencia();
+
+  const inadimplenciaPorCliente = useMemo(() => {
+    const map = new Map<string, { valorAtrasado: number; qtdAtrasados: number; maiorAtraso: number }>();
+    clientesInadimplentes.forEach(c => {
+      if (c.clienteId && c.qtdAtrasados > 0) {
+        map.set(c.clienteId, {
+          valorAtrasado: c.valorAtrasado,
+          qtdAtrasados: c.qtdAtrasados,
+          maiorAtraso: c.maiorAtraso,
+        });
+      }
+    });
+    return map;
+  }, [clientesInadimplentes]);
+
+  const inadimplentesSemana = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const ids = new Set<string>();
+    let valor = 0;
+    agendamentosFiltrados.forEach(a => {
+      const data = new Date(a.dataReposicao);
+      if (data < inicioSemana || data > fimSemana) return;
+      const info = inadimplenciaPorCliente.get(a.cliente.id);
+      if (info && !ids.has(a.cliente.id)) {
+        ids.add(a.cliente.id);
+        valor += info.valorAtrasado;
+      }
+    });
+    return { clientes: ids.size, valor };
+  }, [agendamentosFiltrados, semanaAtual, inadimplenciaPorCliente]);
+
   const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
 
   const dadosGraficoStatus = useMemo(() => {
