@@ -3,24 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Calendar, Plus, AlertCircle, Clock, Cookie } from "lucide-react";
+import {
+  Users,
+  Calendar,
+  Plus,
+  CheckCircle2,
+  Truck,
+  Clock,
+  AlertCircle,
+  Cookie,
+  ArrowRight,
+  TrendingUp,
+  Package,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRepDashboardData, RepAgendamentoLite } from "@/hooks/useRepDashboardData";
+import { useRepDashboardData } from "@/hooks/useRepDashboardData";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
-import { useConfirmationScore } from "@/hooks/useConfirmationScore";
-import { AgendamentoItem } from "@/components/agendamento/types";
+import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { cn } from "@/lib/utils";
 
-function formatDate(s: string | null) {
-  if (!s) return "-";
-  const [y, m, d] = s.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-type Tone = "warning" | "danger";
-
-const TONE_BADGE: Record<Tone, string> = {
-  warning: "bg-yellow-100 text-yellow-900 border-yellow-300 hover:bg-yellow-100",
-  danger: "bg-[#d1193a] text-white border-[#d1193a] hover:bg-[#d1193a]",
+const STATUS_META = {
+  previsto: { label: "Previstos", color: "bg-amber-500", text: "text-amber-700" },
+  confirmado: { label: "Confirmados", color: "bg-blue-500", text: "text-blue-700" },
+  entregue: { label: "Entregues", color: "bg-emerald-500", text: "text-emerald-700" },
 };
 
 export default function RepHome() {
@@ -28,142 +33,287 @@ export default function RepHome() {
   const navigate = useNavigate();
   const { data, loading, refetch } = useRepDashboardData();
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
-
-  const goToAgendamento = (id: string) => {
-    navigate(`/rep/agendamentos?id=${id}`);
-  };
+  const { data: inadimplencia, isLoading: loadingInadimplencia } = useInadimplencia();
 
   const greetingName = user?.email?.split("@")[0] || "representante";
 
-  // Build minimal AgendamentoItem-shaped objects to feed useConfirmationScore
-  const previstosForScore = useMemo<AgendamentoItem[]>(() => {
-    return (data.previstosSemanaAtual || []).map((a) => ({
-      id: a.id,
-      cliente: { id: a.cliente_id, nome: a.cliente_nome } as any,
-      dataReposicao: a.data_proxima_reposicao
-        ? new Date(a.data_proxima_reposicao + "T00:00:00")
-        : new Date(),
-      statusAgendamento: "Previsto",
-    } as any));
-  }, [data.previstosSemanaAtual]);
+  const resumoInadimplencia = useMemo(() => {
+    if (!inadimplencia) return { clientes: 0, valor: 0 };
+    const comAtraso = inadimplencia.filter((c) => c.qtdAtrasados > 0);
+    return {
+      clientes: comAtraso.length,
+      valor: comAtraso.reduce((sum, c) => sum + c.valorAtrasado, 0),
+    };
+  }, [inadimplencia]);
 
-  const { scores } = useConfirmationScore(previstosForScore);
+  const { previstoPct, confirmadoPct, entreguePct } = useMemo(() => {
+    const total = data.agendamentosSemanaAtual || 0;
+    if (total === 0) return { previstoPct: 0, confirmadoPct: 0, entreguePct: 0 };
+    return {
+      previstoPct: Math.round((data.previstosSemanaAtual.length / total) * 100),
+      confirmadoPct: Math.round((data.confirmadosSemanaAtual / total) * 100),
+      entreguePct: Math.round((data.entreguesSemanaAtual / total) * 100),
+    };
+  }, [data]);
 
-  const previstosOrdenados = useMemo(() => {
-    const list = [...(data.previstosSemanaAtual || [])];
-    list.sort((a, b) => {
-      const sa = scores.get(a.cliente_id)?.score ?? 70;
-      const sb = scores.get(b.cliente_id)?.score ?? 70;
-      if (sb !== sa) return sb - sa;
-      return (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || "");
-    });
-    return list;
-  }, [data.previstosSemanaAtual, scores]);
+  const KPIs = useMemo(
+    () => [
+      {
+        label: "PDVs ativos",
+        value: data.totalClientesAtivos,
+        total: data.totalClientes,
+        icon: Users,
+        color: "text-purple-600",
+        bg: "bg-purple-100",
+        suffix: "ativos",
+      },
+      {
+        label: "Agend. semana",
+        value: data.agendamentosSemanaAtual,
+        icon: Calendar,
+        color: "text-slate-600",
+        bg: "bg-slate-100",
+        suffix: "pedidos",
+      },
+      {
+        label: "Unidades semana",
+        value: data.totalUnidadesSemanaAtual,
+        icon: Package,
+        color: "text-amber-600",
+        bg: "bg-amber-100",
+        suffix: "un",
+      },
+      {
+        label: "Taxa confirmação",
+        value: Math.round(data.taxaConfirmacaoSemana * 100),
+        icon: TrendingUp,
+        color: "text-emerald-600",
+        bg: "bg-emerald-100",
+        suffix: "%",
+      },
+      {
+        label: "Confirmados",
+        value: data.confirmadosSemanaAtual,
+        icon: CheckCircle2,
+        color: "text-blue-600",
+        bg: "bg-blue-100",
+        suffix: "ped",
+      },
+      {
+        label: "Entregues",
+        value: data.entreguesSemanaAtual,
+        icon: Truck,
+        color: "text-emerald-600",
+        bg: "bg-emerald-100",
+        suffix: "ped",
+      },
+      {
+        label: "Previstos",
+        value: data.previstosSemanaAtual.length,
+        icon: Clock,
+        color: "text-amber-600",
+        bg: "bg-amber-100",
+        suffix: "ped",
+      },
+      {
+        label: "Pendentes",
+        value: data.agendamentosPendentes.length,
+        icon: AlertCircle,
+        color: "text-[#d1193a]",
+        bg: "bg-red-100",
+        suffix: "ped",
+        alert: data.agendamentosPendentes.length > 0,
+      },
+    ],
+    [data]
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Olá, {greetingName} 👋</h1>
-        <p className="text-muted-foreground mt-1">
-          Bem-vindo ao seu portal. Aqui você gerencia seus clientes e agendamentos.
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Olá, {greetingName} 👋</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Resumo geral da semana • <span className="font-medium">{data.semanaAtualLabel}</span>
         </p>
       </div>
 
-      {/* KPIs + Atalhos */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="w-4 h-4" /> Meus PDVs ativos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{loading ? "—" : data.totalClientesAtivos}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              de {loading ? "—" : data.totalClientes} cadastrados
-            </p>
-          </CardContent>
-        </Card>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {KPIs.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <Card
+              key={kpi.label}
+              className={cn(
+                "overflow-hidden transition-all hover:border-border hover:shadow-sm",
+                kpi.alert && "border-[#d1193a]/40 bg-red-50/40"
+              )}
+            >
+              <div className={cn("h-1", kpi.bg.replace("bg-", "bg-").replace("text-", ""))} />
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground truncate">{kpi.label}</p>
+                    <div className="text-2xl sm:text-3xl font-bold mt-1">
+                      {loading ? "—" : kpi.value}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {kpi.total ? `${kpi.total} cadastrados` : kpi.suffix}
+                    </p>
+                  </div>
+                  <div className={cn("p-2 rounded-lg shrink-0", kpi.bg)}>
+                    <Icon className={cn("w-4 h-4", kpi.color)} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
 
-        <Card className="md:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Atalhos</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            <Button className="w-full justify-start" onClick={() => setNovoClienteOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Cadastrar cliente
-            </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/rep/clientes")}>
-              <Users className="w-4 h-4 mr-2" /> Ver clientes
-            </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/rep/agendamentos")}>
-              <Calendar className="w-4 h-4 mr-2" /> Ver agendamentos
-            </Button>
+        {/* Inadimplência */}
+        <Card
+          className={cn(
+            "overflow-hidden col-span-2 md:col-span-4",
+            resumoInadimplencia.clientes > 0
+              ? "border-red-400/60 bg-red-50/40"
+              : "border-border"
+          )}
+        >
+          <div className="h-1 bg-red-500" />
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-red-100 shrink-0">
+                  <AlertCircle className="w-4 h-4 text-[#d1193a]" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Clientes inadimplentes</p>
+                  <div className="text-2xl sm:text-3xl font-bold mt-1">
+                    {loadingInadimplencia ? "—" : resumoInadimplencia.clientes}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right min-w-0">
+                <p className="text-xs text-muted-foreground">Total em atraso</p>
+                <div className="text-lg sm:text-xl font-bold text-[#d1193a] mt-1">
+                  {loadingInadimplencia
+                    ? "—"
+                    : resumoInadimplencia.valor.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Previstos da semana — AMARELO */}
-      <Card className="border-yellow-400/70 bg-yellow-50/40">
+      {/* Distribuição da semana */}
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg text-yellow-900">
-            <Clock className="w-5 h-5" /> Previstos da semana
+          <CardTitle className="text-base flex items-center gap-2">
+            <Cookie className="w-4 h-4 text-amber-500" />
+            Distribuição dos agendamentos da semana
           </CardTitle>
-          <p className="text-xs text-yellow-900/70">
-            Confirme o quanto antes para garantir a entrega.
+          <p className="text-xs text-muted-foreground">
+            Total de <span className="font-medium">{loading ? "—" : data.agendamentosSemanaAtual} pedidos</span>
+            {loading ? "" : ` • ${data.totalUnidadesSemanaAtual.toLocaleString("pt-BR")} unidades previstas`}
           </p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Mini bloco: total de brownies previstos */}
-          <div className="flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-100/70 px-3 py-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-yellow-200 text-yellow-900">
-              <Cookie className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="text-2xl font-bold leading-none text-yellow-900">
-                {loading ? "—" : data.totalBrowniesPrevistosSemana}
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="text-sm text-muted-foreground py-2">Carregando…</div>
+          ) : data.agendamentosSemanaAtual === 0 ? (
+            <div className="text-sm text-muted-foreground py-2">Nenhum agendamento para esta semana.</div>
+          ) : (
+            <>
+              <div className="h-4 w-full rounded-full overflow-hidden flex">
+                {previstoPct > 0 && (
+                  <div
+                    className="h-full bg-amber-500"
+                    style={{ width: `${previstoPct}%` }}
+                    title={`Previstos: ${previstoPct}%`}
+                  />
+                )}
+                {confirmadoPct > 0 && (
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${confirmadoPct}%` }}
+                    title={`Confirmados: ${confirmadoPct}%`}
+                  />
+                )}
+                {entreguePct > 0 && (
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{ width: `${entreguePct}%` }}
+                    title={`Entregues: ${entreguePct}%`}
+                  />
+                )}
               </div>
-              <div className="text-xs text-yellow-900/80 mt-1">
-                brownies a confirmar nesta semana
+              <div className="flex flex-wrap gap-3 text-xs">
+                {[
+                  { ...STATUS_META.previsto, value: data.previstosSemanaAtual.length, pct: previstoPct },
+                  { ...STATUS_META.confirmado, value: data.confirmadosSemanaAtual, pct: confirmadoPct },
+                  { ...STATUS_META.entregue, value: data.entreguesSemanaAtual, pct: entreguePct },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-1.5">
+                    <div className={cn("w-2.5 h-2.5 rounded-full", item.color)} />
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="font-medium">{item.value}</span>
+                    <span className="text-muted-foreground">({item_pct(item.pct)})</span>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
-
-          <AgendamentoList
-            items={previstosOrdenados}
-            empty="Nenhum agendamento previsto para esta semana."
-            loading={loading}
-            onItemClick={goToAgendamento}
-            tone="warning"
-            provavelIds={new Set(
-              Array.from(scores.entries())
-                .filter(([, s]) => (s?.score ?? 0) > 85)
-                .map(([id]) => id)
-            )}
-          />
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* Pendentes — VERMELHO */}
-      <Card className="border-[#d1193a]/60 bg-[#d1193a]/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg text-[#d1193a]">
-            <AlertCircle className="w-5 h-5" /> Agendamentos pendentes
-          </CardTitle>
-          <p className="text-xs text-[#d1193a]/80">
-            Retome esses clientes o quanto antes.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <AgendamentoList
-            items={data.agendamentosPendentes}
-            empty="Nenhum cliente pendente. 🎉"
-            loading={loading}
-            onItemClick={goToAgendamento}
-            tone="danger"
-          />
-        </CardContent>
-      </Card>
+      {/* Aviso de previstos */}
+      {!loading && data.previstosSemanaAtual.length > 0 && (
+        <Card className="border-amber-400/70 bg-amber-50/40">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-200 text-amber-900">
+                <Cookie className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-amber-900">
+                  {data.totalBrowniesPrevistosSemana.toLocaleString("pt-BR")} unidades a confirmar
+                </p>
+                <p className="text-xs text-amber-900/70">
+                  {data.previstosSemanaAtual.length} pedidos previstos para esta semana
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+              onClick={() => navigate("/rep/agendamentos")}
+            >
+              Ver <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Atalhos */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Button className="w-full justify-center h-auto py-3" onClick={() => setNovoClienteOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" /> Cadastrar cliente
+        </Button>
+        <Button variant="outline" className="w-full justify-center h-auto py-3" onClick={() => navigate("/rep/clientes")}>
+          <Users className="w-4 h-4 mr-2" /> Ver clientes
+        </Button>
+        <Button variant="outline" className="w-full justify-center h-auto py-3" onClick={() => navigate("/rep/agendamentos")}>
+          <Calendar className="w-4 h-4 mr-2" /> Agendamentos
+        </Button>
+        <Button variant="outline" className="w-full justify-center h-auto py-3" onClick={() => navigate("/rep/inadimplencia")}>
+          <AlertCircle className="w-4 h-4 mr-2" /> Inadimplência
+        </Button>
+      </div>
 
       <ClienteFormDialog
         open={novoClienteOpen}
@@ -177,56 +327,6 @@ export default function RepHome() {
   );
 }
 
-function AgendamentoList({
-  items,
-  empty,
-  loading,
-  onItemClick,
-  tone,
-  provavelIds,
-}: {
-  items: RepAgendamentoLite[];
-  empty: string;
-  loading: boolean;
-  onItemClick: (id: string) => void;
-  tone: Tone;
-  provavelIds?: Set<string>;
-}) {
-  if (loading) {
-    return <div className="text-sm text-muted-foreground py-4">Carregando…</div>;
-  }
-  if (items.length === 0) {
-    return <div className="text-sm text-muted-foreground py-4">{empty}</div>;
-  }
-  return (
-    <div className="divide-y">
-      {items.map((a) => (
-        <button
-          key={a.id}
-          onClick={() => onItemClick(a.id)}
-          className="w-full text-left py-3 flex items-center justify-between gap-3 hover:bg-muted/40 px-2 -mx-2 rounded-md transition-colors"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="font-medium truncate">{a.cliente_nome}</div>
-            <div className="text-xs text-muted-foreground">
-              {formatDate(a.data_proxima_reposicao)} • {a.quantidade_total} un.
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {provavelIds?.has(a.cliente_id) && (
-              <Badge
-                variant="outline"
-                className="bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-100 text-[10px] px-1.5 py-0"
-              >
-                Provável
-              </Badge>
-            )}
-            <Badge variant="outline" className={TONE_BADGE[tone]}>
-              {a.status_agendamento === "Agendar" ? "Pendente" : a.status_agendamento}
-            </Badge>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
+function item_pct(pct: number): string {
+  return `${pct}%`;
 }
