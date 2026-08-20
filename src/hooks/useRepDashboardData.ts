@@ -51,40 +51,48 @@ export function useRepDashboardData() {
       setLoading(true);
       setError(null);
 
-      // 1. Clientes (RLS filtra)
-      const { data: clientes, error: errClientes } = await supabase
-        .from("clientes")
-        .select("id, nome, ativo, status_cliente");
-      if (errClientes) throw errClientes;
-
-      const total = clientes?.length ?? 0;
-      const ativos = clientes?.filter((c) => c.ativo && c.status_cliente === "ATIVO").length ?? 0;
-
-      // 2. Agendamentos (RLS filtra)
-      const { data: agendamentos, error: errAgend } = await supabase
-        .from("agendamentos_clientes")
-        .select("id, cliente_id, data_proxima_reposicao, status_agendamento, quantidade_total");
-      if (errAgend) throw errAgend;
-
-      const clienteMap = new Map((clientes || []).map((c) => [c.id, c.nome]));
       const today = new Date();
       const inicioSemana = startOfWeek(today, { weekStartsOn: 1 });
       const fimSemana = endOfWeek(today, { weekStartsOn: 1 });
+      const inicioISO = format(inicioSemana, "yyyy-MM-dd");
+      const fimISO = format(fimSemana, "yyyy-MM-dd");
 
-      const enriched: RepAgendamentoLite[] = (agendamentos || []).map((a) => ({
-        id: a.id,
-        cliente_id: a.cliente_id,
-        cliente_nome: clienteMap.get(a.cliente_id) || "Cliente",
-        data_proxima_reposicao: a.data_proxima_reposicao,
-        status_agendamento: a.status_agendamento,
-        quantidade_total: a.quantidade_total,
-      }));
+      // Consultas em paralelo e já filtradas no servidor (muito mais rápido no mobile)
+      const [clientesRes, semanaRes, pendentesRes] = await Promise.all([
+        supabase.from("clientes").select("id, nome, ativo, status_cliente"),
+        supabase
+          .from("agendamentos_clientes")
+          .select("id, cliente_id, data_proxima_reposicao, status_agendamento, quantidade_total")
+          .gte("data_proxima_reposicao", inicioISO)
+          .lte("data_proxima_reposicao", fimISO),
+        supabase
+          .from("agendamentos_clientes")
+          .select("id, cliente_id, data_proxima_reposicao, status_agendamento, quantidade_total")
+          .in("status_agendamento", ["Agendar", "Pendente"])
+          .order("data_proxima_reposicao", { ascending: true })
+          .limit(10),
+      ]);
 
-      const agendamentosNaSemana = enriched.filter((a) => {
-        if (!a.data_proxima_reposicao) return false;
-        const d = new Date(a.data_proxima_reposicao + "T00:00:00");
-        return d >= inicioSemana && d <= fimSemana;
-      });
+      if (clientesRes.error) throw clientesRes.error;
+      if (semanaRes.error) throw semanaRes.error;
+      if (pendentesRes.error) throw pendentesRes.error;
+
+      const clientes = clientesRes.data;
+      const total = clientes?.length ?? 0;
+      const ativos = clientes?.filter((c) => c.ativo && c.status_cliente === "ATIVO").length ?? 0;
+
+      const clienteMap = new Map((clientes || []).map((c) => [c.id, c.nome]));
+      const mapAgend = (rows: any[] | null): RepAgendamentoLite[] =>
+        (rows || []).map((a) => ({
+          id: a.id,
+          cliente_id: a.cliente_id,
+          cliente_nome: clienteMap.get(a.cliente_id) || "Cliente",
+          data_proxima_reposicao: a.data_proxima_reposicao,
+          status_agendamento: a.status_agendamento,
+          quantidade_total: a.quantidade_total,
+        }));
+
+      const agendamentosNaSemana = mapAgend(semanaRes.data);
 
       const confirmadosSemana = agendamentosNaSemana.filter(
         (a) => a.status_agendamento === "Confirmado"
@@ -116,11 +124,7 @@ export function useRepDashboardData() {
         0
       );
 
-      const pendentes = enriched
-        .filter((a) => ["Agendar", "Pendente"].includes(a.status_agendamento))
-        .sort((a, b) =>
-          (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || "")
-        );
+      const pendentes = mapAgend(pendentesRes.data);
 
       setData({
         totalClientesAtivos: ativos,
