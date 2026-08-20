@@ -101,7 +101,7 @@ export default function AtualizarAgendamentoDialog({ open, onOpenChange, onSalvo
                             <CalendarIcon className="w-3 h-3 shrink-0" />
                             {a.dataReposicao ? format(a.dataReposicao, "dd/MM/yyyy") : "Sem data"}
                             {" • "}
-                            {a.quantidadeTotal || 0} un
+                            {a.pedido?.quantidadeTotal ?? a.cliente.quantidadePadrao ?? 0} un
                           </p>
                         </div>
                         <Badge variant="outline" className="shrink-0 text-[10px]">
