@@ -364,22 +364,46 @@ export default function InadimplenciaPanel() {
                                       >
                                         {brl(t.valor)}
                                       </span>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        disabled={abrindo === t.id}
-                                        title="Abrir venda no GestãoClick"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          abrirNoGestaoClick(t);
-                                        }}
-                                      >
-                                        {abrindo === t.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <ExternalLink className="h-4 w-4" />
-                                        )}
-                                      </Button>
+                                      {extrairCodigoVenda(t.descricao) ? (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            disabled={abrindo === `${t.id}:recebimentos`}
+                                            title="Abrir recebimentos da venda no GestãoClick"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              abrirNoGestaoClick(t, "recebimentos");
+                                            }}
+                                          >
+                                            {abrindo === `${t.id}:recebimentos` ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Receipt className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            disabled={abrindo === `${t.id}:venda`}
+                                            title="Abrir venda no GestãoClick"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              abrirNoGestaoClick(t, "venda");
+                                            }}
+                                          >
+                                            {abrindo === `${t.id}:venda` ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <ExternalLink className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">
+                                          sem venda vinculada
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
