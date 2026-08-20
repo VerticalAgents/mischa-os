@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, CalendarPlus, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, CalendarPlus, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +32,7 @@ import { RotasFilter } from "./RotasFilter";
 import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConfirmationScore } from "@/hooks/useConfirmationScore";
+import { useInadimplencia } from "@/hooks/useInadimplencia";
 import ConfirmationScoreBadge from "@/components/agendamento/ConfirmationScoreBadge";
 import { cn } from "@/lib/utils";
 
@@ -302,6 +303,40 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
     });
   }, [agendamentosFiltrados, semanaAtual]);
+
+  // ===== Inadimplência (títulos atrasados no GestãoClick) =====
+  const { clientes: clientesInadimplentes } = useInadimplencia();
+
+  const inadimplenciaPorCliente = useMemo(() => {
+    const map = new Map<string, { valorAtrasado: number; qtdAtrasados: number; maiorAtraso: number }>();
+    clientesInadimplentes.forEach(c => {
+      if (c.clienteId && c.qtdAtrasados > 0) {
+        map.set(c.clienteId, {
+          valorAtrasado: c.valorAtrasado,
+          qtdAtrasados: c.qtdAtrasados,
+          maiorAtraso: c.maiorAtraso,
+        });
+      }
+    });
+    return map;
+  }, [clientesInadimplentes]);
+
+  const inadimplentesSemana = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const ids = new Set<string>();
+    let valor = 0;
+    agendamentosFiltrados.forEach(a => {
+      const data = new Date(a.dataReposicao);
+      if (data < inicioSemana || data > fimSemana) return;
+      const info = inadimplenciaPorCliente.get(a.cliente.id);
+      if (info && !ids.has(a.cliente.id)) {
+        ids.add(a.cliente.id);
+        valor += info.valorAtrasado;
+      }
+    });
+    return { clientes: ids.size, valor };
+  }, [agendamentosFiltrados, semanaAtual, inadimplenciaPorCliente]);
 
   const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
 
@@ -1033,16 +1068,29 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       </TooltipProvider>
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: "Total Sem.", value: totalUnidadesSemana, dot: "bg-purple-500", Icon: Package, suffix: "un" },
           { label: "Confirmados", value: indicadoresSemana.confirmados, dot: "bg-emerald-500", Icon: CheckCircle, suffix: "ped" },
           { label: "Previstos", value: indicadoresSemana.previstos, dot: "bg-amber-500", Icon: Clock, suffix: "ped" },
           { label: "Entregues", value: indicadoresSemana.entregasRealizadas, dot: "bg-blue-500", Icon: Truck, suffix: "ped" },
-        ].map(({ label, value, dot, Icon, suffix }) => (
+          {
+            label: "Inadimplentes",
+            value: inadimplentesSemana.clientes,
+            dot: "bg-red-500",
+            Icon: AlertTriangle,
+            suffix: inadimplentesSemana.valor > 0
+              ? inadimplentesSemana.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+              : "em atraso",
+            alerta: inadimplentesSemana.clientes > 0,
+          },
+        ].map(({ label, value, dot, Icon, suffix, alerta }: any) => (
           <div
             key={label}
-            className="rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm"
+            className={cn(
+              "rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm",
+              alerta && "border-destructive/40 bg-destructive/5"
+            )}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -1053,8 +1101,11 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
               </div>
               <Icon className="h-4 w-4 text-muted-foreground/60" />
             </div>
-            <div className="text-3xl font-bold tabular-nums text-foreground leading-none">{value}</div>
-            <div className="text-xs text-muted-foreground mt-1.5">{suffix}</div>
+            <div className={cn(
+              "text-3xl font-bold tabular-nums leading-none",
+              alerta ? "text-destructive" : "text-foreground"
+            )}>{value}</div>
+            <div className="text-xs text-muted-foreground mt-1.5 truncate">{suffix}</div>
           </div>
         ))}
       </div>
@@ -1462,6 +1513,17 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
 
                       const scoreCard = confirmationScores.get(agendamento.cliente.id)?.score ?? -1;
                       const sub = agendamento.substatus_pedido;
+                      const inadimplencia = inadimplenciaPorCliente.get(agendamento.cliente.id);
+                      const inadimplenteBadge = inadimplencia ? (
+                        <Badge
+                          variant="destructive"
+                          className="gap-1 whitespace-nowrap"
+                          title={`${inadimplencia.qtdAtrasados} título(s) em atraso · maior atraso ${inadimplencia.maiorAtraso} dias`}
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          {inadimplencia.valorAtrasado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em atraso
+                        </Badge>
+                      ) : null;
                       const getBackgroundColor = () => {
                         if (agendamento.statusAgendamento === "Agendado") {
                           if (sub === "Despachado") return "bg-green-200 border-green-300";
@@ -1497,6 +1559,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             <div className="flex items-center gap-1.5 flex-wrap mt-1 sm:hidden">
                               <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                               {substatusBadge}
+                              {inadimplenteBadge}
                             </div>
                             <div className="text-sm text-muted-foreground text-left mt-0.5">
                               Quantidade: {quantidade} unidades
@@ -1526,10 +1589,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             <div className="hidden sm:flex items-center gap-2 flex-wrap">
                               <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                               {substatusBadge}
+                              {inadimplenteBadge}
                             </div>
 
                             {/* Botões — mobile: full width grandes / desktop: ícones compactos */}
-                            <div className="flex gap-2 pt-2 border-t sm:border-t-0 sm:pt-0 sm:gap-1">
+                            <div className={cn(
+                              "grid gap-2 w-full pt-2 border-t sm:flex sm:w-auto sm:border-t-0 sm:pt-0 sm:gap-1",
+                              agendamento.statusAgendamento === "Previsto" ? "grid-cols-3" : "grid-cols-2"
+                            )}>
                               {agendamento.statusAgendamento === "Previsto" && (
                                 <Button
                                   variant="default"
@@ -1537,10 +1604,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                   onClick={() => handleConfirmarAgendamento(agendamento)}
                                   disabled={!canEdit}
                                   title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                                  className="bg-green-500 hover:bg-green-600 flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                  className="bg-green-500 hover:bg-green-600 w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
                                 >
-                                  <CheckCheck className="h-4 w-4 sm:h-3 sm:w-3" />
-                                  <span className="ml-1.5 sm:hidden">Confirmar</span>
+                                  <CheckCheck className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
+                                  <span className="ml-1 truncate sm:hidden">Confirmar</span>
                                 </Button>
                               )}
                               <Button
@@ -1549,10 +1616,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                 onClick={() => handleAdiar7Dias(agendamento)}
                                 disabled={!canEdit}
                                 title={!canEdit ? "Ação não habilitada pelo administrador" : "Adiar 7 dias (mantém Previsto)"}
-                                className="flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                className="w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
                               >
-                                <CalendarPlus className="h-4 w-4 sm:h-3 sm:w-3" />
-                                <span className="ml-1.5 sm:hidden">+7 dias</span>
+                                <CalendarPlus className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
+                                <span className="ml-1 truncate sm:hidden">+7 dias</span>
                               </Button>
                               <Button
                                 variant="secondary"
@@ -1560,10 +1627,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                 onClick={() => handleEditarAgendamento(agendamento)}
                                 disabled={!canEdit}
                                 title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                                className="flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                className="w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
                               >
-                                <Edit className="h-4 w-4 sm:h-3 sm:w-3" />
-                                <span className="ml-1.5 sm:hidden">Editar</span>
+                                <Edit className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
+                                <span className="ml-1 truncate sm:hidden">Editar</span>
                               </Button>
                             </div>
                           </div>
