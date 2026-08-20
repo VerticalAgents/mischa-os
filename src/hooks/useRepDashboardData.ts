@@ -58,7 +58,7 @@ export function useRepDashboardData() {
       const fimISO = format(fimSemana, "yyyy-MM-dd");
 
       // Consultas em paralelo e já filtradas no servidor (muito mais rápido no mobile)
-      const [clientesRes, semanaRes, pendentesRes] = await Promise.all([
+      const [clientesRes, semanaRes, pendentesRes, entregasRes] = await Promise.all([
         supabase.from("clientes").select("id, nome, ativo, status_cliente"),
         supabase
           .from("agendamentos_clientes")
@@ -71,11 +71,19 @@ export function useRepDashboardData() {
           .in("status_agendamento", ["Agendar", "Pendente"])
           .order("data_proxima_reposicao", { ascending: true })
           .limit(10),
+        // Entregas efetivadas na semana (o agendamento volta para "Previsto" com nova data)
+        supabase
+          .from("historico_entregas")
+          .select("id, cliente_id, quantidade, data")
+          .eq("tipo", "entrega")
+          .gte("data", `${inicioISO}T00:00:00`)
+          .lte("data", `${fimISO}T23:59:59`),
       ]);
 
       if (clientesRes.error) throw clientesRes.error;
       if (semanaRes.error) throw semanaRes.error;
       if (pendentesRes.error) throw pendentesRes.error;
+      if (entregasRes.error) throw entregasRes.error;
 
       const clientes = clientesRes.data;
       const total = clientes?.length ?? 0;
@@ -93,23 +101,28 @@ export function useRepDashboardData() {
         }));
 
       const agendamentosNaSemana = mapAgend(semanaRes.data);
+      const entregasSemana = entregasRes.data || [];
 
+      // "Agendado" = pedido confirmado no sistema
       const confirmadosSemana = agendamentosNaSemana.filter(
-        (a) => a.status_agendamento === "Confirmado"
+        (a) => a.status_agendamento === "Agendado"
       ).length;
-      const entreguesSemana = agendamentosNaSemana.filter(
-        (a) => a.status_agendamento === "Entregue"
-      ).length;
-      const confirmadosOuAvancados = agendamentosNaSemana.filter((a) =>
-        ["Confirmado", "Separado", "Despachado", "Entregue"].includes(a.status_agendamento)
-      ).length;
-      const totalUnidadesSemana = agendamentosNaSemana.reduce(
+      const entreguesSemana = entregasSemana.length;
+
+      const unidadesAgendadas = agendamentosNaSemana.reduce(
         (sum, a) => sum + (a.quantidade_total || 0),
         0
       );
+      const unidadesEntregues = entregasSemana.reduce(
+        (sum: number, e: any) => sum + (e.quantidade || 0),
+        0
+      );
+      const totalUnidadesSemana = unidadesAgendadas + unidadesEntregues;
+
+      const totalPedidosSemana = agendamentosNaSemana.length + entreguesSemana;
       const taxaConfirmacaoSemana =
-        agendamentosNaSemana.length > 0
-          ? Math.round((confirmadosOuAvancados / agendamentosNaSemana.length) * 100) / 100
+        totalPedidosSemana > 0
+          ? Math.round(((confirmadosSemana + entreguesSemana) / totalPedidosSemana) * 100) / 100
           : 0;
 
 
@@ -129,7 +142,7 @@ export function useRepDashboardData() {
       setData({
         totalClientesAtivos: ativos,
         totalClientes: total,
-        agendamentosSemanaAtual: agendamentosNaSemana.length,
+        agendamentosSemanaAtual: totalPedidosSemana,
         confirmadosSemanaAtual: confirmadosSemana,
         entreguesSemanaAtual: entreguesSemana,
         previstosSemanaAtual: previstosSemana,
