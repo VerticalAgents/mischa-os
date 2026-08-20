@@ -11,6 +11,7 @@ export interface TituloAberto {
   diasAtraso: number;
   atrasado: boolean;
   nomeClienteGC?: string;
+  formaPagamento?: string;
 }
 
 export interface ClienteInadimplente {
@@ -121,6 +122,7 @@ export function useInadimplencia() {
           diasAtraso: dias > 0 ? dias : 0,
           atrasado: dias > 0,
           nomeClienteGC: rec.nome_cliente,
+          formaPagamento: rec.nome_forma_pagamento || undefined,
         };
 
         const atual = agrupado.get(gcId) || {
