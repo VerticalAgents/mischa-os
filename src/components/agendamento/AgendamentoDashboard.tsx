@@ -1513,6 +1513,17 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
 
                       const scoreCard = confirmationScores.get(agendamento.cliente.id)?.score ?? -1;
                       const sub = agendamento.substatus_pedido;
+                      const inadimplencia = inadimplenciaPorCliente.get(agendamento.cliente.id);
+                      const inadimplenteBadge = inadimplencia ? (
+                        <Badge
+                          variant="destructive"
+                          className="gap-1 whitespace-nowrap"
+                          title={`${inadimplencia.qtdAtrasados} título(s) em atraso · maior atraso ${inadimplencia.maiorAtraso} dias`}
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          {inadimplencia.valorAtrasado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em atraso
+                        </Badge>
+                      ) : null;
                       const getBackgroundColor = () => {
                         if (agendamento.statusAgendamento === "Agendado") {
                           if (sub === "Despachado") return "bg-green-200 border-green-300";
@@ -1548,6 +1559,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             <div className="flex items-center gap-1.5 flex-wrap mt-1 sm:hidden">
                               <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                               {substatusBadge}
+                              {inadimplenteBadge}
                             </div>
                             <div className="text-sm text-muted-foreground text-left mt-0.5">
                               Quantidade: {quantidade} unidades
@@ -1577,10 +1589,11 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             <div className="hidden sm:flex items-center gap-2 flex-wrap">
                               <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                               {substatusBadge}
+                              {inadimplenteBadge}
                             </div>
 
                             {/* Botões — mobile: full width grandes / desktop: ícones compactos */}
-                            <div className="flex gap-2 pt-2 border-t sm:border-t-0 sm:pt-0 sm:gap-1">
+                            <div className="grid grid-cols-3 gap-2 w-full pt-2 border-t sm:flex sm:w-auto sm:border-t-0 sm:pt-0 sm:gap-1">
                               {agendamento.statusAgendamento === "Previsto" && (
                                 <Button
                                   variant="default"
@@ -1588,10 +1601,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                   onClick={() => handleConfirmarAgendamento(agendamento)}
                                   disabled={!canEdit}
                                   title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                                  className="bg-green-500 hover:bg-green-600 flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                  className="bg-green-500 hover:bg-green-600 w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
                                 >
-                                  <CheckCheck className="h-4 w-4 sm:h-3 sm:w-3" />
-                                  <span className="ml-1.5 sm:hidden">Confirmar</span>
+                                  <CheckCheck className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
+                                  <span className="ml-1 truncate sm:hidden">Confirmar</span>
                                 </Button>
                               )}
                               <Button
@@ -1600,10 +1613,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                 onClick={() => handleAdiar7Dias(agendamento)}
                                 disabled={!canEdit}
                                 title={!canEdit ? "Ação não habilitada pelo administrador" : "Adiar 7 dias (mantém Previsto)"}
-                                className="flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                className="w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
                               >
-                                <CalendarPlus className="h-4 w-4 sm:h-3 sm:w-3" />
-                                <span className="ml-1.5 sm:hidden">+7 dias</span>
+                                <CalendarPlus className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
+                                <span className="ml-1 truncate sm:hidden">+7 dias</span>
                               </Button>
                               <Button
                                 variant="secondary"
@@ -1611,10 +1624,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                 onClick={() => handleEditarAgendamento(agendamento)}
                                 disabled={!canEdit}
                                 title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                                className="flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                className="w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
                               >
-                                <Edit className="h-4 w-4 sm:h-3 sm:w-3" />
-                                <span className="ml-1.5 sm:hidden">Editar</span>
+                                <Edit className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
+                                <span className="ml-1 truncate sm:hidden">Editar</span>
                               </Button>
                             </div>
                           </div>
