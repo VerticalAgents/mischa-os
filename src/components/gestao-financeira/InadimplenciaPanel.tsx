@@ -166,13 +166,19 @@ export default function InadimplenciaPanel() {
 
   // Carrega formas de pagamento do GestãoClick ao abrir o modal de recebimento
   useEffect(() => {
-    if (!situacaoTitulo || formasGC.length > 0 || carregandoFormas) return;
+    if (!situacaoTitulo) return;
+    let ativo = true;
     setCarregandoFormas(true);
+    setFormasGC([]);
+    setFormaSelecionada("");
     listarFormasPagamento()
-      .then(setFormasGC)
-      .catch(() => setFormasGC([]))
-      .finally(() => setCarregandoFormas(false));
-  }, [situacaoTitulo, formasGC.length, carregandoFormas, listarFormasPagamento]);
+      .then((formas) => ativo && setFormasGC(formas))
+      .catch(() => ativo && setFormasGC([]))
+      .finally(() => ativo && setCarregandoFormas(false));
+    return () => {
+      ativo = false;
+    };
+  }, [situacaoTitulo, listarFormasPagamento]);
 
   // Pré-seleciona a forma atual do título quando as opções chegarem
   useEffect(() => {

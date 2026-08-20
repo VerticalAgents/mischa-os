@@ -2763,29 +2763,22 @@ Deno.serve(async (req) => {
           );
         }
 
-        const formasResp = await fetch(`${GESTAOCLICK_BASE_URL}/formas_pagamentos`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'access-token': access_token,
-            'secret-access-token': secret_token,
-          },
-        });
-        if (!formasResp.ok) {
-          return new Response(
-            JSON.stringify({ error: `Erro ao buscar formas de pagamento: ${formasResp.status}` }),
-            { status: formasResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        const formasJson = await formasResp.json().catch(() => null);
-        const lista = formasJson?.data || [];
+        const lista = await fetchGCPaginado(
+          'formas_pagamentos',
+          access_token,
+          secret_token,
+          'FormasPagamento',
+        );
 
         return new Response(
           JSON.stringify({
             success: true,
-            formas_pagamento: Array.isArray(lista)
-              ? lista.map((f: any) => ({ id: String(f.id ?? f.forma_pagamento_id ?? ''), nome: f.nome || f.forma_pagamento || '' }))
-              : [],
+            formas_pagamento: lista
+              .map((f: any) => ({
+                id: String(f?.id ?? f?.forma_pagamento_id ?? ''),
+                nome: String(f?.nome ?? f?.forma_pagamento ?? ''),
+              }))
+              .filter((f: { id: string; nome: string }) => f.id && f.nome),
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
