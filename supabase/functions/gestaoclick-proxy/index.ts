@@ -2506,7 +2506,144 @@ Deno.serve(async (req) => {
                 data_vencimento: rec.data_vencimento,
                 liquidado: rec.liquidado,
                 hash: rec.hash,
+                valor_total: rec.valor_total,
+                conta_bancaria_id: rec.conta_bancaria_id,
+                nome_conta_bancaria: rec.nome_conta_bancaria,
               })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'listar_contas_bancarias': {
+        const { access_token, secret_token } = params;
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const contas = await fetchGCPaginado('contas_bancarias', access_token, secret_token, 'ContaBancaria');
+        console.log(`[gestaoclick-proxy] contas bancárias: ${contas.length}`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            contas: contas.map((c: any) => ({ id: String(c.id), nome: c.nome })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'buscar_pagamentos_abertos': {
+        const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const mesesRetro = Number(meses_retroativos) > 0 ? Number(meses_retroativos) : 12;
+        const diasFuturos = Number(dias_futuros) > 0 ? Number(dias_futuros) : 180;
+        const hoje = new Date();
+        const dataInicio = formatDate(addDays(hoje, -30 * mesesRetro));
+        const dataFim = formatDate(addDays(hoje, diasFuturos));
+
+        const todos = await fetchGCPaginado(
+          `pagamentos?liquidado=ab&data_inicio=${dataInicio}&data_fim=${dataFim}`,
+          access_token,
+          secret_token,
+          'Pagamento',
+        );
+
+        console.log(`[gestaoclick-proxy] pagamentos abertos: ${todos.length} títulos`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            periodo: { data_inicio: dataInicio, data_fim: dataFim },
+            pagamentos: todos
+              .filter((p: any) => String(p.liquidado ?? '0') !== '1')
+              .map((p: any) => ({
+                id: String(p.id),
+                codigo: p.codigo,
+                descricao: p.descricao,
+                valor: p.valor,
+                valor_total: p.valor_total,
+                data_vencimento: p.data_vencimento,
+                conta_bancaria_id: p.conta_bancaria_id,
+                nome_conta_bancaria: p.nome_conta_bancaria,
+                nome_fornecedor: p.nome_fornecedor,
+                nome_cliente: p.nome_cliente,
+                nome_plano_conta: p.nome_plano_conta,
+                liquidado: p.liquidado,
+              })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'buscar_movimentos_liquidados': {
+        // Soma dos liquidados por conta bancária a partir de uma data de referência
+        const { access_token, secret_token, data_referencia } = params;
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const hoje = new Date();
+        const dataInicio = /^\d{4}-\d{2}-\d{2}$/.test(String(data_referencia || ''))
+          ? String(data_referencia)
+          : formatDate(addDays(hoje, -90));
+        const dataFim = formatDate(hoje);
+
+        const [recebidos, pagos] = await Promise.all([
+          fetchGCPaginado(
+            `recebimentos?liquidado=li&data_inicio=${dataInicio}&data_fim=${dataFim}`,
+            access_token,
+            secret_token,
+            'Recebimento',
+          ),
+          fetchGCPaginado(
+            `pagamentos?liquidado=li&data_inicio=${dataInicio}&data_fim=${dataFim}`,
+            access_token,
+            secret_token,
+            'Pagamento',
+          ),
+        ]);
+
+        const porConta: Record<string, { entradas: number; saidas: number }> = {};
+        const acumular = (conta: any, valor: number, tipo: 'entradas' | 'saidas') => {
+          const key = String(conta || 'sem_conta');
+          if (!porConta[key]) porConta[key] = { entradas: 0, saidas: 0 };
+          porConta[key][tipo] += valor;
+        };
+
+        recebidos.forEach((r: any) =>
+          acumular(r.conta_bancaria_id, numGC(r.valor_total ?? r.valor), 'entradas')
+        );
+        pagos.forEach((p: any) =>
+          acumular(p.conta_bancaria_id, numGC(p.valor_total ?? p.valor), 'saidas')
+        );
+
+        console.log(
+          `[gestaoclick-proxy] liquidados desde ${dataInicio}: ${recebidos.length} recebidos, ${pagos.length} pagos`
+        );
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            periodo: { data_inicio: dataInicio, data_fim: dataFim },
+            por_conta: Object.entries(porConta).map(([conta_bancaria_id, v]) => ({
+              conta_bancaria_id,
+              entradas: v.entradas,
+              saidas: v.saidas,
+              liquido: v.entradas - v.saidas,
+            })),
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
