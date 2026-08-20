@@ -385,7 +385,7 @@ export default function InadimplenciaPanel() {
                   <TableHead>Cliente</TableHead>
                   <TableHead className="w-28 text-right">Atrasado</TableHead>
                   <TableHead className="w-28 text-right">Em aberto</TableHead>
-                  <TableHead className="w-32 text-right">Situação</TableHead>
+                  <TableHead className="w-44 text-right">Situação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -421,11 +421,13 @@ export default function InadimplenciaPanel() {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {c.qtdAtrasados > 0 ? (
-                                <Badge variant="destructive">
+                                <Badge variant="destructive" className="whitespace-nowrap">
                                   {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
                                 </Badge>
                               ) : (
-                                <Badge variant="outline">Em dia</Badge>
+                                <Badge variant="outline" className="whitespace-nowrap">
+                                  Em dia
+                                </Badge>
                               )}
                               <Button
                                 size="icon"
