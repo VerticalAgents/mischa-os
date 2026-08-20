@@ -17,15 +17,19 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertTriangle,
   CalendarClock,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  ListChecks,
   Loader2,
   Receipt,
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { useInadimplencia, type ClienteInadimplente } from "@/hooks/useInadimplencia";
+import { useAcoesRecebimentos } from "@/hooks/useAcoesRecebimentos";
+import AcoesMassaRecebimentosDialog from "@/components/gestao-financeira/AcoesMassaRecebimentosDialog";
 import { RepresentantesFilter } from "@/components/expedicao/components/RepresentantesFilter";
 import {
   Dialog,
@@ -46,6 +50,8 @@ const dataBR = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 };
+
+const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 const URL_RECEBIMENTOS_PADRAO =
   "https://gestaoclick.com/financeiro/movimentacoes_financeiras/index_recebimento/?venda={vendaId}&loja={lojaId}";
@@ -81,6 +87,27 @@ export default function InadimplenciaPanel() {
   >(null);
   const [novaData, setNovaData] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [clienteMassa, setClienteMassa] = useState<ClienteInadimplente | null>(null);
+  const [situacaoTitulo, setSituacaoTitulo] = useState<
+    { id: string; descricao?: string; valor: number } | null
+  >(null);
+  const [dataLiquidacao, setDataLiquidacao] = useState(hojeISO());
+  const { alterarSituacao } = useAcoesRecebimentos();
+
+  const salvarSituacao = async () => {
+    if (!situacaoTitulo) return;
+    setSalvando(true);
+    try {
+      await alterarSituacao(situacaoTitulo.id, "recebido", dataLiquidacao);
+      toast.success(`Título marcado como recebido em ${dataBR(dataLiquidacao)}`);
+      setSituacaoTitulo(null);
+      await refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível alterar a situação");
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   const salvarVencimento = async () => {
     if (!editando || !novaData) return;
