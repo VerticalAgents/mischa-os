@@ -396,51 +396,32 @@ export default function InadimplenciaPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Clientes com atraso
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-destructive">
-              {totais.clientesAtrasados}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Valor atrasado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-destructive">
-              {brl(totais.valorAtrasado)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total em aberto
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{brl(totais.valorEmAberto)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Maior atraso
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{totais.maiorAtraso} dias</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        {[
+          {
+            label: "Clientes com atraso",
+            valor: String(totais.clientesAtrasados),
+            destaque: true,
+          },
+          { label: "Valor atrasado", valor: brl(totais.valorAtrasado), destaque: true },
+          { label: "Total em aberto", valor: brl(totais.valorEmAberto), destaque: false },
+          { label: "Maior atraso", valor: `${totais.maiorAtraso} dias`, destaque: false },
+        ].map((kpi) => (
+          <Card key={kpi.label}>
+            <CardContent className="p-3 sm:p-4">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
+                {kpi.label}
+              </div>
+              <div
+                className={`mt-1 text-lg font-semibold tabular-nums sm:text-2xl ${
+                  kpi.destaque ? "text-destructive" : ""
+                }`}
+              >
+                {kpi.valor}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
