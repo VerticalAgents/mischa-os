@@ -2613,28 +2613,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      case '__contas_bancarias_legacy__': {
-        const { access_token, secret_token } = params;
-        if (!access_token || !secret_token) {
-          return new Response(
-            JSON.stringify({ error: 'Tokens não fornecidos' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const contas = await fetchGCPaginado('contas_bancarias', access_token, secret_token, 'ContaBancaria');
-        console.log(`[gestaoclick-proxy] contas bancárias: ${contas.length}`);
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            contas: contas.map((c: any) => ({ id: String(c.id), nome: c.nome })),
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      case 'buscar_pagamentos_abertos': {
         const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
         if (!access_token || !secret_token) {
           return new Response(
