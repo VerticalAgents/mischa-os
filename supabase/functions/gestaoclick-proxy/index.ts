@@ -2381,6 +2381,7 @@ Deno.serve(async (req) => {
               id: String(venda.id),
               codigo: venda.codigo,
               hash: venda.hash,
+              loja_id: venda.loja_id ? String(venda.loja_id) : null,
               nome_cliente: venda.nome_cliente,
               valor_total: venda.valor_total,
               nota_fiscal_id: venda.nota_fiscal_id || null,
