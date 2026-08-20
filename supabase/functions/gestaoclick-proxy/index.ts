@@ -2755,6 +2755,7 @@ Deno.serve(async (req) => {
       }
 
       case 'buscar_pagamentos_abertos': {
+        // (ver 'listar_formas_pagamento_gc' abaixo)
         const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
         if (!access_token || !secret_token) {
           return new Response(
