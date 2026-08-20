@@ -2754,9 +2754,44 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'listar_formas_pagamento_gc': {
+        const { access_token, secret_token } = params;
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const formasResp = await fetch(`${GESTAOCLICK_BASE_URL}/formas_pagamentos`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+        if (!formasResp.ok) {
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar formas de pagamento: ${formasResp.status}` }),
+            { status: formasResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const formasJson = await formasResp.json().catch(() => null);
+        const lista = formasJson?.data || [];
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            formas_pagamento: Array.isArray(lista)
+              ? lista.map((f: any) => ({ id: String(f.id ?? f.forma_pagamento_id ?? ''), nome: f.nome || f.forma_pagamento || '' }))
+              : [],
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'buscar_pagamentos_abertos': {
-        // (ver 'listar_formas_pagamento_gc' abaixo)
-        void 0;
         const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
         if (!access_token || !secret_token) {
           return new Response(
