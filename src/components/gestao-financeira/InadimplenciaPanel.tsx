@@ -599,6 +599,53 @@ export default function InadimplenciaPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!situacaoTitulo} onOpenChange={(o) => !o && setSituacaoTitulo(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Marcar como recebido</DialogTitle>
+            <DialogDescription className="truncate">
+              {situacaoTitulo?.descricao || `Título ${situacaoTitulo?.id}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Valor:{" "}
+              <span className="font-medium text-foreground">
+                {situacaoTitulo ? brl(situacaoTitulo.valor) : ""}
+              </span>{" "}
+              (não será alterado)
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="data-liquidacao">Data do recebimento</Label>
+              <Input
+                id="data-liquidacao"
+                type="date"
+                value={dataLiquidacao}
+                onChange={(e) => setDataLiquidacao(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A situação é gravada direto no GestãoClick (título a receber).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSituacaoTitulo(null)} disabled={salvando}>
+              Cancelar
+            </Button>
+            <Button onClick={salvarSituacao} disabled={salvando || !dataLiquidacao}>
+              {salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar recebimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AcoesMassaRecebimentosDialog
+        cliente={clienteMassa}
+        onClose={() => setClienteMassa(null)}
+        onConcluido={refetch}
+      />
     </div>
   );
 }
