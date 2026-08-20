@@ -16,7 +16,7 @@ export function useUserRoles() {
   
   // Refs para evitar loops e chamadas duplicadas
   const isFetchingRef = useRef(false);
-  const lastUserIdRef = useRef<string | null>(null);
+  const lastUserIdRef = useRef<string | null | undefined>(undefined);
 
   const fetchUserRole = useCallback(async (userId: string | null) => {
     // Evitar chamadas duplicadas
