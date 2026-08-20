@@ -2583,19 +2583,39 @@ Deno.serve(async (req) => {
           );
         }
 
-        // 2) Atualizar somente a data de vencimento
+        // 2) Atualizar o vencimento (o GC exige os campos principais no PUT)
+        const payload: Record<string, unknown> = {
+          data_vencimento,
+          valor: atual.valor,
+          cliente_id: atual.cliente_id,
+          descricao: atual.descricao,
+        };
+        if (atual.conta_bancaria_id) payload.conta_bancaria_id = atual.conta_bancaria_id;
+        if (atual.plano_contas_id) payload.plano_contas_id = atual.plano_contas_id;
+        if (atual.forma_pagamento_id) payload.forma_pagamento_id = atual.forma_pagamento_id;
+
         const putResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
           method: 'PUT',
           headers: gcHeaders,
-          body: JSON.stringify({ data_vencimento }),
+          body: JSON.stringify(payload),
         });
         const putText = await putResp.text();
         console.log('[gestaoclick-proxy] PUT recebimento status', putResp.status, putText.slice(0, 500));
 
-        if (!putResp.ok || hasGCError(putText, putResp.status)) {
+        // 3) Conferir no GC se a data realmente mudou (o GC responde 200 com avisos de PHP)
+        const confResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'GET',
+          headers: gcHeaders,
+        });
+        const confJson = await confResp.json().catch(() => null);
+        const confirmado = confJson?.data?.Recebimento || confJson?.data || null;
+        const dataConfirmada = String(confirmado?.data_vencimento || '').slice(0, 10);
+
+        if (!putResp.ok || dataConfirmada !== data_vencimento) {
           return new Response(
             JSON.stringify({
               error: 'GestãoClick recusou a alteração do vencimento',
+              data_vencimento_atual: dataConfirmada || null,
               detalhe: putText.slice(0, 500),
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
