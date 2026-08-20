@@ -2266,6 +2266,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saldos_contas_bancarias: {
+        Row: {
+          conta_bancaria_id: string
+          created_at: string
+          data_referencia: string
+          id: string
+          nome_conta: string | null
+          saldo_inicial: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conta_bancaria_id: string
+          created_at?: string
+          data_referencia?: string
+          id?: string
+          nome_conta?: string | null
+          saldo_inicial?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conta_bancaria_id?: string
+          created_at?: string
+          data_referencia?: string
+          id?: string
+          nome_conta?: string | null
+          saldo_inicial?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string | null
