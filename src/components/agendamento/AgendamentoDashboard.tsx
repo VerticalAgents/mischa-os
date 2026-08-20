@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, CalendarPlus, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, CalendarPlus, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +32,7 @@ import { RotasFilter } from "./RotasFilter";
 import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConfirmationScore } from "@/hooks/useConfirmationScore";
+import { useInadimplencia } from "@/hooks/useInadimplencia";
 import ConfirmationScoreBadge from "@/components/agendamento/ConfirmationScoreBadge";
 import { cn } from "@/lib/utils";
 
