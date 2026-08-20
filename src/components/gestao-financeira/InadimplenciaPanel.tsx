@@ -529,6 +529,7 @@ export default function InadimplenciaPanel() {
                                   Em dia
                                 </Badge>
                               )}
+                              {!isRepresentante && (
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -541,6 +542,7 @@ export default function InadimplenciaPanel() {
                               >
                                 <ListChecks className="h-4 w-4" />
                               </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -575,6 +577,8 @@ export default function InadimplenciaPanel() {
                                       >
                                         {brl(t.valor)}
                                       </span>
+                                      {!isRepresentante && (
+                                      <>
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -648,6 +652,8 @@ export default function InadimplenciaPanel() {
                                         <span className="text-xs text-muted-foreground">
                                           sem venda vinculada
                                         </span>
+                                      )}
+                                      </>
                                       )}
                                     </div>
                                   </div>
