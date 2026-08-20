@@ -35,11 +35,11 @@ const ChartSkeleton = memo(() => (
 
 const StatusPieChart = memo(({ data }: { data: ChartData['dadosStatusPie'] }) => (
   <Card>
-    <CardHeader>
-      <CardTitle className="text-left">Distribuição por Status</CardTitle>
-      <CardDescription className="text-left">Clientes por status atual</CardDescription>
+    <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+      <CardTitle className="text-left text-base sm:text-lg">Distribuição por Status</CardTitle>
+      <CardDescription className="text-left text-xs sm:text-sm">Clientes por status atual</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent className="p-2 sm:p-6 sm:pt-0">
       <ResponsiveContainer width="100%" height={250}>
         <PieChart>
           <Pie
@@ -65,11 +65,11 @@ const StatusPieChart = memo(({ data }: { data: ChartData['dadosStatusPie'] }) =>
 
 const GiroBarChart = memo(({ data }: { data: ChartData['dadosGiroBar'] }) => (
   <Card>
-    <CardHeader>
-      <CardTitle className="text-left">Top 10 Clientes - Giro Semanal</CardTitle>
-      <CardDescription className="text-left">Maiores giros por cliente ativo</CardDescription>
+    <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+      <CardTitle className="text-left text-base sm:text-lg">Top 10 Clientes - Giro Semanal</CardTitle>
+      <CardDescription className="text-left text-xs sm:text-sm">Maiores giros por cliente ativo</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent className="p-2 sm:p-6 sm:pt-0">
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -77,10 +77,11 @@ const GiroBarChart = memo(({ data }: { data: ChartData['dadosGiroBar'] }) => (
             dataKey="nome" 
             angle={-45} 
             textAnchor="end" 
-            height={60} 
-            fontSize={10} 
+            height={70} 
+            fontSize={9} 
+            interval={0} 
           />
-          <YAxis />
+          <YAxis width={34} fontSize={10} />
           <Tooltip />
           <Bar 
             dataKey="giro" 
@@ -97,7 +98,7 @@ const GiroBarChart = memo(({ data }: { data: ChartData['dadosGiroBar'] }) => (
 export default function RepresentantesCharts({ data, isLoading }: RepresentantesChartsProps) {
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2">
         <ChartSkeleton />
         <ChartSkeleton />
       </div>
@@ -109,7 +110,7 @@ export default function RepresentantesCharts({ data, isLoading }: Representantes
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-4 md:gap-6 md:grid-cols-2">
       <StatusPieChart data={data.dadosStatusPie} />
       <GiroBarChart data={data.dadosGiroBar} />
     </div>

@@ -22,7 +22,7 @@ const RepresentantesIndicadoresOptimized = memo(({
   isLoading 
 }: RepresentantesIndicadoresOptimizedProps) => {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-5">
       <IndicadorCardComTooltip
         title="Total de Clientes"
         value={data.totalClientes}
