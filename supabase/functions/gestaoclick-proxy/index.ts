@@ -2613,6 +2613,7 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'buscar_pagamentos_abertos': {
         const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
         if (!access_token || !secret_token) {
           return new Response(
