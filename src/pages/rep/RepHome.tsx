@@ -33,7 +33,8 @@ export default function RepHome() {
   const navigate = useNavigate();
   const { data, loading, refetch } = useRepDashboardData();
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
-  const { data: inadimplencia, isLoading: loadingInadimplencia } = useInadimplencia();
+  const { clientes: inadimplencia, loading: loadingInadimplencia } = useInadimplencia();
+
 
   const greetingName = user?.email?.split("@")[0] || "representante";
 
