@@ -604,7 +604,7 @@ export default function InadimplenciaPanel() {
                                         <CheckCircle2 className="h-4 w-4" />
                                       </Button>
                                       {extrairCodigoVenda(t.descricao) ? (
-                                        <>
+                                        <span className="flex items-center gap-1">
                                           <Button
                                             size="sm"
                                             variant="ghost"
@@ -637,7 +637,7 @@ export default function InadimplenciaPanel() {
                                               <ExternalLink className="h-4 w-4" />
                                             )}
                                           </Button>
-                                        </>
+                                        </span>
                                       ) : (
                                         <span className="text-xs text-muted-foreground">
                                           sem venda vinculada
@@ -753,11 +753,13 @@ export default function InadimplenciaPanel() {
                   />
                 </SelectTrigger>
                 <SelectContent className="z-[100]">
-                  {formasGC.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.nome}
-                    </SelectItem>
-                  ))}
+                  {formasGC
+                    .filter((f) => f?.id != null && String(f.id).trim() !== "")
+                    .map((f) => (
+                      <SelectItem key={String(f.id)} value={String(f.id)}>
+                        {f.nome || `Forma ${f.id}`}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
