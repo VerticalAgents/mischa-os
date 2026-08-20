@@ -460,6 +460,7 @@ export default function InadimplenciaPanel() {
                                       <div className="text-xs text-muted-foreground">
                                         Vencimento {dataBR(t.dataVencimento)}
                                         {t.atrasado ? ` · ${t.diasAtraso} dias em atraso` : ""}
+                                        {t.formaPagamento ? ` · ${t.formaPagamento}` : ""}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3">
