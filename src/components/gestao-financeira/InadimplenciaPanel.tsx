@@ -75,6 +75,66 @@ const montarUrl = (
     .replace(/\{lojaId\}/g, encodeURIComponent(valores.lojaId))
     .replace(/\{hash\}/g, encodeURIComponent(valores.hash));
 
+const normalizeForma = (forma?: string) => (forma || "").toLowerCase().trim();
+
+function FormaPagamentoBadge({ forma }: { forma?: string }) {
+  const raw = forma || "—";
+  const normalized = normalizeForma(forma);
+
+  const config = useMemo(() => {
+    if (normalized.includes("dinheiro")) {
+      return {
+        className:
+          "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700",
+        icon: "💵",
+      };
+    }
+    if (normalized.includes("pix")) {
+      return {
+        className:
+          "bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/30 dark:text-sky-200 dark:border-sky-700",
+        icon: "⚡",
+      };
+    }
+    if (normalized.includes("boleto")) {
+      return {
+        className:
+          "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700",
+        icon: "🧾",
+      };
+    }
+    if (normalized.includes("cartão") || normalized.includes("cartao") || normalized.includes("crédito") || normalized.includes("credito") || normalized.includes("débito") || normalized.includes("debito")) {
+      return {
+        className:
+          "bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900/30 dark:text-violet-200 dark:border-violet-700",
+        icon: "💳",
+      };
+    }
+    if (normalized.includes("transferência") || normalized.includes("transferencia") || normalized.includes("ted") || normalized.includes("doc")) {
+      return {
+        className:
+          "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700",
+        icon: "🏦",
+      };
+    }
+    return {
+      className:
+        "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600",
+      icon: "💰",
+    };
+  }, [normalized]);
+
+  return (
+    <Badge
+      variant="secondary"
+      className={`${config.className} text-xs font-normal whitespace-nowrap`}
+      title={`Forma de pagamento: ${raw}`}
+    >
+      {config.icon} {raw}
+    </Badge>
+  );
+}
+
 export default function InadimplenciaPanel() {
   const { clientes, loading, error, refetch, isRepresentante } = useInadimplencia();
   const [busca, setBusca] = useState("");
@@ -457,10 +517,14 @@ export default function InadimplenciaPanel() {
                                       <div className="truncate font-medium">
                                         {t.descricao || `Título ${t.codigo || t.id}`}
                                       </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Vencimento {dataBR(t.dataVencimento)}
-                                        {t.atrasado ? ` · ${t.diasAtraso} dias em atraso` : ""}
-                                        {t.formaPagamento ? ` · ${t.formaPagamento}` : ""}
+                                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        <span>
+                                          Vencimento {dataBR(t.dataVencimento)}
+                                          {t.atrasado ? ` · ${t.diasAtraso} dias em atraso` : ""}
+                                        </span>
+                                        {t.formaPagamento && (
+                                          <FormaPagamentoBadge forma={t.formaPagamento} />
+                                        )}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3">
