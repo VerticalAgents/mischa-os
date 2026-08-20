@@ -17,15 +17,19 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertTriangle,
   CalendarClock,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  ListChecks,
   Loader2,
   Receipt,
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { useInadimplencia, type ClienteInadimplente } from "@/hooks/useInadimplencia";
+import { useAcoesRecebimentos } from "@/hooks/useAcoesRecebimentos";
+import AcoesMassaRecebimentosDialog from "@/components/gestao-financeira/AcoesMassaRecebimentosDialog";
 import { RepresentantesFilter } from "@/components/expedicao/components/RepresentantesFilter";
 import {
   Dialog,
@@ -46,6 +50,8 @@ const dataBR = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 };
+
+const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 const URL_RECEBIMENTOS_PADRAO =
   "https://gestaoclick.com/financeiro/movimentacoes_financeiras/index_recebimento/?venda={vendaId}&loja={lojaId}";
@@ -81,6 +87,27 @@ export default function InadimplenciaPanel() {
   >(null);
   const [novaData, setNovaData] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [clienteMassa, setClienteMassa] = useState<ClienteInadimplente | null>(null);
+  const [situacaoTitulo, setSituacaoTitulo] = useState<
+    { id: string; descricao?: string; valor: number } | null
+  >(null);
+  const [dataLiquidacao, setDataLiquidacao] = useState(hojeISO());
+  const { alterarSituacao } = useAcoesRecebimentos();
+
+  const salvarSituacao = async () => {
+    if (!situacaoTitulo) return;
+    setSalvando(true);
+    try {
+      await alterarSituacao(situacaoTitulo.id, "recebido", dataLiquidacao);
+      toast.success(`Título marcado como recebido em ${dataBR(dataLiquidacao)}`);
+      setSituacaoTitulo(null);
+      await refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível alterar a situação");
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   const salvarVencimento = async () => {
     if (!editando || !novaData) return;
@@ -392,13 +419,27 @@ export default function InadimplenciaPanel() {
                           </TableCell>
                           <TableCell className="text-right">{brl(c.valorEmAberto)}</TableCell>
                           <TableCell className="text-right">
-                            {c.qtdAtrasados > 0 ? (
-                              <Badge variant="destructive">
-                                {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">Em dia</Badge>
-                            )}
+                            <div className="flex items-center justify-end gap-1">
+                              {c.qtdAtrasados > 0 ? (
+                                <Badge variant="destructive">
+                                  {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">Em dia</Badge>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                title="Ações em massa nos títulos deste cliente"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setClienteMassa(c);
+                                }}
+                              >
+                                <ListChecks className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {aberto && (
@@ -442,6 +483,22 @@ export default function InadimplenciaPanel() {
                                         }}
                                       >
                                         <CalendarClock className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        title="Marcar como recebido no GestãoClick"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSituacaoTitulo({
+                                            id: t.id,
+                                            descricao: t.descricao,
+                                            valor: t.valor,
+                                          });
+                                          setDataLiquidacao(hojeISO());
+                                        }}
+                                      >
+                                        <CheckCircle2 className="h-4 w-4" />
                                       </Button>
                                       {extrairCodigoVenda(t.descricao) ? (
                                         <>
@@ -542,6 +599,53 @@ export default function InadimplenciaPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!situacaoTitulo} onOpenChange={(o) => !o && setSituacaoTitulo(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Marcar como recebido</DialogTitle>
+            <DialogDescription className="truncate">
+              {situacaoTitulo?.descricao || `Título ${situacaoTitulo?.id}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Valor:{" "}
+              <span className="font-medium text-foreground">
+                {situacaoTitulo ? brl(situacaoTitulo.valor) : ""}
+              </span>{" "}
+              (não será alterado)
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="data-liquidacao">Data do recebimento</Label>
+              <Input
+                id="data-liquidacao"
+                type="date"
+                value={dataLiquidacao}
+                onChange={(e) => setDataLiquidacao(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A situação é gravada direto no GestãoClick (título a receber).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSituacaoTitulo(null)} disabled={salvando}>
+              Cancelar
+            </Button>
+            <Button onClick={salvarSituacao} disabled={salvando || !dataLiquidacao}>
+              {salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar recebimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AcoesMassaRecebimentosDialog
+        cliente={clienteMassa}
+        onClose={() => setClienteMassa(null)}
+        onConcluido={refetch}
+      />
     </div>
   );
 }

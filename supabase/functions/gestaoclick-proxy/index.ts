@@ -2633,6 +2633,99 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'atualizar_situacao_recebimento': {
+        // Altera a situação (em aberto / recebido) de um título a receber, sem mexer no valor
+        const { access_token, secret_token, recebimento_id, situacao, data_liquidacao } = params;
+
+        if (!access_token || !secret_token || !recebimento_id || !situacao) {
+          return new Response(
+            JSON.stringify({ error: 'Parâmetros obrigatórios: recebimento_id, situacao e tokens' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!['recebido', 'em_aberto'].includes(String(situacao))) {
+          return new Response(
+            JSON.stringify({ error: "situacao deve ser 'recebido' ou 'em_aberto'" }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const liquidar = String(situacao) === 'recebido';
+        const dataLiq = liquidar
+          ? (/^\d{4}-\d{2}-\d{2}$/.test(String(data_liquidacao || '')) ? String(data_liquidacao) : formatDate(new Date()))
+          : '';
+
+        const gcHeadersSit = {
+          'Content-Type': 'application/json',
+          'access-token': access_token,
+          'secret-access-token': secret_token,
+        };
+
+        const getSitResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'GET',
+          headers: gcHeadersSit,
+        });
+        const getSitJson = await getSitResp.json().catch(() => null);
+        const atualSit = getSitJson?.data?.Recebimento || getSitJson?.data || null;
+
+        if (!getSitResp.ok || !atualSit?.id) {
+          return new Response(
+            JSON.stringify({ error: `Título ${recebimento_id} não encontrado no GestãoClick` }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Preserva todos os campos financeiros do título (nunca alteramos o valor)
+        const payloadSit: Record<string, unknown> = {
+          liquidado: liquidar ? '1' : '0',
+          data_liquidacao: dataLiq,
+          valor: atualSit.valor,
+          cliente_id: atualSit.cliente_id,
+          descricao: atualSit.descricao,
+          data_vencimento: atualSit.data_vencimento,
+        };
+        if (atualSit.conta_bancaria_id) payloadSit.conta_bancaria_id = atualSit.conta_bancaria_id;
+        if (atualSit.plano_contas_id) payloadSit.plano_contas_id = atualSit.plano_contas_id;
+        if (atualSit.forma_pagamento_id) payloadSit.forma_pagamento_id = atualSit.forma_pagamento_id;
+
+        const putSitResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'PUT',
+          headers: gcHeadersSit,
+          body: JSON.stringify(payloadSit),
+        });
+        const putSitText = await putSitResp.text();
+        console.log('[gestaoclick-proxy] PUT situação recebimento', recebimento_id, putSitResp.status, putSitText.slice(0, 200));
+
+        const confSitResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'GET',
+          headers: gcHeadersSit,
+        });
+        const confSitJson = await confSitResp.json().catch(() => null);
+        const confSit = confSitJson?.data?.Recebimento || confSitJson?.data || null;
+        const liquidadoAgora = String(confSit?.liquidado ?? '0') === '1';
+
+        if (!putSitResp.ok || liquidadoAgora !== liquidar) {
+          return new Response(
+            JSON.stringify({
+              error: 'GestãoClick recusou a alteração da situação',
+              detalhe: putSitText.slice(0, 500),
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            recebimento_id: String(recebimento_id),
+            situacao: liquidar ? 'recebido' : 'em_aberto',
+            data_liquidacao: confSit?.data_liquidacao || null,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'buscar_pagamentos_abertos': {
         const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
         if (!access_token || !secret_token) {
