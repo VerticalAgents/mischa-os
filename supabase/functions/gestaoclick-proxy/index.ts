@@ -2472,13 +2472,24 @@ Deno.serve(async (req) => {
 
       case 'buscar_recebimentos_abertos': {
         // Buscar TODOS os recebimentos em aberto (liquidado=ab) com paginacao
-        const { access_token, secret_token, meses_retroativos } = params;
+        const { meses_retroativos } = params;
+
+        // Acao somente leitura: se o chamador nao mandar tokens (ex.: conta de
+        // representante, que nao tem acesso a integracao), resolvemos os tokens
+        // do dono da conta a partir do JWT validado acima.
+        let access_token: string | undefined = params.access_token;
+        let secret_token: string | undefined = params.secret_token;
 
         if (!access_token || !secret_token) {
-          return new Response(
-            JSON.stringify({ error: 'Tokens não fornecidos' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          const doDono = await resolveTokensDoDono(supabase, userId);
+          if (!doDono) {
+            return new Response(
+              JSON.stringify({ error: 'Integração com o GestãoClick não configurada' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          access_token = doDono.access_token;
+          secret_token = doDono.secret_token;
         }
 
         const mesesRetro = Number(meses_retroativos) > 0 ? Number(meses_retroativos) : 12;
