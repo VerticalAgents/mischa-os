@@ -2490,6 +2490,29 @@ Deno.serve(async (req) => {
 
         console.log(`[gestaoclick-proxy] recebimentos abertos: ${todos.length} títulos`);
 
+        // Mapa de formas de pagamento (id -> nome) para enriquecer os títulos
+        const mapaFormas = new Map<string, string>();
+        try {
+          const formasResp = await fetch(`${GESTAOCLICK_BASE_URL}/formas_pagamentos`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': access_token,
+              'secret-access-token': secret_token,
+            },
+          });
+          if (formasResp.ok) {
+            const formasJson = await formasResp.json();
+            const listaFormas = formasJson?.data || [];
+            listaFormas.forEach((f: any) => {
+              const item = f?.FormasPagamento || f;
+              if (item?.id) mapaFormas.set(String(item.id), item.nome || '');
+            });
+          }
+        } catch (e) {
+          console.error('[gestaoclick-proxy] erro ao buscar formas de pagamento:', e);
+        }
+
         return new Response(
           JSON.stringify({
             success: true,
@@ -2509,6 +2532,10 @@ Deno.serve(async (req) => {
                 valor_total: rec.valor_total,
                 conta_bancaria_id: rec.conta_bancaria_id,
                 nome_conta_bancaria: rec.nome_conta_bancaria,
+                forma_pagamento_id: rec.forma_pagamento_id,
+                nome_forma_pagamento:
+                  rec.nome_forma_pagamento ||
+                  (rec.forma_pagamento_id ? mapaFormas.get(String(rec.forma_pagamento_id)) : undefined),
               })),
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
