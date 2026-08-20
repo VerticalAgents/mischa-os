@@ -40,7 +40,7 @@ const dataBR = (iso: string) => {
 const URL_RECEBIMENTOS_PADRAO =
   "https://gestaoclick.com/financeiro/movimentacoes_financeiras/index_recebimento/?venda={vendaId}&loja={lojaId}";
 const URL_VENDA_PADRAO =
-  "https://gestaoclick.com/vendas/visualizar/{vendaId}?loja={lojaId}";
+  "https://gestaoclick.com/pedidos/vendas/vendas_produtos/index?id={vendaId}";
 
 /** Extrai o código da venda a partir da descrição do título ("Venda de nº 1765946977"). */
 const extrairCodigoVenda = (descricao?: string): string | null => {
@@ -131,10 +131,14 @@ export default function InadimplenciaPanel() {
         cacheVendas.current.set(numero, venda);
       }
 
+      const templateVenda =
+        config.url_venda && !config.url_venda.includes("vendas/visualizar")
+          ? config.url_venda
+          : URL_VENDA_PADRAO;
       const template =
         destino === "recebimentos"
           ? config.url_recebimentos_venda || URL_RECEBIMENTOS_PADRAO
-          : config.url_venda || URL_VENDA_PADRAO;
+          : templateVenda;
 
       window.open(
         montarUrl(template, {
