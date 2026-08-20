@@ -15,10 +15,12 @@ import {
   ArrowRight,
   TrendingUp,
   Package,
+  CalendarClock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRepDashboardData } from "@/hooks/useRepDashboardData";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
+import AtualizarAgendamentoDialog from "@/components/rep/AtualizarAgendamentoDialog";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,7 @@ export default function RepHome() {
   const navigate = useNavigate();
   const { data, loading, refetch } = useRepDashboardData();
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
+  const [atualizarAgendamentoOpen, setAtualizarAgendamentoOpen] = useState(false);
   const { clientes: inadimplencia, loading: loadingInadimplencia } = useInadimplencia();
 
 
@@ -85,7 +88,7 @@ export default function RepHome() {
         suffix: "un",
       },
       {
-        label: "Taxa confirmação",
+        label: "Taxa confirm.",
         value: Math.round(data.taxaConfirmacaoSemana * 100),
         icon: TrendingUp,
         color: "text-emerald-600",
@@ -155,11 +158,11 @@ export default function RepHome() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground truncate">{kpi.label}</p>
+                    <p className="text-xs text-muted-foreground leading-snug break-words">{kpi.label}</p>
                     <div className="text-2xl sm:text-3xl font-bold mt-1">
                       {loading ? "—" : kpi.value}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug break-words">
                       {kpi.total ? `${kpi.total} cadastrados` : kpi.suffix}
                     </p>
                   </div>
@@ -302,19 +305,32 @@ export default function RepHome() {
 
       {/* Atalhos */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Button className="w-full justify-center h-auto py-3" onClick={() => setNovoClienteOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Cadastrar cliente
+        <Button className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => setNovoClienteOpen(true)}>
+          <Plus className="w-4 h-4 mr-2 shrink-0" /> Cadastrar cliente
         </Button>
-        <Button variant="outline" className="w-full justify-center h-auto py-3" onClick={() => navigate("/rep/clientes")}>
-          <Users className="w-4 h-4 mr-2" /> Ver clientes
+        <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/clientes")}>
+          <Users className="w-4 h-4 mr-2 shrink-0" /> Ver clientes
         </Button>
-        <Button variant="outline" className="w-full justify-center h-auto py-3" onClick={() => navigate("/rep/agendamentos")}>
-          <Calendar className="w-4 h-4 mr-2" /> Agendamentos
+        <Button
+          variant="secondary"
+          className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal col-span-2 md:col-span-1"
+          onClick={() => setAtualizarAgendamentoOpen(true)}
+        >
+          <CalendarClock className="w-4 h-4 mr-2 shrink-0" /> Atualizar agendamento
         </Button>
-        <Button variant="outline" className="w-full justify-center h-auto py-3" onClick={() => navigate("/rep/inadimplencia")}>
-          <AlertCircle className="w-4 h-4 mr-2" /> Inadimplência
+        <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/agendamentos")}>
+          <Calendar className="w-4 h-4 mr-2 shrink-0" /> Agendamentos
+        </Button>
+        <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/inadimplencia")}>
+          <AlertCircle className="w-4 h-4 mr-2 shrink-0" /> Inadimplência
         </Button>
       </div>
+
+      <AtualizarAgendamentoDialog
+        open={atualizarAgendamentoOpen}
+        onOpenChange={setAtualizarAgendamentoOpen}
+        onSalvo={() => refetch()}
+      />
 
       <ClienteFormDialog
         open={novoClienteOpen}
