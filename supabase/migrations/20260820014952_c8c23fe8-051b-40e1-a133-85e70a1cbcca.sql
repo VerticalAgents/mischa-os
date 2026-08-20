@@ -1,0 +1,1 @@
+UPDATE public.historico_producao SET data_producao = '2026-08-19', updated_at = now() WHERE id = 'e8fd8057-9680-4f90-8108-82d9cb87e216';
