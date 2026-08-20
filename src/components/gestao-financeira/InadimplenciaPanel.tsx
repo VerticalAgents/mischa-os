@@ -396,62 +396,49 @@ export default function InadimplenciaPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Clientes com atraso
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-destructive">
-              {totais.clientesAtrasados}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Valor atrasado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-destructive">
-              {brl(totais.valorAtrasado)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total em aberto
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{brl(totais.valorEmAberto)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Maior atraso
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{totais.maiorAtraso} dias</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        {[
+          {
+            label: "Clientes com atraso",
+            valor: String(totais.clientesAtrasados),
+            destaque: true,
+          },
+          { label: "Valor atrasado", valor: brl(totais.valorAtrasado), destaque: true },
+          { label: "Total em aberto", valor: brl(totais.valorEmAberto), destaque: false },
+          { label: "Maior atraso", valor: `${totais.maiorAtraso} dias`, destaque: false },
+        ].map((kpi) => (
+          <Card key={kpi.label}>
+            <CardContent className="p-3 sm:p-4">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
+                {kpi.label}
+              </div>
+              <div
+                className={`mt-1 text-lg font-semibold tabular-nums sm:text-2xl ${
+                  kpi.destaque ? "text-destructive" : ""
+                }`}
+              >
+                {kpi.valor}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
-        <CardHeader className="gap-3">
+        <CardHeader className="gap-3 p-3 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base">Títulos em aberto (GestãoClick)</CardTitle>
+            <CardTitle className="text-sm sm:text-base">
+              Títulos em aberto (GestãoClick)
+            </CardTitle>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Tabs value={filtro} onValueChange={(v) => setFiltro(v as typeof filtro)}>
                 <TabsList className="grid w-full grid-cols-2 sm:w-auto">
-                  <TabsTrigger value="atrasados">Atrasados</TabsTrigger>
-                  <TabsTrigger value="todos">Todos em aberto</TabsTrigger>
+                  <TabsTrigger value="atrasados" className="text-xs sm:text-sm">
+                    Atrasados
+                  </TabsTrigger>
+                  <TabsTrigger value="todos" className="text-xs sm:text-sm">
+                    Todos em aberto
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
               {!isRepresentante && (
@@ -461,23 +448,195 @@ export default function InadimplenciaPanel() {
                   className="h-10 w-full sm:w-auto"
                 />
               )}
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Buscar cliente"
-                  className="pl-8 sm:w-56"
-                />
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar cliente"
+                    className="pl-8 sm:w-56"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => refetch()}
+                  title="Atualizar"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="outline" size="icon" onClick={() => refetch()} title="Atualizar">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+          {/* Mobile: lista em cards */}
+          <div className="space-y-2 md:hidden">
+            {lista.length === 0 ? (
+              <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
+                Nenhum título {filtro === "atrasados" ? "atrasado" : "em aberto"} encontrado.
+              </div>
+            ) : (
+              lista.map((c) => {
+                const aberto = expandido === c.gestaoClickClienteId;
+                return (
+                  <div key={c.gestaoClickClienteId} className="rounded-lg border bg-card">
+                    <button
+                      type="button"
+                      className="flex w-full items-start gap-2 p-3 text-left"
+                      onClick={() => setExpandido(aberto ? null : c.gestaoClickClienteId)}
+                    >
+                      {aberto ? (
+                        <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{c.clienteNome}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {c.qtdAtrasados > 0 ? (
+                            <Badge variant="destructive" className="text-[11px]">
+                              {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[11px]">
+                              Em dia
+                            </Badge>
+                          )}
+                          {c.maiorAtraso > 0 && (
+                            <span className="text-[11px] text-muted-foreground">
+                              até {c.maiorAtraso} dias
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                          <span className="text-muted-foreground">
+                            Em aberto{" "}
+                            <span className="font-semibold tabular-nums text-foreground">
+                              {brl(c.valorEmAberto)}
+                            </span>
+                          </span>
+                          {c.valorAtrasado > 0 && (
+                            <span className="font-semibold tabular-nums text-destructive">
+                              {brl(c.valorAtrasado)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {!isRepresentante && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          title="Ações em massa"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setClienteMassa(c);
+                          }}
+                        >
+                          <ListChecks className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </button>
+
+                    {aberto && (
+                      <div className="space-y-2 border-t bg-muted/30 p-2">
+                        {c.titulos.map((t) => (
+                          <div
+                            key={t.id}
+                            className="rounded-md border bg-background p-2.5 text-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 text-xs font-medium">
+                                {t.descricao || `Título ${t.codigo || t.id}`}
+                              </div>
+                              <span
+                                className={`shrink-0 text-sm font-semibold tabular-nums ${
+                                  t.atrasado ? "text-destructive" : ""
+                                }`}
+                              >
+                                {brl(t.valor)}
+                              </span>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                              <span>Venc. {dataBR(t.dataVencimento)}</span>
+                              {t.atrasado && (
+                                <span className="text-destructive">
+                                  {t.diasAtraso} dias em atraso
+                                </span>
+                              )}
+                              {t.formaPagamento && (
+                                <FormaPagamentoBadge forma={t.formaPagamento} />
+                              )}
+                            </div>
+                            {!isRepresentante && (
+                              <div className="mt-2 flex items-center gap-1 border-t pt-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() => {
+                                    setEditando({
+                                      id: t.id,
+                                      descricao: t.descricao,
+                                      dataVencimento: t.dataVencimento,
+                                    });
+                                    setNovaData(t.dataVencimento);
+                                  }}
+                                >
+                                  <CalendarClock className="mr-1 h-3.5 w-3.5" />
+                                  Vencimento
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() => {
+                                    setSituacaoTitulo({
+                                      id: t.id,
+                                      descricao: t.descricao,
+                                      valor: t.valor,
+                                      formaPagamento: t.formaPagamento,
+                                    });
+                                    setDataLiquidacao(hojeISO());
+                                    setFormaSelecionada("");
+                                  }}
+                                >
+                                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                                  Receber
+                                </Button>
+                                {extrairCodigoVenda(t.descricao) && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="ml-auto h-8 w-8"
+                                    disabled={abrindo === `${t.id}:recebimentos`}
+                                    title="Abrir no GestãoClick"
+                                    onClick={() => abrirNoGestaoClick(t, "recebimentos")}
+                                  >
+                                    {abrindo === `${t.id}:recebimentos` ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Receipt className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop: tabela */}
+          <div className="hidden rounded-md border md:block">
             <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow>
