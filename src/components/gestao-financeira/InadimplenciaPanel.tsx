@@ -16,6 +16,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertTriangle,
+  CalendarClock,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -26,6 +27,15 @@ import {
 } from "lucide-react";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
 import { RepresentantesFilter } from "@/components/expedicao/components/RepresentantesFilter";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -66,6 +76,55 @@ export default function InadimplenciaPanel() {
   const [filtroRepresentantes, setFiltroRepresentantes] = useState<number[]>([]);
   const [expandido, setExpandido] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<string | null>(null);
+  const [editando, setEditando] = useState<
+    { id: string; descricao?: string; dataVencimento: string } | null
+  >(null);
+  const [novaData, setNovaData] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const salvarVencimento = async () => {
+    if (!editando || !novaData) return;
+    setSalvando(true);
+    try {
+      const { data: configData } = await supabase
+        .from("integracoes_config")
+        .select("config")
+        .eq("integracao", "gestaoclick")
+        .maybeSingle();
+
+      const config = (configData?.config || {}) as {
+        access_token?: string;
+        secret_token?: string;
+      };
+      if (!config.access_token || !config.secret_token) {
+        toast.error("Integração com o GestãoClick não configurada");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("gestaoclick-proxy", {
+        body: {
+          action: "atualizar_vencimento_recebimento",
+          access_token: config.access_token,
+          secret_token: config.secret_token,
+          recebimento_id: editando.id,
+          data_vencimento: novaData,
+        },
+      });
+
+      if (error || !(data as any)?.success) {
+        const msg =
+          (data as any)?.error || error?.message || "Não foi possível alterar o vencimento";
+        toast.error(msg);
+        return;
+      }
+
+      toast.success(`Vencimento alterado para ${dataBR(novaData)}`);
+      setEditando(null);
+      await refetch();
+    } finally {
+      setSalvando(false);
+    }
+  };
   // cache codigo da venda -> dados resolvidos (evita rechamar a API no mesmo sessão)
   const cacheVendas = useRef<Map<string, { id: string; hash: string; lojaId: string }>>(
     new Map()
@@ -368,6 +427,22 @@ export default function InadimplenciaPanel() {
                                       >
                                         {brl(t.valor)}
                                       </span>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        title="Alterar data de vencimento no GestãoClick"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditando({
+                                            id: t.id,
+                                            descricao: t.descricao,
+                                            dataVencimento: t.dataVencimento,
+                                          });
+                                          setNovaData(t.dataVencimento);
+                                        }}
+                                      >
+                                        <CalendarClock className="h-4 w-4" />
+                                      </Button>
                                       {extrairCodigoVenda(t.descricao) ? (
                                         <>
                                           <Button
@@ -424,6 +499,49 @@ export default function InadimplenciaPanel() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar vencimento</DialogTitle>
+            <DialogDescription className="truncate">
+              {editando?.descricao || `Título ${editando?.id}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Vencimento atual:{" "}
+              <span className="font-medium text-foreground">
+                {editando ? dataBR(editando.dataVencimento) : ""}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nova-data-vencimento">Novo vencimento</Label>
+              <Input
+                id="nova-data-vencimento"
+                type="date"
+                value={novaData}
+                onChange={(e) => setNovaData(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A alteração é gravada direto no GestãoClick (título a receber).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditando(null)} disabled={salvando}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={salvarVencimento}
+              disabled={salvando || !novaData || novaData === editando?.dataVencimento}
+            >
+              {salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

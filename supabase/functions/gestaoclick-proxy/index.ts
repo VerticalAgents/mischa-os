@@ -2536,6 +2536,103 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'atualizar_vencimento_recebimento': {
+        // Altera a data de vencimento de um título a receber no GestaoClick
+        const { access_token, secret_token, recebimento_id, data_vencimento } = params;
+
+        if (!access_token || !secret_token || !recebimento_id || !data_vencimento) {
+          return new Response(
+            JSON.stringify({ error: 'Parâmetros obrigatórios: recebimento_id, data_vencimento e tokens' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data_vencimento))) {
+          return new Response(
+            JSON.stringify({ error: 'data_vencimento deve estar no formato YYYY-MM-DD' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const gcHeaders = {
+          'Content-Type': 'application/json',
+          'access-token': access_token,
+          'secret-access-token': secret_token,
+        };
+
+        // 1) Ler o título atual (para retorno/validação)
+        const getResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'GET',
+          headers: gcHeaders,
+        });
+        const getJson = await getResp.json().catch(() => null);
+        const atual = getJson?.data?.Recebimento || getJson?.data || null;
+
+        if (!getResp.ok || !atual?.id) {
+          console.error('[gestaoclick-proxy] recebimento não encontrado:', recebimento_id, JSON.stringify(getJson));
+          return new Response(
+            JSON.stringify({ error: `Título ${recebimento_id} não encontrado no GestãoClick` }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (String(atual.liquidado ?? '0') === '1') {
+          return new Response(
+            JSON.stringify({ error: 'Título já liquidado — não é possível alterar o vencimento' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 2) Atualizar o vencimento (o GC exige os campos principais no PUT)
+        const payload: Record<string, unknown> = {
+          data_vencimento,
+          valor: atual.valor,
+          cliente_id: atual.cliente_id,
+          descricao: atual.descricao,
+        };
+        if (atual.conta_bancaria_id) payload.conta_bancaria_id = atual.conta_bancaria_id;
+        if (atual.plano_contas_id) payload.plano_contas_id = atual.plano_contas_id;
+        if (atual.forma_pagamento_id) payload.forma_pagamento_id = atual.forma_pagamento_id;
+
+        const putResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'PUT',
+          headers: gcHeaders,
+          body: JSON.stringify(payload),
+        });
+        const putText = await putResp.text();
+        console.log('[gestaoclick-proxy] PUT recebimento status', putResp.status, putText.slice(0, 500));
+
+        // 3) Conferir no GC se a data realmente mudou (o GC responde 200 com avisos de PHP)
+        const confResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
+          method: 'GET',
+          headers: gcHeaders,
+        });
+        const confJson = await confResp.json().catch(() => null);
+        const confirmado = confJson?.data?.Recebimento || confJson?.data || null;
+        const dataConfirmada = String(confirmado?.data_vencimento || '').slice(0, 10);
+
+        if (!putResp.ok || dataConfirmada !== data_vencimento) {
+          return new Response(
+            JSON.stringify({
+              error: 'GestãoClick recusou a alteração do vencimento',
+              data_vencimento_atual: dataConfirmada || null,
+              detalhe: putText.slice(0, 500),
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            recebimento_id: String(recebimento_id),
+            data_vencimento_anterior: atual.data_vencimento,
+            data_vencimento: data_vencimento,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'buscar_pagamentos_abertos': {
         const { access_token, secret_token, dias_futuros, meses_retroativos } = params;
         if (!access_token || !secret_token) {
