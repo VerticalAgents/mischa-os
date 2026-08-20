@@ -419,13 +419,27 @@ export default function InadimplenciaPanel() {
                           </TableCell>
                           <TableCell className="text-right">{brl(c.valorEmAberto)}</TableCell>
                           <TableCell className="text-right">
-                            {c.qtdAtrasados > 0 ? (
-                              <Badge variant="destructive">
-                                {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">Em dia</Badge>
-                            )}
+                            <div className="flex items-center justify-end gap-1">
+                              {c.qtdAtrasados > 0 ? (
+                                <Badge variant="destructive">
+                                  {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">Em dia</Badge>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                title="Ações em massa nos títulos deste cliente"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setClienteMassa(c);
+                                }}
+                              >
+                                <ListChecks className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {aberto && (
@@ -469,6 +483,22 @@ export default function InadimplenciaPanel() {
                                         }}
                                       >
                                         <CalendarClock className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        title="Marcar como recebido no GestãoClick"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSituacaoTitulo({
+                                            id: t.id,
+                                            descricao: t.descricao,
+                                            valor: t.valor,
+                                          });
+                                          setDataLiquidacao(hojeISO());
+                                        }}
+                                      >
+                                        <CheckCircle2 className="h-4 w-4" />
                                       </Button>
                                       {extrairCodigoVenda(t.descricao) ? (
                                         <>
