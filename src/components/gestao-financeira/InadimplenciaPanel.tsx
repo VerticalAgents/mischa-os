@@ -604,7 +604,7 @@ export default function InadimplenciaPanel() {
                                         <CheckCircle2 className="h-4 w-4" />
                                       </Button>
                                       {extrairCodigoVenda(t.descricao) ? (
-                                        <>
+                                        <span className="flex items-center gap-1">
                                           <Button
                                             size="sm"
                                             variant="ghost"
@@ -637,7 +637,7 @@ export default function InadimplenciaPanel() {
                                               <ExternalLink className="h-4 w-4" />
                                             )}
                                           </Button>
-                                        </>
+                                        </span>
                                       ) : (
                                         <span className="text-xs text-muted-foreground">
                                           sem venda vinculada
