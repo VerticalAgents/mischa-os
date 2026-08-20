@@ -421,11 +421,11 @@ export default function InadimplenciaPanel() {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {c.qtdAtrasados > 0 ? (
-                                <Badge variant="destructive" className="whitespace-nowrap">
+                                <Badge variant="destructive" className="w-32 justify-center whitespace-nowrap">
                                   {c.qtdAtrasados} atrasado{c.qtdAtrasados > 1 ? "s" : ""}
                                 </Badge>
                               ) : (
-                                <Badge variant="outline" className="whitespace-nowrap">
+                                <Badge variant="outline" className="w-32 justify-center whitespace-nowrap">
                                   Em dia
                                 </Badge>
                               )}
