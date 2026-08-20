@@ -52,25 +52,25 @@ export function useInadimplencia() {
     enabled: !loadingRep,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<ClienteInadimplente[]> => {
-      const { data: configData, error: configError } = await supabase
+      const { data: configData } = await supabase
         .from("integracoes_config")
         .select("config")
         .eq("integracao", "gestaoclick")
         .maybeSingle();
 
-      if (configError) throw configError;
+      // Contas de representante/staff não têm acesso à integração (RLS por user_id).
+      // Nesse caso, a edge function resolve os tokens do dono da conta (admin).
       const config = (configData?.config || {}) as { access_token?: string; secret_token?: string };
-      if (!config.access_token || !config.secret_token) {
-        throw new Error("Integração com o GestãoClick não configurada");
-      }
+      const temTokens = !!config.access_token && !!config.secret_token;
 
       const [{ data: fnData, error: fnError }, { data: clientesData, error: clientesError }] =
         await Promise.all([
           supabase.functions.invoke("gestaoclick-proxy", {
             body: {
               action: "buscar_recebimentos_abertos",
-              access_token: config.access_token,
-              secret_token: config.secret_token,
+              ...(temTokens
+                ? { access_token: config.access_token, secret_token: config.secret_token }
+                : {}),
               meses_retroativos: 12,
             },
           }),

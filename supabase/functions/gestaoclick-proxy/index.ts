@@ -77,6 +77,44 @@ async function fetchGCPaginado(
 
 const numGC = (v: any): number => parseFloat(String(v ?? '0').replace(',', '.')) || 0;
 
+// Helper: resolve os tokens do GestaoClick do "dono" da conta (admin) a partir
+// do usuario autenticado. Usado em acoes SOMENTE LEITURA para que contas de
+// representante/staff (que nao tem conta no GC) possam visualizar os dados.
+async function resolveTokensDoDono(
+  supabase: any,
+  userId: string | null,
+): Promise<{ access_token: string; secret_token: string } | null> {
+  if (!userId) return null;
+
+  let ownerId: string | null = null;
+
+  const { data: repAccount } = await supabase
+    .from('representante_accounts')
+    .select('owner_id, ativo')
+    .eq('auth_user_id', userId)
+    .eq('ativo', true)
+    .maybeSingle();
+  if (repAccount?.owner_id) ownerId = repAccount.owner_id as string;
+
+  if (!ownerId) {
+    const { data: staffOwner } = await supabase.rpc('get_owner_id', { _user_id: userId });
+    if (staffOwner) ownerId = staffOwner as string;
+  }
+
+  if (!ownerId) ownerId = userId;
+
+  const { data: configData } = await supabase
+    .from('integracoes_config')
+    .select('config')
+    .eq('user_id', ownerId)
+    .eq('integracao', 'gestaoclick')
+    .maybeSingle();
+
+  const cfg = (configData?.config || {}) as GestaoClickConfig;
+  if (!cfg.access_token || !cfg.secret_token) return null;
+  return { access_token: cfg.access_token, secret_token: cfg.secret_token };
+}
+
 // Helper: Calculate data_vencimento based on payment method
 function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: number | null): string {
   const dataVenda = new Date();
@@ -2434,13 +2472,24 @@ Deno.serve(async (req) => {
 
       case 'buscar_recebimentos_abertos': {
         // Buscar TODOS os recebimentos em aberto (liquidado=ab) com paginacao
-        const { access_token, secret_token, meses_retroativos } = params;
+        const { meses_retroativos } = params;
+
+        // Acao somente leitura: se o chamador nao mandar tokens (ex.: conta de
+        // representante, que nao tem acesso a integracao), resolvemos os tokens
+        // do dono da conta a partir do JWT validado acima.
+        let access_token: string | undefined = params.access_token;
+        let secret_token: string | undefined = params.secret_token;
 
         if (!access_token || !secret_token) {
-          return new Response(
-            JSON.stringify({ error: 'Tokens não fornecidos' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          const doDono = await resolveTokensDoDono(supabase, userId);
+          if (!doDono) {
+            return new Response(
+              JSON.stringify({ error: 'Integração com o GestãoClick não configurada' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          access_token = doDono.access_token;
+          secret_token = doDono.secret_token;
         }
 
         const mesesRetro = Number(meses_retroativos) > 0 ? Number(meses_retroativos) : 12;
