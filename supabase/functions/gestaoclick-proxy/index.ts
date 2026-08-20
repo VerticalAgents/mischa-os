@@ -2662,7 +2662,7 @@ Deno.serve(async (req) => {
 
       case 'atualizar_situacao_recebimento': {
         // Altera a situação (em aberto / recebido) de um título a receber, sem mexer no valor
-        const { access_token, secret_token, recebimento_id, situacao, data_liquidacao } = params;
+        const { access_token, secret_token, recebimento_id, situacao, data_liquidacao, forma_pagamento_id } = params;
 
         if (!access_token || !secret_token || !recebimento_id || !situacao) {
           return new Response(
@@ -2714,7 +2714,8 @@ Deno.serve(async (req) => {
         };
         if (atualSit.conta_bancaria_id) payloadSit.conta_bancaria_id = atualSit.conta_bancaria_id;
         if (atualSit.plano_contas_id) payloadSit.plano_contas_id = atualSit.plano_contas_id;
-        if (atualSit.forma_pagamento_id) payloadSit.forma_pagamento_id = atualSit.forma_pagamento_id;
+        const formaFinal = forma_pagamento_id ? String(forma_pagamento_id) : atualSit.forma_pagamento_id;
+        if (formaFinal) payloadSit.forma_pagamento_id = formaFinal;
 
         const putSitResp = await fetch(`${GESTAOCLICK_BASE_URL}/recebimentos/${recebimento_id}`, {
           method: 'PUT',
@@ -2748,6 +2749,43 @@ Deno.serve(async (req) => {
             recebimento_id: String(recebimento_id),
             situacao: liquidar ? 'recebido' : 'em_aberto',
             data_liquidacao: confSit?.data_liquidacao || null,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'listar_formas_pagamento_gc': {
+        const { access_token, secret_token } = params;
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const formasResp = await fetch(`${GESTAOCLICK_BASE_URL}/formas_pagamentos`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+        if (!formasResp.ok) {
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar formas de pagamento: ${formasResp.status}` }),
+            { status: formasResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const formasJson = await formasResp.json().catch(() => null);
+        const lista = formasJson?.data || [];
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            formas_pagamento: Array.isArray(lista)
+              ? lista.map((f: any) => ({ id: String(f.id ?? f.forma_pagamento_id ?? ''), nome: f.nome || f.forma_pagamento || '' }))
+              : [],
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
