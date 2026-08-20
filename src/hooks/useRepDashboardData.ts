@@ -92,14 +92,18 @@ export function useRepDashboardData() {
       const entreguesSemana = agendamentosNaSemana.filter(
         (a) => a.status_agendamento === "Entregue"
       ).length;
+      const confirmadosOuAvancados = agendamentosNaSemana.filter((a) =>
+        ["Confirmado", "Separado", "Despachado", "Entregue"].includes(a.status_agendamento)
+      ).length;
       const totalUnidadesSemana = agendamentosNaSemana.reduce(
         (sum, a) => sum + (a.quantidade_total || 0),
         0
       );
       const taxaConfirmacaoSemana =
         agendamentosNaSemana.length > 0
-          ? Math.round(((confirmadosSemana + entreguesSemana) / agendamentosNaSemana.length) * 100) / 100
+          ? Math.round((confirmadosOuAvancados / agendamentosNaSemana.length) * 100) / 100
           : 0;
+
 
       const previstosSemana = agendamentosNaSemana
         .filter((a) => a.status_agendamento === "Previsto")
