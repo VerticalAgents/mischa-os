@@ -77,6 +77,44 @@ async function fetchGCPaginado(
 
 const numGC = (v: any): number => parseFloat(String(v ?? '0').replace(',', '.')) || 0;
 
+// Helper: resolve os tokens do GestaoClick do "dono" da conta (admin) a partir
+// do usuario autenticado. Usado em acoes SOMENTE LEITURA para que contas de
+// representante/staff (que nao tem conta no GC) possam visualizar os dados.
+async function resolveTokensDoDono(
+  supabase: any,
+  userId: string | null,
+): Promise<{ access_token: string; secret_token: string } | null> {
+  if (!userId) return null;
+
+  let ownerId: string | null = null;
+
+  const { data: repAccount } = await supabase
+    .from('representante_accounts')
+    .select('owner_id, ativo')
+    .eq('auth_user_id', userId)
+    .eq('ativo', true)
+    .maybeSingle();
+  if (repAccount?.owner_id) ownerId = repAccount.owner_id as string;
+
+  if (!ownerId) {
+    const { data: staffOwner } = await supabase.rpc('get_owner_id', { _user_id: userId });
+    if (staffOwner) ownerId = staffOwner as string;
+  }
+
+  if (!ownerId) ownerId = userId;
+
+  const { data: configData } = await supabase
+    .from('integracoes_config')
+    .select('config')
+    .eq('user_id', ownerId)
+    .eq('integracao', 'gestaoclick')
+    .maybeSingle();
+
+  const cfg = (configData?.config || {}) as GestaoClickConfig;
+  if (!cfg.access_token || !cfg.secret_token) return null;
+  return { access_token: cfg.access_token, secret_token: cfg.secret_token };
+}
+
 // Helper: Calculate data_vencimento based on payment method
 function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: number | null): string {
   const dataVenda = new Date();
