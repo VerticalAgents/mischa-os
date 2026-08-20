@@ -28,11 +28,11 @@ const IndicadorCardComTooltip = memo(({
   if (isLoading) {
     return (
       <Card className={className}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-4 w-4 rounded" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
           <Skeleton className="h-8 w-16 mb-1" />
           <Skeleton className="h-3 w-24" />
         </CardContent>
@@ -50,13 +50,13 @@ const IndicadorCardComTooltip = memo(({
       )}
       onClick={onClick}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-left">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+        <CardTitle className="text-xs sm:text-sm font-medium text-left leading-snug break-words">{title}</CardTitle>
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-left">{value}</div>
-        <p className="text-xs text-muted-foreground text-left">{subtitle}</p>
+      <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+        <div className="text-xl sm:text-2xl font-bold text-left">{value}</div>
+        <p className="text-[10px] sm:text-xs text-muted-foreground text-left leading-snug break-words">{subtitle}</p>
       </CardContent>
     </Card>
   );
