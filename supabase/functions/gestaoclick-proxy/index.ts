@@ -36,6 +36,47 @@ function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
+// Helper: GET paginado genérico na API do GestaoClick
+async function fetchGCPaginado(
+  path: string,
+  access_token: string,
+  secret_token: string,
+  chave?: string,
+): Promise<any[]> {
+  const todos: any[] = [];
+  let pagina = 1;
+  let totalPaginas = 1;
+
+  do {
+    const sep = path.includes('?') ? '&' : '?';
+    const resp = await fetch(`${GESTAOCLICK_BASE_URL}/${path}${sep}pagina=${pagina}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'access-token': access_token,
+        'secret-access-token': secret_token,
+      },
+    });
+
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Erro ao consultar ${path}: ${resp.status} ${errorText.slice(0, 200)}`);
+    }
+
+    const json = await resp.json();
+    const lista = json?.data || [];
+    lista.forEach((item: any) => todos.push(chave ? (item[chave] || item) : item));
+
+    if (json?.meta?.total_paginas) totalPaginas = json.meta.total_paginas;
+    if (lista.length === 0) break;
+    pagina++;
+  } while (pagina <= totalPaginas && pagina <= 50);
+
+  return todos;
+}
+
+const numGC = (v: any): number => parseFloat(String(v ?? '0').replace(',', '.')) || 0;
+
 // Helper: Calculate data_vencimento based on payment method
 function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: number | null): string {
   const dataVenda = new Date();
