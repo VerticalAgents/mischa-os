@@ -753,11 +753,13 @@ export default function InadimplenciaPanel() {
                   />
                 </SelectTrigger>
                 <SelectContent className="z-[100]">
-                  {formasGC.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.nome}
-                    </SelectItem>
-                  ))}
+                  {formasGC
+                    .filter((f) => f?.id != null && String(f.id).trim() !== "")
+                    .map((f) => (
+                      <SelectItem key={String(f.id)} value={String(f.id)}>
+                        {f.nome || `Forma ${f.id}`}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
