@@ -8,6 +8,7 @@ import CustosTab from "@/components/gestao-financeira/tabs/CustosTab";
 import { DRETab } from "@/components/gestao-financeira/tabs/DRETab";
 import { ParcelamentosTab } from "@/components/gestao-financeira/tabs/ParcelamentosTab";
 import InadimplenciaPanel from "@/components/gestao-financeira/InadimplenciaPanel";
+import FluxoCaixaPanel from "@/components/gestao-financeira/FluxoCaixaPanel";
 import { useRoutePermission } from "@/hooks/useRolePermissions";
 import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
@@ -38,6 +39,7 @@ export default function GestaoFinanceira() {
               { id: "ponto-equilibrio", label: "Ponto de Equilíbrio" },
               { id: "parcelamentos", label: "Parcelamentos" },
               { id: "inadimplencia", label: "Inadimplência" },
+              { id: "fluxo-caixa", label: "Fluxo de Caixa" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -53,7 +55,7 @@ export default function GestaoFinanceira() {
             ))}
           </div>
           {/* Desktop */}
-          <TabsList className="hidden lg:grid w-full grid-cols-8 h-auto">
+          <TabsList className="hidden lg:grid w-full grid-cols-9 h-auto">
             <TabsTrigger value="resumo" className="text-xs sm:text-sm">Resumo</TabsTrigger>
             <TabsTrigger value="indicadores" className="text-xs sm:text-sm">Indicadores</TabsTrigger>
             <TabsTrigger value="custos" className="text-xs sm:text-sm">Custos</TabsTrigger>
@@ -62,6 +64,7 @@ export default function GestaoFinanceira() {
             <TabsTrigger value="ponto-equilibrio" className="text-xs sm:text-sm">Ponto de Equilíbrio</TabsTrigger>
             <TabsTrigger value="parcelamentos" className="text-xs sm:text-sm">Parcelamentos</TabsTrigger>
             <TabsTrigger value="inadimplencia" className="text-xs sm:text-sm">Inadimplência</TabsTrigger>
+            <TabsTrigger value="fluxo-caixa" className="text-xs sm:text-sm">Fluxo de Caixa</TabsTrigger>
           </TabsList>
         </div>
 
@@ -107,6 +110,10 @@ export default function GestaoFinanceira() {
 
         <TabsContent value="inadimplencia" className="space-y-6">
           <InadimplenciaPanel />
+        </TabsContent>
+
+        <TabsContent value="fluxo-caixa" className="space-y-6">
+          <FluxoCaixaPanel />
         </TabsContent>
       </Tabs>
     </div>
