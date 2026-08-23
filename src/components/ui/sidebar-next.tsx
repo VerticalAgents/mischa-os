@@ -141,6 +141,16 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
             Bakery
           </p>
         </div>
+        {/* Recolher: fica no cabeçalho do bloco, onde se procura por ele. */}
+        <button
+          type="button"
+          onClick={alternar}
+          aria-label="Recolher menu"
+          title="Recolher menu"
+          className="ml-auto hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-controle bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+        >
+          <PanelLeftClose className="h-[17px] w-[17px]" />
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
@@ -229,15 +239,6 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
           </span>
           <span className="truncate">Alertas</span>
         </Link>
-        <button
-          type="button"
-          onClick={alternar}
-          aria-label="Recolher menu"
-          title="Recolher menu"
-          className="hidden lg:flex h-9 w-9 shrink-0 items-center justify-center rounded-controle text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          <PanelLeftClose className="h-[18px] w-[18px]" />
-        </button>
       </div>
     </>
   );
@@ -307,8 +308,10 @@ export function TopNavBar() {
 
   return (
     <div ref={ref} className="fixed left-0 right-0 top-0 z-40 hidden px-3 pt-3 lg:block">
+      {/* pr-24: o avatar e o botão de tema são fixos no canto superior direito;
+          sem a folga eles cairiam por cima do sino de alertas. */}
       <div
-        className="flex h-14 items-center gap-1 rounded-bloco border px-2.5 shadow-bloco"
+        className="flex h-14 items-center gap-1 rounded-bloco border pl-2.5 pr-24 shadow-bloco"
         style={{ backgroundColor: VERMELHO, borderColor: BORDA_INTERNA }}
       >
         <button
