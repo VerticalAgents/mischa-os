@@ -20,11 +20,28 @@ export default {
 		},
 		extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        display: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         serif: ['Source Serif 4', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
 			colors: {
+				/* chao da aplicacao: meio tom abaixo do bloco (ver DESIGN.md secao 2) */
+				ground: 'hsl(var(--app-ground))',
+				/* escalas em hex: aceitam opacidade (/10, /12, /25) */
+				brand: {
+					50: '#e8fbf2', 100: '#c7f5e0', 200: '#93ecc4', 300: '#57e2a5', 400: '#25d98d',
+					500: '#16bd79', 600: '#0f9d64', 700: '#0b7d50', 800: '#097046', 900: '#006239',
+				},
+				/* laranja = acao irreversivel. Nao decorativo, nao entra em grafico nem badge. */
+				acao: {
+					50: '#fff4f0', 100: '#ffe4da', 200: '#ffb89e', 300: '#ff9873', 400: '#ff7a52',
+					500: '#ff5524', 600: '#e04415', 700: '#b8350f', 800: '#8f2a0c', 900: '#6b2009',
+				},
+				neutro: {
+					50: '#fdfdfd', 100: '#f6f6f6', 200: '#ededed', 300: '#dfdfdf', 400: '#c4c4c4',
+					500: '#909090', 600: '#707070', 700: '#525252', 800: '#3a3a3a', 900: '#202020', 950: '#171717',
+				},
 				chart: {
 					'1': 'hsl(var(--chart-1))',
 					'2': 'hsl(var(--chart-2))',
@@ -77,10 +94,27 @@ export default {
 				}
 			},
 			borderRadius: {
+				/* Bloco = 28px, Controle = 8px. NUNCA o mesmo raio para os dois. */
+				bloco: '28px',
+				controle: 'var(--radius)',
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			boxShadow: {
+				tema: '0 1px 3px 0 rgb(0 0 0 / 0.17)',
+				'tema-md': '0 2px 6px -1px rgb(0 0 0 / 0.17), 0 1px 3px -1px rgb(0 0 0 / 0.12)',
+				bloco: '0 1px 3px 0 rgb(0 0 0 / 0.14), 0 12px 28px -12px rgb(0 0 0 / 0.22)',
+				glow: '0 0 30px rgb(37 217 141 / 0.28)',
+				'glow-sm': '0 0 20px rgb(37 217 141 / 0.14)',
+			},
+			letterSpacing: { tema: 'var(--letter-spacing)' },
+			transitionTimingFunction: {
+				'out-expo': 'cubic-bezier(.16, 1, .3, 1)',
+				'out-quart': 'cubic-bezier(.25, 1, .5, 1)',
+				mola: 'cubic-bezier(.34, 1.56, .64, 1)',
+			},
+			transitionDuration: { press: '80ms' },
 			keyframes: {
 				'accordion-down': {
 					from: {
