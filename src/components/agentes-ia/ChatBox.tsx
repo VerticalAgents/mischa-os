@@ -7,6 +7,7 @@ import { Bot, Loader2, Send, Sparkles } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type Message = {
   role: "user" | "assistant";
@@ -49,11 +50,19 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
 
   const sendChat = useCallback(
     async (userMessages: Message[]) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        throw new Error("Unauthenticated");
+      }
+
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0Z3V6Z291dXJxb3BlY2N2enZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyMDI1NzEsImV4cCI6MjA2Mzc3ODU3MX0.JrJbtkh8MUA5DA5v2MSPHfb2pRaz08fU-HibNYVTHwE`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           agenteId,
@@ -69,6 +78,11 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
       if (response.status === 402) {
         toast.error("Créditos insuficientes. Adicione créditos no workspace.");
         throw new Error("Payment required");
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        toast.error("Você não tem permissão para usar a Mischa IA.");
+        throw new Error("Unauthorized");
       }
 
       if (!response.ok) {
@@ -104,7 +118,7 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
       onMessageSent?.();
     } catch (error) {
       console.error("Erro no chat:", error);
-      if (!(error instanceof Error) || !["Rate limit", "Payment required"].includes(error.message)) {
+      if (!(error instanceof Error) || !["Rate limit", "Payment required", "Unauthorized", "Unauthenticated"].includes(error.message)) {
         toast.error("Erro ao processar sua mensagem. Tente novamente.");
       }
     } finally {
