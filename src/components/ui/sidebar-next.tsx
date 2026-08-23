@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { create } from "zustand";
+import { useSidebarStore } from "@/lib/sidebar-store";
 import { Badge } from "@/components/ui/badge";
 import { Bell, ChevronDown, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -24,29 +24,9 @@ import mischasLogo from "@/assets/mischas-logo.png";
 
 const VERMELHO = "#d1193a";
 const BORDA_INTERNA = "rgba(255,255,255,0.15)";
-const CHAVE_ESTADO = "sidebar_expandido";
 
-type EstadoSidebar = { expandido: boolean; alternar: () => void };
-
-export const useSidebarStore = create<EstadoSidebar>((set) => ({
-  expandido: (() => {
-    try {
-      return localStorage.getItem(CHAVE_ESTADO) !== "false";
-    } catch {
-      return true;
-    }
-  })(),
-  alternar: () =>
-    set((s) => {
-      const proximo = !s.expandido;
-      try {
-        localStorage.setItem(CHAVE_ESTADO, String(proximo));
-      } catch {
-        /* modo privado do Safari */
-      }
-      return { expandido: proximo };
-    }),
-}));
+// O estado mora em @/lib/sidebar-store — o portal do representante usa o mesmo.
+export { useSidebarStore };
 
 function itemMatchesRoute(itemPath: string, routeKey: string): boolean {
   if (itemPath === routeKey) return true;
@@ -355,7 +335,7 @@ export function TopNavBar() {
                 <Link
                   key={grupo.variant}
                   to={item.path}
-                  className={cn(classeLinha(temFilhoAtivo), "py-2 whitespace-nowrap")}
+                  className={cn(classeLinha(temFilhoAtivo), "py-2 px-2 xl:px-3 whitespace-nowrap")}
                 >
                   <span className={temFilhoAtivo ? "text-white" : "text-white/60"}>
                     {item.icon}
@@ -384,7 +364,9 @@ export function TopNavBar() {
                   onClick={() => setAberto((a) => (a === grupo.variant ? null : grupo.variant))}
                   className={cn(
                     classeLinha(temFilhoAtivo || aberto === grupo.variant),
-                    "py-2 whitespace-nowrap"
+                    // px-2 abaixo de 1280px: numa tela de notebook os grupos
+                    // com espacamento cheio nao cabiam na cápsula.
+                    "py-2 px-2 xl:px-3 whitespace-nowrap"
                   )}
                 >
                   <span>{grupo.title}</span>

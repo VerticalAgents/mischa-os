@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { RepSidebar } from "@/components/rep/RepSidebar";
+import { RepSidebar, RepTopNavBar } from "@/components/rep/RepSidebar";
 import RepMobileDock from "@/components/rep/RepMobileDock";
+import { useSidebarStore } from "@/lib/sidebar-store";
 import logo from "@/assets/mischas-logo.png";
 
 interface RepLayoutProps {
@@ -9,10 +10,14 @@ interface RepLayoutProps {
 }
 
 export default function RepLayout({ children }: RepLayoutProps) {
+  const sidebarExpandido = useSidebarStore((s) => s.expandido);
+
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar desktop */}
+    <div className="flex min-h-screen w-full bg-ground">
+      {/* Menu lateral (expandido) e cabeçalho-cápsula (recolhido) — a navegação
+          troca de orientação em vez de desaparecer. */}
       <RepSidebar />
+      <RepTopNavBar />
 
       {/* Header mobile/tablet */}
       <div
@@ -34,7 +39,11 @@ export default function RepLayout({ children }: RepLayoutProps) {
       {/* Dock inferior + bottom sheet mobile */}
       <RepMobileDock />
 
-      <main className="flex-1 overflow-x-hidden pt-14 pb-20 lg:pt-0 lg:pb-0">
+      <main
+        className={`flex-1 overflow-x-hidden pt-14 pb-20 lg:pb-0 transition-all duration-200 ease-out-expo ${
+          sidebarExpandido ? "lg:pt-0 lg:ml-[calc(15rem+1.5rem)]" : "lg:pt-[4.25rem] lg:ml-0"
+        }`}
+      >
         <div className="p-4 lg:p-6 max-w-6xl mx-auto">{children}</div>
       </main>
     </div>
