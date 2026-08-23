@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { create } from "zustand";
 import { Badge } from "@/components/ui/badge";
-import { Bell, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Bell, ChevronDown, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { menuGroups } from "@/components/layout/navigation-items";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
@@ -149,7 +149,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
           title="Recolher menu"
           className="ml-auto hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-controle bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
         >
-          <PanelLeftClose className="h-[17px] w-[17px]" />
+          <ChevronsLeft className="h-[18px] w-[18px]" />
         </button>
       </div>
 
@@ -294,7 +294,22 @@ export function TopNavBar() {
   const alternar = useSidebarStore((s) => s.alternar);
   const [aberto, setAberto] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const timerFechar = useRef<number | null>(null);
 
+  // Abre ao passar o mouse. O atraso de 120ms no fechar dá tempo de atravessar
+  // o vão entre o botão e o painel sem ele sumir no meio do caminho.
+  const cancelarFechar = () => {
+    if (timerFechar.current) {
+      window.clearTimeout(timerFechar.current);
+      timerFechar.current = null;
+    }
+  };
+  const agendarFechar = () => {
+    cancelarFechar();
+    timerFechar.current = window.setTimeout(() => setAberto(null), 120);
+  };
+
+  useEffect(() => () => cancelarFechar(), []);
   useEffect(() => setAberto(null), [pathname]);
   useEffect(() => {
     const fora = (e: MouseEvent) => {
@@ -321,7 +336,7 @@ export function TopNavBar() {
           title="Expandir menu"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-controle text-white/70 transition-colors hover:bg-white/10 hover:text-white"
         >
-          <PanelLeftOpen className="h-[18px] w-[18px]" />
+          <ChevronsRight className="h-[18px] w-[18px]" />
         </button>
 
         <img
@@ -351,9 +366,21 @@ export function TopNavBar() {
             }
 
             return (
-              <div key={grupo.variant} className="relative">
+              <div
+                key={grupo.variant}
+                className="relative"
+                onMouseEnter={() => {
+                  cancelarFechar();
+                  setAberto(grupo.variant);
+                }}
+                onMouseLeave={agendarFechar}
+              >
                 <button
                   type="button"
+                  onFocus={() => {
+                    cancelarFechar();
+                    setAberto(grupo.variant);
+                  }}
                   onClick={() => setAberto((a) => (a === grupo.variant ? null : grupo.variant))}
                   className={cn(
                     classeLinha(temFilhoAtivo || aberto === grupo.variant),
@@ -370,7 +397,7 @@ export function TopNavBar() {
                 </button>
 
                 {aberto === grupo.variant && (
-                  <div className="absolute left-0 top-full mt-2 w-56 rounded-bloco border border-border bg-popover p-1.5 text-popover-foreground shadow-bloco animate-in fade-in-0 slide-in-from-top-1 duration-150">
+                  <div className="absolute left-0 top-full w-56 mt-2 rounded-bloco border border-border bg-popover p-1.5 text-popover-foreground shadow-bloco animate-in fade-in-0 slide-in-from-top-1 duration-150 before:absolute before:-top-2 before:left-0 before:h-2 before:w-full before:content-['']">
                     {grupo.items.map((item) => {
                       const aceso = item.path.split("?")[0] === pathname;
                       return (
