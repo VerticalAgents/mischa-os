@@ -2684,7 +2684,12 @@ export type Database = {
         Args: { data_base: string; dia_fixo: number; n_meses: number }
         Returns: string
       }
+      assert_can_process_entrega: {
+        Args: { p_agendamento_id: string }
+        Returns: undefined
+      }
       auto_standby_clientes_inativos_60dias: { Args: never; Returns: undefined }
+      can_use_agent_ia: { Args: { _user_id: string }; Returns: boolean }
       check_cliente_status_consistency: {
         Args: never
         Returns: {
