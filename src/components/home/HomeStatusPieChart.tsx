@@ -18,11 +18,11 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const LoadingState = memo(() => (
-  <Card>
+  <Card className="flex h-full flex-col shadow-tema">
     <CardHeader>
       <Skeleton className="h-5 w-40" />
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-1">
       <Skeleton className="h-[200px] w-full" />
     </CardContent>
   </Card>
@@ -94,8 +94,7 @@ export default function HomeStatusPieChart() {
 
   return (
     <>
-    <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
+    <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
       onClick={() =>
         ehCelular ? setDetalhe(detalhe_) : navigate('/gestao-comercial?tab=representantes')
       }
@@ -105,7 +104,7 @@ export default function HomeStatusPieChart() {
           Distribuição por Status
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie

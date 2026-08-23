@@ -13,11 +13,11 @@ import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/Deta
 import { useEhCelular } from '@/hooks/useEhCelular';
 
 const LoadingState = () => (
-  <Card>
+  <Card className="flex h-full flex-col shadow-tema">
     <CardHeader>
       <Skeleton className="h-5 w-40" />
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-1">
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map(i => (
           <Skeleton key={i} className="h-16 flex-1" />
@@ -138,8 +138,7 @@ export default function HomeFunilLeadsResumo() {
 
   return (
     <>
-    <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
+    <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
       onClick={() => navigate('/gestao-comercial?tab=funil-leads')}
     >
       <CardHeader className="pb-3">
@@ -150,7 +149,7 @@ export default function HomeFunilLeadsResumo() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {leads.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />

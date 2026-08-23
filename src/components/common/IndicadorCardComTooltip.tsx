@@ -27,8 +27,8 @@ const IndicadorCardComTooltip = memo(({
 }: IndicadorCardComTooltipProps) => {
   if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+      <Card className={cn("flex h-full flex-col", className)}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1 sm:p-5 sm:pb-2">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-4 w-4 rounded" />
         </CardHeader>
@@ -43,18 +43,22 @@ const IndicadorCardComTooltip = memo(({
   const cardContent = (
     <Card 
       className={cn(
-        "transition-all duration-200 hover:shadow-md",
+        // h-full: a grade estica a celula, mas o cartao encolhe ate o conteudo
+        // se ninguem mandar o contrario — era por isso que "Total de PDVs"
+        // terminava mais alto que os vizinhos da mesma linha.
+        "flex h-full flex-col bg-card shadow-tema",
+        "transition-all duration-300 ease-out-expo [@media(hover:hover)]:hover:shadow-tema-md",
         onClick && "cursor-pointer hover:border-primary/50",
         tooltip && !onClick && "cursor-help",
         className
       )}
       onClick={onClick}
     >
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 p-3 pb-1 sm:p-5 sm:pb-2">
         <CardTitle className="text-xs sm:text-sm font-medium text-left leading-snug break-words">{title}</CardTitle>
         <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+      <CardContent className="flex-1 p-3 pt-0 sm:p-5 sm:pt-0">
         <div className="text-xl sm:text-2xl font-bold text-left">{value}</div>
         <p className="text-[10px] sm:text-xs text-muted-foreground text-left leading-snug break-words">{subtitle}</p>
       </CardContent>

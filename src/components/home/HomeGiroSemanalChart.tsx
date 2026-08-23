@@ -46,11 +46,11 @@ const CustomTooltip = memo(({ active, payload }: any) => {
 CustomTooltip.displayName = 'CustomTooltip';
 
 const LoadingState = memo(() => (
-  <Card>
+  <Card className="flex h-full flex-col shadow-tema">
     <CardHeader>
       <Skeleton className="h-5 w-48" />
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-1">
       <Skeleton className="h-[250px] w-full" />
     </CardContent>
   </Card>
@@ -94,8 +94,7 @@ export default function HomeGiroSemanalChart() {
   if (!dados) return null;
 
   return (
-    <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
+    <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
       onClick={() => navigate('/gestao-comercial?tab=analise-giro')}
     >
       <CardHeader className="pb-2">
@@ -112,7 +111,7 @@ export default function HomeGiroSemanalChart() {
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart 
             data={chartData}

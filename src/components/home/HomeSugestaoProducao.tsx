@@ -9,11 +9,11 @@ import { useMediaVendasSemanais } from '@/hooks/useMediaVendasSemanais';
 import { useEstoqueDisponivel } from '@/hooks/useEstoqueDisponivel';
 
 const LoadingState = memo(() => (
-  <Card>
+  <Card className="flex h-full flex-col shadow-tema">
     <CardHeader>
       <Skeleton className="h-5 w-48" />
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-1">
       <Skeleton className="h-[150px] w-full" />
     </CardContent>
   </Card>
@@ -116,8 +116,7 @@ export default function HomeSugestaoProducao() {
   if (isLoading) return <LoadingState />;
 
   return (
-    <Card 
-      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
+    <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
       onClick={() => navigate('/pcp?tab=projecao')}
     >
       <CardHeader className="pb-2">
@@ -126,7 +125,7 @@ export default function HomeSugestaoProducao() {
           Sugestão de Produção
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {!sugestoes || sugestoes.totalFormas === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <Factory className="h-8 w-8 mx-auto mb-2 opacity-50" />

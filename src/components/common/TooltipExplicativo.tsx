@@ -73,7 +73,9 @@ export default function TooltipExplicativo({
     switch (variant) {
       case 'indicator':
         return {
-          triggerClass: "cursor-help",
+          // h-full: este div e a celula da grade; sem isso o cartao dentro dele
+          // nao tem altura de referencia para esticar ate a linha.
+          triggerClass: "cursor-help h-full",
           icon: null,
           useFlexWrapper: false
         };

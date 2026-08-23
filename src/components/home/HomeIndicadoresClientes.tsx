@@ -100,6 +100,7 @@ export default function HomeIndicadoresClientes() {
           subtitle={pdvSubtitle}
           icon={Users}
           isLoading={giroLoading}
+          className="h-full"
           tooltip={GIRO_TOOLTIPS.clientesAtivos}
           onClick={aoTocar('pdvs', '/clientes')}
         />
@@ -110,6 +111,7 @@ export default function HomeIndicadoresClientes() {
           subtitle="Média das últimas 4 semanas"
           icon={TrendingUp}
           isLoading={giroLoading}
+          className="h-full"
           tooltip={GIRO_TOOLTIPS.giroSemanalTotal}
           onClick={aoTocar('giroTotal', '/insights-pdv')}
           variacao={variacaoGiroTotal}
@@ -122,6 +124,7 @@ export default function HomeIndicadoresClientes() {
           subtitle="Média das últimas 4 semanas"
           icon={Activity}
           isLoading={giroLoading}
+          className="h-full"
           tooltip={GIRO_TOOLTIPS.giroMedioPorPDV}
           onClick={aoTocar('giroMedio', '/insights-pdv')}
           variacao={variacaoGiroMedio}
