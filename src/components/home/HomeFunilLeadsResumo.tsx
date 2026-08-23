@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import { useSupabaseLeads } from '@/hooks/useSupabaseLeads';
 import { useNavigate } from 'react-router-dom';
+import { STATUS_LABELS, type LeadStatus } from '@/types/lead';
+import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
+import { useEhCelular } from '@/hooks/useEhCelular';
 
 const LoadingState = () => (
   <Card>
@@ -30,10 +33,23 @@ interface MetricaCard {
   icon: React.ElementType;
   color: string;
   bgColor: string;
+  /** Quais leads estão por trás deste número — é o que a folha lista. */
+  filtro: (status: LeadStatus) => boolean;
 }
+
+const PENDENTES: LeadStatus[] = ['followup_wpp_pendente', 'followup_presencial_pendente'];
+const NEGOCIACAO: LeadStatus[] = [
+  'followup_wpp_tentativa',
+  'followup_wpp_negociacao',
+  'followup_presencial_tentativa',
+  'followup_presencial_negociacao'
+];
+const EFETIVADOS: LeadStatus[] = ['efetivado_imediato', 'efetivado_wpp', 'efetivado_presencial'];
 
 export default function HomeFunilLeadsResumo() {
   const navigate = useNavigate();
+  const ehCelular = useEhCelular();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { leads, loading, carregarLeads } = useSupabaseLeads();
 
   useEffect(() => {
@@ -45,24 +61,9 @@ export default function HomeFunilLeadsResumo() {
   const metricas = useMemo((): MetricaCard[] => {
     const paraVisitar = leads.filter(l => l.status === 'cadastrado').length;
     const visitados = leads.filter(l => l.status !== 'cadastrado').length;
-    
-    const pendenciasAcao = leads.filter(l => 
-      l.status === 'followup_wpp_pendente' ||
-      l.status === 'followup_presencial_pendente'
-    ).length;
-    
-    const emNegociacao = leads.filter(l => 
-      l.status === 'followup_wpp_tentativa' ||
-      l.status === 'followup_wpp_negociacao' ||
-      l.status === 'followup_presencial_tentativa' ||
-      l.status === 'followup_presencial_negociacao'
-    ).length;
-    
-    const totalEfetivados = leads.filter(l => 
-      l.status === 'efetivado_imediato' ||
-      l.status === 'efetivado_wpp' ||
-      l.status === 'efetivado_presencial'
-    ).length;
+    const pendenciasAcao = leads.filter(l => PENDENTES.includes(l.status)).length;
+    const emNegociacao = leads.filter(l => NEGOCIACAO.includes(l.status)).length;
+    const totalEfetivados = leads.filter(l => EFETIVADOS.includes(l.status)).length;
     
     const taxaConversao = visitados > 0 
       ? Math.round((totalEfetivados / visitados) * 100)
@@ -71,6 +72,7 @@ export default function HomeFunilLeadsResumo() {
     return [
       {
         label: 'Para Visitar',
+        filtro: (s) => s === 'cadastrado',
         valor: paraVisitar,
         icon: FileText,
         color: 'text-blue-600',
@@ -78,6 +80,7 @@ export default function HomeFunilLeadsResumo() {
       },
       {
         label: 'Pendências',
+        filtro: (s) => PENDENTES.includes(s),
         valor: pendenciasAcao,
         icon: MessageCircle,
         color: 'text-amber-600',
@@ -85,6 +88,7 @@ export default function HomeFunilLeadsResumo() {
       },
       {
         label: 'Negociação',
+        filtro: (s) => NEGOCIACAO.includes(s),
         valor: emNegociacao,
         icon: Clock,
         color: 'text-purple-600',
@@ -92,6 +96,7 @@ export default function HomeFunilLeadsResumo() {
       },
       {
         label: 'Vendas',
+        filtro: (s) => EFETIVADOS.includes(s),
         valor: totalEfetivados,
         icon: Trophy,
         color: 'text-green-600',
@@ -99,6 +104,7 @@ export default function HomeFunilLeadsResumo() {
       },
       {
         label: 'Conversão',
+        filtro: (s) => EFETIVADOS.includes(s),
         valor: taxaConversao,
         icon: TrendingUp,
         color: 'text-emerald-600',
@@ -107,9 +113,31 @@ export default function HomeFunilLeadsResumo() {
     ];
   }, [leads]);
 
+  const abrirMetrica = (m: MetricaCard) => {
+    const encontrados = leads.filter(l => m.filtro(l.status));
+    setDetalhe({
+      titulo: m.label === 'Conversão' ? 'Leads convertidos' : `Leads · ${m.label}`,
+      resumo:
+        m.label === 'Conversão'
+          ? `${m.valor}% dos leads visitados viraram venda`
+          : `${encontrados.length} de ${leads.length} leads`,
+      linhas: encontrados.map(l => ({
+        id: l.id,
+        titulo: l.nome,
+        subtitulo: STATUS_LABELS[l.status] ?? l.status
+      })),
+      vazio: 'Nenhum lead nesta etapa.',
+      acao: {
+        rotulo: 'Ver funil completo',
+        aoClicar: () => navigate('/gestao-comercial?tab=funil-leads')
+      }
+    });
+  };
+
   if (loading) return <LoadingState />;
 
   return (
+    <>
     <Card 
       className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
       onClick={() => navigate('/gestao-comercial?tab=funil-leads')}
@@ -135,7 +163,15 @@ export default function HomeFunilLeadsResumo() {
               {metricas.map((metrica, index) => (
                 <div 
                   key={index}
-                  className={`${metrica.bgColor} rounded-lg p-2 text-center`}
+                  role={ehCelular ? 'button' : undefined}
+                  onClick={(e) => {
+                    if (!ehCelular) return;
+                    e.stopPropagation(); // o cartao inteiro leva ao funil; o azulejo, ao detalhe
+                    abrirMetrica(metrica);
+                  }}
+                  className={`${metrica.bgColor} rounded-lg p-2 text-center ${
+                    ehCelular ? 'cursor-pointer active:scale-[0.97] transition-transform' : ''
+                  }`}
                 >
                   <metrica.icon className={`h-4 w-4 mx-auto mb-1 ${metrica.color}`} />
                   <div className={`text-lg font-bold ${metrica.color}`}>
@@ -157,5 +193,8 @@ export default function HomeFunilLeadsResumo() {
         )}
       </CardContent>
     </Card>
+
+    <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
+    </>
   );
 }

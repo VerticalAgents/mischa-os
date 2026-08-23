@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,12 @@ export interface ConteudoDetalhe {
   linhas: LinhaDetalhe[];
   /** O que dizer quando não há nada — nunca deixar a folha vazia e muda. */
   vazio: string;
+  /**
+   * Saída para a tela inteira. Existe porque, no app completo, esses cards já
+   * levavam a algum lugar ao serem tocados — a folha não pode fechar essa porta,
+   * só chegar antes dela.
+   */
+  acao?: { rotulo: string; aoClicar: () => void };
 }
 
 interface DetalheIndicadorProps {
@@ -92,6 +98,24 @@ export default function DetalheIndicador({ conteudo, aoFechar }: DetalheIndicado
             ))}
           </ul>
         </div>
+
+        {conteudo?.acao && (
+          <div
+            className="border-t border-border px-4 py-3"
+            style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+          >
+            <button
+              onClick={() => {
+                aoFechar();
+                conteudo.acao!.aoClicar();
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-controle bg-muted px-4 py-3 text-[0.7rem] font-semibold uppercase tracking-[1.5px] text-foreground transition-colors active:bg-accent"
+            >
+              {conteudo.acao.rotulo}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </DrawerContent>
     </Drawer>
   );

@@ -1,10 +1,12 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useNavigate } from 'react-router-dom';
 import { apenasOperacionais } from '@/utils/clienteTipo';
+import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
+import { useEhCelular } from '@/hooks/useEhCelular';
 
 const STATUS_COLORS: Record<string, string> = {
   'Ativo': '#22c55e',
@@ -30,6 +32,8 @@ LoadingState.displayName = 'LoadingState';
 
 export default function HomeStatusPieChart() {
   const navigate = useNavigate();
+  const ehCelular = useEhCelular();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { clientes: clientesTodos, loading } = useClienteStore();
   const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
 
@@ -50,14 +54,51 @@ export default function HomeStatusPieChart() {
       .sort((a, b) => b.value - a.value);
   }, [clientes]);
 
+  /**
+   * A pizza responde "quantos"; a folha responde "quais". A ordem das linhas
+   * segue a mesma da legenda — status mais numeroso primeiro, e dentro dele os
+   * clientes em ordem alfabética, que é como se procura um nome.
+   */
+  const detalhe_ = useMemo<ConteudoDetalhe>(() => {
+    const ordemStatus = dadosStatusPie.map(d => d.name);
+    const linhas = [...clientes]
+      .sort((a, b) => {
+        const sa = a.statusCliente || 'Sem status';
+        const sb = b.statusCliente || 'Sem status';
+        const pa = ordemStatus.indexOf(sa);
+        const pb = ordemStatus.indexOf(sb);
+        return pa !== pb ? pa - pb : (a.nome || '').localeCompare(b.nome || '');
+      })
+      .map(c => ({
+        id: c.id,
+        titulo: c.nome,
+        subtitulo: c.statusCliente || 'Sem status',
+        alerta: c.statusCliente === 'Inativo'
+      }));
+
+    return {
+      titulo: 'Distribuição por status',
+      resumo: dadosStatusPie.map(d => `${d.value} ${d.name.toLowerCase()}`).join(' · '),
+      linhas,
+      vazio: 'Nenhum cliente cadastrado.',
+      acao: {
+        rotulo: 'Ver gestão comercial',
+        aoClicar: () => navigate('/gestao-comercial?tab=representantes')
+      }
+    };
+  }, [clientes, dadosStatusPie, navigate]);
+
   if (loading) return <LoadingState />;
 
   if (dadosStatusPie.length === 0) return null;
 
   return (
+    <>
     <Card 
       className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
-      onClick={() => navigate('/gestao-comercial?tab=representantes')}
+      onClick={() =>
+        ehCelular ? setDetalhe(detalhe_) : navigate('/gestao-comercial?tab=representantes')
+      }
     >
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-medium text-left">
@@ -92,5 +133,8 @@ export default function HomeStatusPieChart() {
         </ResponsiveContainer>
       </CardContent>
     </Card>
+
+    <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
+    </>
   );
 }

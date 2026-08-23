@@ -23,6 +23,14 @@ interface GiroMedioPorPDVResult {
   variacaoGiroMedio: number;        // % variação (4sem vs 12sem)
   isLoading: boolean;
   error: Error | null;
+  /**
+   * As listas por trás dos números, para o detalhe dos cards no celular.
+   * Saem das MESMAS entregas que já foram buscadas — nenhuma consulta a mais.
+   */
+  giroPorSemana: { semana: string; quantidade: number }[];
+  giroPorPDV: { id: string; nome: string; total: number; media: number }[];
+  pdvsDiretosLista: { id: string; nome: string }[];
+  distribuidoresLista: { id: string; nome: string; expositores: number }[];
 }
 
 /**
@@ -112,11 +120,16 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
       );
       const expositores = expositoresResult.data;
 
-      // Agrupar entregas por semana
+      // Agrupar entregas por semana e por cliente (o segundo so para o detalhe)
       const entregasPorSemana: Record<string, number> = {};
+      const entregasPorCliente: Record<string, number> = {};
       entregas?.forEach(e => {
         const semana = getISOWeek(new Date(e.data));
         entregasPorSemana[semana] = (entregasPorSemana[semana] || 0) + (e.quantidade || 0);
+        if (e.cliente_id) {
+          entregasPorCliente[e.cliente_id] =
+            (entregasPorCliente[e.cliente_id] || 0) + (e.quantidade || 0);
+        }
       });
 
       // Ordenar semanas
@@ -145,7 +158,9 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
         totalEntregas,
         giro4Semanas,
         giro12Semanas,
-        expositores: expositores || []
+        expositores: expositores || [],
+        entregasPorSemana,
+        entregasPorCliente
       };
     },
     enabled: !clientesLoading,
@@ -218,6 +233,48 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     return Number((((giroMedio4Semanas / giroMedio12Semanas) - 1) * 100).toFixed(1));
   }, [giroMedio4Semanas, giroMedio12Semanas]);
 
+  const giroPorSemana = useMemo(() => {
+    const mapa = data?.entregasPorSemana || {};
+    return Object.entries(mapa)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 12)
+      .map(([semana, quantidade]) => ({ semana, quantidade }));
+  }, [data?.entregasPorSemana]);
+
+  const giroPorPDV = useMemo(() => {
+    const mapa = data?.entregasPorCliente || {};
+    const nomes = new Map(clientes.map(c => [c.id, c.nome]));
+    return Object.entries(mapa)
+      .map(([id, total]) => ({
+        id,
+        nome: nomes.get(id) || 'Cliente',
+        total,
+        media: Math.round(total / 12)
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [data?.entregasPorCliente, clientes]);
+
+  const pdvsDiretosLista = useMemo(
+    () =>
+      clientesAtivos
+        .filter(c => c.categoriaEstabelecimentoId !== CATEGORIA_DISTRIBUIDOR_ID)
+        .map(c => ({ id: c.id, nome: c.nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome)),
+    [clientesAtivos]
+  );
+
+  const distribuidoresLista = useMemo(() => {
+    const nomes = new Map(clientesAtivos.map(c => [c.id, c.nome]));
+    return (data?.expositores || [])
+      .filter(e => distribuidoresAtivosIds.includes(e.cliente_id))
+      .map(e => ({
+        id: e.cliente_id,
+        nome: nomes.get(e.cliente_id) || 'Distribuidor',
+        expositores: e.numero_expositores || 0
+      }))
+      .sort((a, b) => b.expositores - a.expositores);
+  }, [data?.expositores, distribuidoresAtivosIds, clientesAtivos]);
+
   return {
     giroMedioPorPDV,
     giroTotal,
@@ -232,6 +289,10 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     variacaoGiroTotal,
     variacaoGiroMedio,
     isLoading: isLoading || clientesLoading,
-    error: error as Error | null
+    error: error as Error | null,
+    giroPorSemana,
+    giroPorPDV,
+    pdvsDiretosLista,
+    distribuidoresLista
   };
 };
