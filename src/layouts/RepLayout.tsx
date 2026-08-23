@@ -4,6 +4,7 @@ import { RepSidebar, RepTopNavBar } from "@/components/rep/RepSidebar";
 import RepMobileDock from "@/components/rep/RepMobileDock";
 import AreaGestos from "@/components/mobile/AreaGestos";
 import { itensBarraRep } from "@/components/mobile/itens-barra";
+import { paginasBarraRep } from "@/components/mobile/paginas-barra";
 import { useSidebarStore } from "@/lib/sidebar-store";
 import logo from "@/assets/mischas-logo.png";
 
@@ -55,7 +56,13 @@ export default function RepLayout({ children }: RepLayoutProps) {
         }`}
       >
         <div className="p-4 lg:p-6 max-w-6xl mx-auto">
-          <AreaGestos rotas={rotas}>{children}</AreaGestos>
+          <AreaGestos
+            rotas={rotas}
+            paginas={paginasBarraRep}
+            classeConteudo="p-4 max-w-6xl mx-auto"
+          >
+            {children}
+          </AreaGestos>
         </div>
       </main>
     </div>

@@ -4,6 +4,7 @@ import MobileHeader from "@/components/layout/MobileHeader";
 import MobileDock from "@/components/layout/MobileDock";
 import AreaGestos from "@/components/mobile/AreaGestos";
 import { useItensBarraApp } from "@/components/mobile/itens-barra";
+import { paginasBarraApp } from "@/components/mobile/paginas-barra";
 import { SessionNavBar, TopNavBar, useSidebarStore } from "@/components/ui/sidebar-next";
 import TopHeader from "@/components/layout/TopHeader";
 import { RouteStateManager } from "@/components/common/RouteStateManager";
@@ -57,7 +58,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           sidebarExpandido ? "lg:pt-0 lg:ml-[calc(15rem+1.5rem)]" : "lg:pt-[4.25rem] lg:ml-0"
         }`}>
         <div className="container py-4 lg:py-6 px-3 lg:px-8 max-w-7xl mx-auto">
-          <AreaGestos rotas={rotasBarra}>
+          <AreaGestos
+            rotas={rotasBarra}
+            paginas={paginasBarraApp}
+            classeConteudo="px-3 py-4 max-w-7xl mx-auto"
+          >
             <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
           </AreaGestos>
         </div>
