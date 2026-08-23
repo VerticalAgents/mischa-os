@@ -129,7 +129,6 @@ Deno.serve(async (req) => {
         auth_user_id: newAuthUserId,
         owner_id: ownerId,
         login_email: email,
-        senha_acesso: password,
         ativo: true,
       });
     if (insertErr) {

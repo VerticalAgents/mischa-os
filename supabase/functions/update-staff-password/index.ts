@@ -89,10 +89,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update senha_acesso in staff_accounts
+    // Nunca armazenar senha em texto puro: garantir que o campo fique nulo
     await adminClient
       .from("staff_accounts")
-      .update({ senha_acesso: new_password })
+      .update({ senha_acesso: null })
       .eq("id", staff_account_id);
 
     return new Response(
