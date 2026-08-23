@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     }
 
     // Atualiza tabela
-    const tableUpdates: Record<string, string> = { updated_at: new Date().toISOString() };
+    const tableUpdates: Record<string, string | null> = { updated_at: new Date().toISOString() };
     if (new_email) tableUpdates.login_email = new_email;
     // Senha nunca é armazenada em texto puro
     if (new_password) tableUpdates.senha_acesso = null;

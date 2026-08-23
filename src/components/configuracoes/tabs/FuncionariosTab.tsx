@@ -237,49 +237,9 @@ export default function FuncionariosTab() {
 
   const handleCopyCredentials = (s: StaffAccount) => {
     const loginEmail = s.login_email || s.email || '-';
-    const senha = s.senha_acesso || '(não disponível)';
-    const text = `🔐 Dados de Acesso\n\nNome: ${s.nome || '-'}\nLogin: ${loginEmail}\nSenha: ${senha}\nFunção: ${getRoleName(s)}`;
+    const text = `🔐 Dados de Acesso\n\nNome: ${s.nome || '-'}\nLogin: ${loginEmail}\nFunção: ${getRoleName(s)}\n\nA senha não é armazenada pelo sistema. Defina uma nova senha em "Editar" para compartilhar.`;
     navigator.clipboard.writeText(text);
     toast.success('Credenciais copiadas para a área de transferência!');
-  };
-
-  const handleResyncPassword = async (s: StaffAccount) => {
-    if (!s.senha_acesso) {
-      toast.error('Sem senha cadastrada para ressincronizar. Edite e defina uma nova senha.');
-      return;
-    }
-    if (!confirm(`Ressincronizar senha de ${s.nome}? A senha de login no Auth será reescrita com o valor atualmente cadastrado.`)) {
-      return;
-    }
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        toast.error('Sessão expirada');
-        return;
-      }
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/update-staff-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            staff_account_id: s.id,
-            new_password: s.senha_acesso,
-          }),
-        }
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Erro ao ressincronizar senha');
-      toast.success('Senha ressincronizada com sucesso!');
-    } catch (err: any) {
-      console.error(err);
-      toast.error('Erro ao ressincronizar senha: ' + (err.message ?? 'desconhecido'));
-    }
   };
 
   const getRoleName = (s: StaffAccount) => {
@@ -549,23 +509,9 @@ export default function FuncionariosTab() {
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-xs">Senha</Label>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium font-mono">
-                    {viewingStaff.senha_acesso
-                      ? (showViewPassword ? viewingStaff.senha_acesso : '••••••••')
-                      : '(não disponível)'}
-                  </p>
-                  {viewingStaff.senha_acesso && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-1"
-                      onClick={() => setShowViewPassword(!showViewPassword)}
-                    >
-                      {showViewPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                  )}
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Por segurança, a senha não é armazenada e não pode ser consultada. Use "Editar" para definir uma nova senha.
+                </p>
               </div>
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-xs">Função</Label>
@@ -615,26 +561,6 @@ export default function FuncionariosTab() {
                 <p className="text-sm font-medium bg-muted px-3 py-2 rounded-md">
                   {editingStaff.login_email || editingStaff.email || '-'}
                 </p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">Senha atual</Label>
-                <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-md">
-                  <p className="text-sm font-medium font-mono flex-1">
-                    {editingStaff.senha_acesso
-                      ? (showEditPassword ? editingStaff.senha_acesso : '••••••••')
-                      : '(não disponível)'}
-                  </p>
-                  {editingStaff.senha_acesso && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-1"
-                      onClick={() => setShowEditPassword(!showEditPassword)}
-                    >
-                      {showEditPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                  )}
-                </div>
               </div>
               <div className="space-y-2">
                 <Label>Nova senha (opcional)</Label>
