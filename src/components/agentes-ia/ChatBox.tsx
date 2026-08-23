@@ -7,6 +7,7 @@ import { Bot, Loader2, Send, Sparkles } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type Message = {
   role: "user" | "assistant";
@@ -117,7 +118,7 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
       onMessageSent?.();
     } catch (error) {
       console.error("Erro no chat:", error);
-      if (!(error instanceof Error) || !["Rate limit", "Payment required"].includes(error.message)) {
+      if (!(error instanceof Error) || !["Rate limit", "Payment required", "Unauthorized", "Unauthenticated"].includes(error.message)) {
         toast.error("Erro ao processar sua mensagem. Tente novamente.");
       }
     } finally {
