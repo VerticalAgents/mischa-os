@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useBarraDoNavegador } from "@/hooks/useBarraDoNavegador";
 
@@ -31,24 +32,54 @@ interface BarraInferiorProps {
   aoAbrirMais: () => void;
 }
 
-/** A pílula marca onde você está sem depender só da cor: com a tela suja, a
- *  forma se lê antes. Marca a 12%, não cheia — menta cheia grita mais que a
- *  página. E a luz interna no topo é o relevo do cartão, o mesmo do menu. */
+/**
+ * A pílula marca onde você está sem depender só da cor: com a tela suja, a
+ * forma se lê antes. Marca a 12%, não cheia — menta cheia grita mais que a
+ * página. E a luz interna no topo é o relevo do cartão, o mesmo do menu.
+ *
+ * Ela é UM elemento só, que troca de lugar. Ao arrastar para o lado, a rota só
+ * muda quando o trilho termina a viagem — então a pílula desliza exatamente no
+ * instante em que a página nova chega, e é isso que diz "trocou". Curta de
+ * propósito: 180ms. Marcação demorada vira enfeite e some do olhar.
+ */
+const IDENTIDADE_PILULA = "pilula-barra-inferior";
+
 const classeItem = (aceso: boolean) =>
   cn(
-    "flex min-w-0 flex-1 flex-col items-center justify-center gap-1",
-    "min-h-[52px] rounded-[22px] transition-all duration-200 ease-out-expo",
+    "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1",
+    "min-h-[52px] rounded-[22px] transition-colors duration-200 ease-out-expo",
     "active:scale-[0.97] active:duration-press",
-    aceso
-      ? "bg-brand-500/[.12] text-brand-700 shadow-[inset_0_1px_0_#ffffffb3] dark:text-brand-400 dark:shadow-[inset_0_1px_0_#ffffff0f]"
-      : "text-muted-foreground"
+    aceso ? "text-brand-700 dark:text-brand-400" : "text-muted-foreground"
   );
 
-const ROTULO = "max-w-full truncate text-[10px] font-semibold uppercase tracking-[1px]";
+const CLASSE_PILULA = cn(
+  // Vem antes do ícone no DOM e o ícone é relative: pinta atrás sem z-index.
+  "absolute inset-0 rounded-[22px] bg-brand-500/[.12]",
+  "shadow-[inset_0_1px_0_#ffffffb3] dark:shadow-[inset_0_1px_0_#ffffff0f]"
+);
+
+const ROTULO = "relative max-w-full truncate text-[10px] font-semibold uppercase tracking-[1px]";
 
 export default function BarraInferior({ itens, maisAberto, aoAbrirMais }: BarraInferiorProps) {
   const { pathname } = useLocation();
+  const semMovimento = useReducedMotion();
   useBarraDoNavegador();
+
+  // Uma pílula só na barra inteira. Com a gaveta aberta ela vai para "Mais" —
+  // duas com a mesma identidade fariam o framer não saber qual animar.
+  const rotaAcesa = itens.find(
+    (i) => pathname === i.path || pathname.startsWith(i.path + "/")
+  )?.path;
+  const alvo = maisAberto ? "__mais" : rotaAcesa;
+
+  const pilula = (
+    <motion.span
+      layoutId={IDENTIDADE_PILULA}
+      className={CLASSE_PILULA}
+      transition={semMovimento ? { duration: 0 } : { duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+      aria-hidden
+    />
+  );
 
   return (
     <nav
@@ -60,10 +91,11 @@ export default function BarraInferior({ itens, maisAberto, aoAbrirMais }: BarraI
       )}
     >
       {itens.map(({ path, label, Icon }) => {
-        const aceso = pathname === path || pathname.startsWith(path + "/");
+        const aceso = alvo === path;
         return (
           <Link key={path} to={path} className={classeItem(aceso)}>
-            <Icon className="h-6 w-6 shrink-0" strokeWidth={aceso ? 2 : 1.6} />
+            {aceso && pilula}
+            <Icon className="relative h-6 w-6 shrink-0" strokeWidth={aceso ? 2 : 1.6} />
             <span className={ROTULO}>{label}</span>
           </Link>
         );
@@ -73,9 +105,13 @@ export default function BarraInferior({ itens, maisAberto, aoAbrirMais }: BarraI
         type="button"
         onClick={aoAbrirMais}
         aria-label="Mais opções"
-        className={classeItem(maisAberto)}
+        className={classeItem(alvo === "__mais")}
       >
-        <MoreHorizontal className="h-6 w-6 shrink-0" strokeWidth={maisAberto ? 2 : 1.6} />
+        {alvo === "__mais" && pilula}
+        <MoreHorizontal
+          className="relative h-6 w-6 shrink-0"
+          strokeWidth={maisAberto ? 2 : 1.6}
+        />
         <span className={ROTULO}>Mais</span>
       </button>
     </nav>
