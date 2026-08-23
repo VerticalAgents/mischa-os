@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil, Copy, KeyRound } from 'lucide-react';
+import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,6 @@ interface StaffAccount {
   email?: string;
   custom_role_id?: string | null;
   login_email?: string | null;
-  senha_acesso?: string | null;
 }
 
 export default function FuncionariosTab() {
@@ -40,8 +39,6 @@ export default function FuncionariosTab() {
   const [editingStaff, setEditingStaff] = useState<StaffAccount | null>(null);
   const [viewingStaff, setViewingStaff] = useState<StaffAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showViewPassword, setShowViewPassword] = useState(false);
-  const [showEditPassword, setShowEditPassword] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '', custom_role_id: '' });
   const [editForm, setEditForm] = useState({ nome: '', custom_role_id: '', nova_senha: '' });
   const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
@@ -166,13 +163,11 @@ export default function FuncionariosTab() {
   const openEditDialog = (s: StaffAccount) => {
     setEditingStaff(s);
     setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '', nova_senha: '' });
-    setShowEditPassword(false);
     setEditDialogOpen(true);
   };
 
   const openViewDialog = (s: StaffAccount) => {
     setViewingStaff(s);
-    setShowViewPassword(false);
     setViewDialogOpen(true);
   };
 
