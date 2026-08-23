@@ -144,8 +144,34 @@
 /* Barra inferior flutuante (celular) — env() precisa morar em folha de estilo:
    o WebKit do iOS descarta env() aplicado via JavaScript. */
 .barra-flutuante        { bottom: max(env(safe-area-inset-bottom, 0px), 10px); }
-.espaco-barra-flutuante { padding-bottom: calc(78px + max(env(safe-area-inset-bottom, 0px), 10px)); }
 .folga-segura-baixo     { padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px); }
+
+/* Espaço para as duas cápsulas flutuantes. Só abaixo de lg — acima disso quem
+   navega é o menu lateral, e a folga viraria uma faixa vazia. As duas andam
+   juntas com a altura das barras: mudou uma, muda a outra. */
+@media (max-width: 1023px) {
+  .espaco-barra-flutuante     { padding-bottom: calc(84px + max(env(safe-area-inset-bottom, 0px), 10px)); }
+  .espaco-cabecalho-flutuante { padding-top: 60px; }
+}
+
+/* Com a barra de endereço do navegador à vista, a faixa do gesto de home fica
+   ATRÁS dela: o env() continua reportando os ~34px e sobra um vão morto entre a
+   barra do app e a do navegador. Quem marca o atributo é useBarraDoNavegador. */
+html[data-barra-navegador="1"] .barra-flutuante { bottom: 8px; }
+
+/* Quem rola no celular é o documento (o layout cresce em vez de rolar por
+   dentro), então é no html/body que o gesto precisa parar de ser devolvido ao
+   navegador — senão o "puxar para recarregar" do app disputa com o do próprio
+   Safari e nenhum dos dois responde direito. A classe fica para o caso de uma
+   área interna passar a rolar. */
+.rolagem-contida {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1023px) {
+  html, body { overscroll-behavior-y: contain; }
+}
 
 /* Alvo de toque e zoom automático do Safari no iPhone */
 @media (max-width: 639px) {
