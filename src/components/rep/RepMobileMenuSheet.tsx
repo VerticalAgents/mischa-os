@@ -25,7 +25,7 @@ export default function RepMobileMenuSheet({ open, onOpenChange }: RepMobileMenu
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="lg:hidden max-h-[88vh] rounded-t-2xl border-border p-0">
+      <DrawerContent className="lg:hidden max-h-[88vh] rounded-t-[28px] border-border p-0">
         <div className="flex items-center justify-between px-5 pb-3 pt-3">
           <DrawerTitle className="text-sm font-semibold uppercase tracking-[0.15em] text-foreground">
             Menu
@@ -52,7 +52,7 @@ export default function RepMobileMenuSheet({ open, onOpenChange }: RepMobileMenu
                   to={to}
                   onClick={() => onOpenChange(false)}
                   className={cn(
-                    "flex min-h-[86px] flex-col items-center justify-center gap-2 rounded-xl px-2 py-3 text-center transition-colors active:scale-[0.98]",
+                    "flex min-h-[86px] flex-col items-center justify-center gap-2 rounded-[22px] px-2 py-3 text-center transition-colors active:scale-[0.98]",
                     isActive ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
                   )}
                 >
