@@ -22,7 +22,18 @@ import { useRepDashboardData } from "@/hooks/useRepDashboardData";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import AtualizarAgendamentoDialog from "@/components/rep/AtualizarAgendamentoDialog";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { useEhCelular } from "@/hooks/useEhCelular";
+import DetalheIndicador, { type ConteudoDetalhe } from "@/components/mobile/DetalheIndicador";
 import { cn } from "@/lib/utils";
+
+const dia = (iso?: string | null) => {
+  if (!iso) return "sem data";
+  const [ano, mes, resto] = iso.split("-");
+  return resto ? `${resto.slice(0, 2)}/${mes}` : iso;
+};
+
+const reais = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const STATUS_META = {
   previsto: { label: "Previstos", color: "bg-amber-500", text: "text-amber-700" },
@@ -37,6 +48,8 @@ export default function RepHome() {
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
   const [atualizarAgendamentoOpen, setAtualizarAgendamentoOpen] = useState(false);
   const { clientes: inadimplencia, loading: loadingInadimplencia } = useInadimplencia();
+  const ehCelular = useEhCelular();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
 
 
   const greetingName = user?.email?.split("@")[0] || "representante";
@@ -59,6 +72,132 @@ export default function RepHome() {
       entreguePct: Math.round((data.entreguesSemanaAtual / total) * 100),
     };
   }, [data]);
+
+  /**
+   * O que cada card mostra quando aberto. Tudo sai das listas que a própria
+   * consulta do painel já trouxe — abrir um detalhe não vai ao banco de novo.
+   */
+  const detalhes = useMemo<Record<string, ConteudoDetalhe>>(() => {
+    const daSemana = `Semana de ${data.semanaAtualLabel}`;
+    // Sem `alerta` aqui de proposito: o numero da linha e uma quantidade, nao um
+    // problema. Vermelho fica para dinheiro em atraso — se tudo pode ser
+    // vermelho, o vermelho para de avisar.
+    const pedido = (a: (typeof data.previstosSemanaAtual)[number]) => ({
+      id: a.id,
+      titulo: a.cliente_nome,
+      subtitulo: `${a.status_agendamento} · ${dia(a.data_proxima_reposicao)}`,
+      valor: a.quantidade_total ? `${a.quantidade_total} un` : undefined,
+    });
+
+    const comAtraso = (inadimplencia || []).filter((c) => c.qtdAtrasados > 0);
+
+    return {
+      "PDVs ativos": {
+        titulo: "PDVs ativos",
+        resumo: `${data.totalClientesAtivos} ativos de ${data.totalClientes} cadastrados`,
+        linhas: data.clientesAtivos.map((c) => ({ id: c.id, titulo: c.nome })),
+        vazio: "Nenhum PDV ativo.",
+      },
+      "Agend. semana": {
+        titulo: "Pedidos da semana",
+        resumo: daSemana,
+        linhas: [
+          ...data.agendamentosSemana.map((a) => pedido(a)),
+          ...data.entreguesLista.map((e) => ({
+            id: e.id,
+            titulo: e.cliente_nome,
+            subtitulo: `Entregue · ${dia(e.data?.slice(0, 10))}`,
+            valor: `${e.quantidade} un`,
+          })),
+        ],
+        vazio: "Nenhum pedido nesta semana.",
+      },
+      "Unidades semana": {
+        titulo: "Unidades da semana",
+        resumo: `${data.totalUnidadesSemanaAtual.toLocaleString("pt-BR")} unidades · maior primeiro`,
+        linhas: [
+          ...data.agendamentosSemana.map((a) => pedido(a)),
+          ...data.entreguesLista.map((e) => ({
+            id: e.id,
+            titulo: e.cliente_nome,
+            subtitulo: `Entregue · ${dia(e.data?.slice(0, 10))}`,
+            valor: `${e.quantidade} un`,
+          })),
+        ]
+          .filter((l) => l.valor)
+          .sort((a, b) => parseInt(b.valor!) - parseInt(a.valor!)),
+        vazio: "Nenhuma unidade nesta semana.",
+      },
+      "Taxa confirm.": {
+        titulo: "Taxa de confirmação",
+        resumo: `${Math.round(data.taxaConfirmacaoSemana * 100)}% dos pedidos da semana já saíram de "Previsto"`,
+        linhas: [
+          { id: "c", titulo: "Confirmados", valor: String(data.confirmadosSemanaAtual) },
+          { id: "e", titulo: "Entregues", valor: String(data.entreguesSemanaAtual) },
+          {
+            id: "p",
+            titulo: "Previstos",
+            valor: String(data.previstosSemanaAtual.length),
+            alerta: data.previstosSemanaAtual.length > 0,
+          },
+          { id: "t", titulo: "Total da semana", valor: String(data.agendamentosSemanaAtual) },
+        ],
+        vazio: "Sem pedidos nesta semana.",
+      },
+      Confirmados: {
+        titulo: "Pedidos confirmados",
+        resumo: daSemana,
+        linhas: data.confirmadosLista.map((a) => pedido(a)),
+        vazio: "Nenhum pedido confirmado nesta semana.",
+      },
+      Entregues: {
+        titulo: "Entregas realizadas",
+        resumo: daSemana,
+        linhas: data.entreguesLista.map((e) => ({
+          id: e.id,
+          titulo: e.cliente_nome,
+          subtitulo: dia(e.data?.slice(0, 10)),
+          valor: `${e.quantidade} un`,
+        })),
+        vazio: "Nenhuma entrega registrada nesta semana.",
+      },
+      Previstos: {
+        titulo: "Pedidos previstos",
+        resumo: `${data.totalBrowniesPrevistosSemana.toLocaleString("pt-BR")} unidades a confirmar`,
+        linhas: data.previstosSemanaAtual.map((a) => pedido(a)),
+        vazio: "Nada previsto para esta semana.",
+      },
+      Pendentes: {
+        titulo: "Pedidos pendentes",
+        resumo:
+          data.agendamentosPendentes.length >= 10
+            ? "Mostrando os 10 mais antigos"
+            : "Aguardando agendamento",
+        linhas: data.agendamentosPendentes.map((a) => pedido(a)),
+        vazio: "Nenhum pedido pendente.",
+      },
+      Inadimplencia: {
+        titulo: "Clientes inadimplentes",
+        resumo: `${comAtraso.length} cliente(s) · ${reais(
+          comAtraso.reduce((s, c) => s + c.valorAtrasado, 0)
+        )} em atraso`,
+        linhas: comAtraso.map((c) => ({
+          id: c.clienteId ?? c.clienteNome,
+          titulo: c.clienteNome,
+          subtitulo: `${c.qtdAtrasados} título(s) em atraso`,
+          valor: reais(c.valorAtrasado),
+          alerta: true,
+        })),
+        vazio: "Nenhum cliente em atraso.",
+      },
+    };
+  }, [data, inadimplencia]);
+
+  const abrir = (chave: string) => {
+    if (!ehCelular) return;
+    const conteudo = detalhes[chave];
+    if (conteudo) setDetalhe(conteudo);
+  };
 
   const KPIs = useMemo(
     () => [
@@ -149,8 +288,18 @@ export default function RepHome() {
           return (
             <Card
               key={kpi.label}
+              role={ehCelular ? "button" : undefined}
+              tabIndex={ehCelular ? 0 : undefined}
+              onClick={() => abrir(kpi.label)}
+              onKeyDown={(e) => {
+                if (ehCelular && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  abrir(kpi.label);
+                }
+              }}
               className={cn(
                 "overflow-hidden transition-all hover:border-border hover:shadow-sm",
+                ehCelular && "cursor-pointer active:scale-[0.98] active:duration-press",
                 kpi.alert && "border-[#d1193a]/40 bg-red-50/40"
               )}
             >
@@ -177,8 +326,18 @@ export default function RepHome() {
 
         {/* Inadimplência */}
         <Card
+          role={ehCelular ? "button" : undefined}
+          tabIndex={ehCelular ? 0 : undefined}
+          onClick={() => abrir("Inadimplencia")}
+          onKeyDown={(e) => {
+            if (ehCelular && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              abrir("Inadimplencia");
+            }
+          }}
           className={cn(
             "overflow-hidden col-span-2 md:col-span-4",
+            ehCelular && "cursor-pointer active:scale-[0.98] active:duration-press",
             resumoInadimplencia.clientes > 0
               ? "border-red-400/60 bg-red-50/40"
               : "border-border"
@@ -340,6 +499,7 @@ export default function RepHome() {
         }}
         onClienteUpdate={() => refetch()}
       />
+      <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
     </div>
   );
 }

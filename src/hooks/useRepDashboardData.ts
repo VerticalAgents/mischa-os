@@ -11,6 +11,13 @@ export interface RepAgendamentoLite {
   quantidade_total: number;
 }
 
+export interface RepEntregaLite {
+  id: string;
+  cliente_nome: string;
+  quantidade: number;
+  data: string;
+}
+
 export interface RepDashboardData {
   totalClientesAtivos: number;
   totalClientes: number;
@@ -23,6 +30,15 @@ export interface RepDashboardData {
   taxaConfirmacaoSemana: number; // 0-1
   agendamentosPendentes: RepAgendamentoLite[];
   semanaAtualLabel: string;
+  /**
+   * As listas por trás de cada número. Já vinham na mesma consulta — só não
+   * eram devolvidas. É o que permite abrir o detalhe de um card no celular sem
+   * ir ao banco de novo.
+   */
+  clientesAtivos: { id: string; nome: string }[];
+  agendamentosSemana: RepAgendamentoLite[];
+  confirmadosLista: RepAgendamentoLite[];
+  entreguesLista: RepEntregaLite[];
 }
 
 /**
@@ -42,6 +58,10 @@ export function useRepDashboardData() {
     taxaConfirmacaoSemana: 0,
     agendamentosPendentes: [],
     semanaAtualLabel: "",
+    clientesAtivos: [],
+    agendamentosSemana: [],
+    confirmadosLista: [],
+    entreguesLista: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,10 +124,20 @@ export function useRepDashboardData() {
       const entregasSemana = entregasRes.data || [];
 
       // "Agendado" = pedido confirmado no sistema
-      const confirmadosSemana = agendamentosNaSemana.filter(
+      const confirmadosLista = agendamentosNaSemana.filter(
         (a) => a.status_agendamento === "Agendado"
-      ).length;
+      );
+      const confirmadosSemana = confirmadosLista.length;
       const entreguesSemana = entregasSemana.length;
+
+      const entreguesLista: RepEntregaLite[] = entregasSemana
+        .map((e: any) => ({
+          id: e.id,
+          cliente_nome: clienteMap.get(e.cliente_id) || "Cliente",
+          quantidade: e.quantidade || 0,
+          data: e.data,
+        }))
+        .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
       const unidadesAgendadas = agendamentosNaSemana.reduce(
         (sum, a) => sum + (a.quantidade_total || 0),
@@ -151,6 +181,13 @@ export function useRepDashboardData() {
         taxaConfirmacaoSemana,
         agendamentosPendentes: pendentes.slice(0, 10),
         semanaAtualLabel: `${format(inicioSemana, "dd/MM")} – ${format(fimSemana, "dd/MM")}`,
+        clientesAtivos: (clientes || [])
+          .filter((c) => c.ativo && c.status_cliente === "ATIVO")
+          .map((c) => ({ id: c.id, nome: c.nome }))
+          .sort((a, b) => a.nome.localeCompare(b.nome)),
+        agendamentosSemana: agendamentosNaSemana,
+        confirmadosLista,
+        entreguesLista,
       });
     } catch (err: any) {
       console.error("Erro ao carregar dashboard do representante:", err);
