@@ -1043,21 +1043,65 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseUrl || !supabaseKey || !anonKey) {
+      throw new Error("Configuração do Supabase não encontrada");
+    }
+
+    // ---- Autenticação obrigatória ----
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+    if (!jwt || jwt === anonKey) {
+      return new Response(JSON.stringify({ error: "Não autenticado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const authClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+    const { data: userData, error: userError } = await authClient.auth.getUser();
+    const user = userData?.user;
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Não autenticado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Somente proprietário/staff podem usar o agente (acesso amplo aos dados)
+    const { data: isAllowed, error: permError } = await supabase.rpc("can_use_agent_ia", {
+      _user_id: user.id,
+    });
+
+    if (permError || isAllowed !== true) {
+      return new Response(JSON.stringify({ error: "Acesso não autorizado" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { agenteId, messages } = await req.json();
+
+    if (!agenteId || typeof agenteId !== "string" || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: "Requisição inválida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não está configurada");
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Configuração do Supabase não encontrada");
-    }
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Buscar contexto base (resumo rápido)
     const baseContext = await getBaseContext(supabase);
