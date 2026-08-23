@@ -27,7 +27,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, [isDark]);
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-screen flex w-full bg-ground">
       <RouteStateManager />
       
       {/* Unified red sidebar — desktop only */}
@@ -43,7 +43,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <TopHeader />
 
       {/* Main Content — no left margin on mobile (sidebar hidden), margin on desktop */}
-      <main className="flex-1 overflow-auto pt-14 pb-20 lg:pt-0 lg:pb-0 lg:ml-[3.05rem] transition-all">
+      <main className="flex-1 overflow-auto pt-14 pb-20 lg:pt-0 lg:pb-0 lg:ml-[calc(3.05rem+1.5rem)] transition-all">
         <div className="container py-4 lg:py-6 px-3 lg:px-8 max-w-7xl mx-auto">
           <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
         </div>

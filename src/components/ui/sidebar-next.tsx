@@ -127,7 +127,9 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
   // ==== Desktop rail ====
   const desktopRail = (
     <aside
-      className="fixed left-0 top-0 z-40 hidden h-full w-[3.05rem] shrink-0 border-r lg:flex flex-col"
+      /* Bloco flutuante: descolado da borda, raio de bloco e sombra com alcance —
+         quem separa o bloco do chão é a sombra, não a borda. */
+      className="fixed left-3 top-3 bottom-3 z-40 hidden w-[3.05rem] shrink-0 overflow-hidden rounded-bloco border shadow-bloco lg:flex flex-col"
       style={{ backgroundColor: "#d1193a", borderColor: "rgba(255,255,255,0.15)" }}
       onMouseLeave={scheduleClose}
     >
@@ -210,12 +212,12 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
       {activeGroup && (
         <div
           key={activeGroup.variant}
-          className="fixed left-[3.05rem] z-40 hidden lg:block animate-in fade-in-0 slide-in-from-left-2 duration-150"
+          className="fixed left-[calc(0.75rem+3.05rem+0.375rem)] z-40 hidden lg:block animate-in fade-in-0 slide-in-from-left-2 duration-150"
           style={{ top: flyoutTop }}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
         >
-          <div className="ml-2 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+          <div className="ml-2 w-64 rounded-bloco border border-border bg-popover p-1.5 text-popover-foreground shadow-bloco">
             <div className="px-3 pb-2 pt-1">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Área
@@ -265,7 +267,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
             onClick={onMobileClose}
           />
           <motion.div
-            className="fixed left-0 top-0 z-50 h-full w-64 border-r lg:hidden"
+            className="fixed left-3 top-3 bottom-3 z-50 w-64 overflow-hidden rounded-bloco border shadow-bloco lg:hidden"
             style={{ backgroundColor: "#d1193a", borderColor: "rgba(255,255,255,0.2)" }}
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
