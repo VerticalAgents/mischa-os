@@ -99,7 +99,6 @@ Deno.serve(async (req) => {
         nome,
         custom_role_id: custom_role_id || null,
         login_email: email,
-        senha_acesso: password,
       });
 
     if (staffError) {

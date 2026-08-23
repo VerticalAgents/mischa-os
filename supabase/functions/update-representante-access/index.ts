@@ -125,7 +125,8 @@ Deno.serve(async (req) => {
     // Atualiza tabela
     const tableUpdates: Record<string, string> = { updated_at: new Date().toISOString() };
     if (new_email) tableUpdates.login_email = new_email;
-    if (new_password) tableUpdates.senha_acesso = new_password;
+    // Senha nunca é armazenada em texto puro
+    if (new_password) tableUpdates.senha_acesso = null;
 
     await adminClient
       .from("representante_accounts")
