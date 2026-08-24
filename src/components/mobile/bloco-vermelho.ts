@@ -24,7 +24,7 @@ export const ROTULO_BLOCO = "text-[0.7rem] font-semibold uppercase tracking-[1px
  */
 export const azulejoVermelho = (aceso: boolean) =>
   cn(
-    "flex min-h-[86px] flex-col items-center justify-center gap-2 rounded-[22px] px-2 py-3",
+    "flex min-h-[86px] flex-col items-center justify-center gap-2 rounded-pilula px-2 py-3",
     "text-center transition-all duration-200 ease-out-expo active:scale-[0.97] active:duration-press",
     aceso
       ? "bg-white/[.18] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"

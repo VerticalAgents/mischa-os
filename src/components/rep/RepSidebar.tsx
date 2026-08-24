@@ -50,7 +50,7 @@ const ROTULO = "text-[0.7rem] font-semibold uppercase tracking-[1px]";
 /** Item aceso: branco a 18% + luz interna no topo — o mesmo relevo do cartão. */
 const classeLinha = (aceso: boolean) =>
   cn(
-    "flex items-center gap-3 px-3 py-2.5 rounded-controle transition-all duration-200 ease-out-expo",
+    "flex items-center gap-3 px-3 py-2.5 rounded-pilula transition-all duration-200 ease-out-expo",
     ROTULO,
     aceso
       ? "bg-white/[.18] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"

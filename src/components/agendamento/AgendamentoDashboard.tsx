@@ -1385,7 +1385,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {dadosGraficoSemanal.map((dia, index) => <div key={index} className={cn(
-              "p-3 lg:p-4 border rounded-controle cursor-pointer transition-all duration-200 ease-out-expo hover:bg-muted/40 flex flex-col gap-2 md:text-center",
+              // Raio de PILULA, nao de bloco: estes cartoes moram DENTRO do cartao do
+              // calendario. Em 28px ficariam com o mesmo canto do pai e a hierarquia
+              // sumiria; em 8px destoavam de tudo em volta.
+              "p-3 lg:p-4 border rounded-pilula cursor-pointer transition-all duration-200 ease-out-expo hover:bg-muted/40 flex flex-col gap-2 md:text-center",
               dia.isToday
                 ? "border-amber-500/60 bg-amber-50/40 dark:bg-amber-500/5"
                 : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado)

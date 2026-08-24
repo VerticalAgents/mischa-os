@@ -47,14 +47,14 @@ const IDENTIDADE_PILULA = "pilula-barra-inferior";
 const classeItem = (aceso: boolean) =>
   cn(
     "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1",
-    "min-h-[52px] rounded-[22px] transition-colors duration-200 ease-out-expo",
+    "min-h-[52px] rounded-pilula transition-colors duration-200 ease-out-expo",
     "active:scale-[0.97] active:duration-press",
     aceso ? "text-brand-700 dark:text-brand-400" : "text-muted-foreground"
   );
 
 const CLASSE_PILULA = cn(
   // Vem antes do ícone no DOM e o ícone é relative: pinta atrás sem z-index.
-  "absolute inset-0 rounded-[22px] bg-brand-500/[.12]",
+  "absolute inset-0 rounded-pilula bg-brand-500/[.12]",
   "shadow-[inset_0_1px_0_#ffffffb3] dark:shadow-[inset_0_1px_0_#ffffff0f]"
 );
 

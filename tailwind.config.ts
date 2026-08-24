@@ -96,6 +96,11 @@ export default {
 			borderRadius: {
 				/* Bloco = 28px, Controle = 8px. NUNCA o mesmo raio para os dois. */
 				bloco: '28px',
+				/* Marcacao de "voce esta aqui": item aceso do menu, aba ativa, item da
+				   barra inferior. O valor vem da secao 8 do DESIGN.md, onde o item da
+				   barra do celular e rounded-[22px]. Nao e um terceiro raio solto — e
+				   a mesma pilula, usada em todo lugar que diz onde voce esta. */
+				pilula: '22px',
 				controle: 'var(--radius)',
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',

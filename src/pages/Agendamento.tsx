@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { BARRA_ABAS, ABA, abaManual, GRADE_ABAS_CELULAR } from "@/components/common/abas";
 import { useRoutePermission } from "@/hooks/useRolePermissions";
 import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import AgendamentoDashboard from "@/components/agendamento/AgendamentoDashboard";
@@ -114,27 +116,19 @@ export default function Agendamento() {
         <PageHeader title="Agendamento" description="Gerenciamento de agendamentos e confirmação de reposições" />
         
         <Tabs value={activeTab} onValueChange={changeTab} className="space-y-4">
-          {/* Mobile/Tablet: grid 2 colunas */}
-          <div className="grid grid-cols-2 gap-2 lg:hidden">
+          {/* Celular: grade de 2 colunas dentro do mesmo bloco */}
+          <div className={GRADE_ABAS_CELULAR}>
             {visibleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => changeTab(tab.id)}
-                className={`rounded-md px-3 py-2 text-xs font-medium transition-all text-center ${
-                  activeTab === tab.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
+              <button key={tab.id} onClick={() => changeTab(tab.id)} className={abaManual(activeTab === tab.id)}>
                 {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Desktop: TabsList horizontal original */}
-          <TabsList className="hidden lg:inline-flex">
+          {/* Computador: tira horizontal */}
+          <TabsList className={cn(BARRA_ABAS, "hidden lg:inline-flex")}>
             {visibleTabs.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id}>{tab.label}</TabsTrigger>
+              <TabsTrigger key={tab.id} value={tab.id} className={ABA}>{tab.label}</TabsTrigger>
             ))}
           </TabsList>
           
