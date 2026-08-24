@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CHIP_STATUS, CHIP_INFO, FUNDO_LINHA, FUNDO_ENTREGA, BOTAO_CONFIRMAR } from "@/components/agendamento/cores-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,11 +68,11 @@ const IndicadoresEntrega = ({
   };
 
   const getFrequenciaBackground = () => {
-    if (frequenciaReal === null) return 'bg-slate-100';
-    if (divergencia.cor === 'green') return 'bg-green-100';
-    if (divergencia.cor === 'yellow') return 'bg-yellow-100';
-    if (divergencia.cor === 'red') return 'bg-red-100';
-    return 'bg-slate-100';
+    if (frequenciaReal === null) return CHIP_INFO.neutro;
+    if (divergencia.cor === 'green') return CHIP_INFO.verde;
+    if (divergencia.cor === 'yellow') return CHIP_INFO.amarelo;
+    if (divergencia.cor === 'red') return CHIP_INFO.vermelho;
+    return CHIP_INFO.neutro;
   };
   
   return (
@@ -80,7 +81,7 @@ const IndicadoresEntrega = ({
       <TooltipProvider>
         <TooltipUI>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-slate-700">
+            <div className={cn("flex items-center gap-1 px-2 py-1 rounded-controle", CHIP_INFO.neutro)}>
               <Clock className="h-3 w-3" />
               <span className="font-medium">{diasDesdeUltimaEntrega ?? '--'}d</span>
             </div>
@@ -98,7 +99,7 @@ const IndicadoresEntrega = ({
       <TooltipProvider>
         <TooltipUI>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 rounded text-blue-700">
+            <div className={cn("flex items-center gap-1 px-2 py-1 rounded-controle", CHIP_INFO.azul)}>
               <Settings className="h-3 w-3" />
               <span className="font-medium">{periodicidade}d</span>
             </div>
@@ -994,7 +995,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   return <div className="space-y-6">
       {/* Barra de Filtros Unificada */}
       <TooltipProvider delayDuration={200}>
-        <div className="bg-muted/30 border rounded-lg p-2 sm:p-2.5">
+        <div className="rounded-bloco border border-border bg-card p-2.5 shadow-tema sm:p-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Busca */}
             <div className="relative">
@@ -1088,7 +1089,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
           <div
             key={label}
             className={cn(
-              "rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm",
+              // Bloco, nao controle: raio de 28px + sombra do tema. O hover
+              // levanta (secao 11) e fica atras de [@media(hover:hover)] — em
+              // tela de toque o hover gruda ao tocar e nao sai mais.
+              "flex h-full flex-col rounded-bloco border border-border bg-card p-5 shadow-tema",
+              "transition-all duration-300 ease-out-expo",
+              "[@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-tema-md",
               alerta && "border-destructive/40 bg-destructive/5"
             )}
           >
@@ -1379,7 +1385,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {dadosGraficoSemanal.map((dia, index) => <div key={index} className={cn(
-              "p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/40 flex flex-col gap-2 md:text-center",
+              "p-3 lg:p-4 border rounded-controle cursor-pointer transition-all duration-200 ease-out-expo hover:bg-muted/40 flex flex-col gap-2 md:text-center",
               dia.isToday
                 ? "border-amber-500/60 bg-amber-50/40 dark:bg-amber-500/5"
                 : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado)
@@ -1394,26 +1400,26 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
 
                 {/* Mobile linha 2: badges dividindo a largura. Desktop: stacked w-full */}
                 <div className="flex w-full gap-1 md:flex-col md:items-stretch md:gap-1">
-                  {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.confirmados > 0 && <Badge variant="outline" className={`text-[10px] ${CHIP_STATUS.confirmado} rounded-full whitespace-nowrap justify-center flex-1 md:w-full md:flex-none`}>
                       {dia.confirmados} Confirmados
                     </Badge>}
-                  {dia.separados > 0 && <Badge variant="outline" className="text-[10px] bg-green-200 text-green-900 border-green-300 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.separados > 0 && <Badge variant="outline" className={`text-[10px] ${CHIP_STATUS.separado} rounded-full whitespace-nowrap justify-center flex-1 md:w-full md:flex-none`}>
                       {dia.separados} Separados
                     </Badge>}
-                  {dia.despachados > 0 && <Badge variant="outline" className="text-[10px] bg-green-400 text-green-950 border-green-500 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.despachados > 0 && <Badge variant="outline" className={`text-[10px] ${CHIP_STATUS.despachado} rounded-full whitespace-nowrap justify-center flex-1 md:w-full md:flex-none`}>
                       {dia.despachados} Despachados
                     </Badge>}
-                  {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.previstos > 0 && <Badge variant="outline" className={`text-[10px] ${CHIP_STATUS.previsto} rounded-full whitespace-nowrap justify-center flex-1 md:w-full md:flex-none`}>
                       {dia.previstos} Previstos
                     </Badge>}
-                  {dia.provaveis > 0 && <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.provaveis > 0 && <Badge variant="outline" className={`text-[10px] ${CHIP_STATUS.provavel} rounded-full whitespace-nowrap justify-center flex-1 md:w-full md:flex-none`}>
                       {dia.provaveis} Prováveis
                     </Badge>}
-                  {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                  {dia.realizadas > 0 && <Badge variant="outline" className={`text-[10px] ${CHIP_STATUS.entregue} rounded-full whitespace-nowrap justify-center flex-1 md:w-full md:flex-none`}>
                       {dia.realizadas} Entregues
                     </Badge>}
                   {dia.total === 0 && dia.realizadas === 0 && (
-                    <span className="text-[10px] text-muted-foreground text-center w-full bg-muted border border-border rounded-none py-0.5 px-2 whitespace-nowrap">
+                    <span className="text-[10px] text-muted-foreground text-center w-full bg-muted border border-border rounded-full py-0.5 px-2 whitespace-nowrap">
                       Livre
                     </span>
                   )}
@@ -1526,22 +1532,22 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                       ) : null;
                       const getBackgroundColor = () => {
                         if (agendamento.statusAgendamento === "Agendado") {
-                          if (sub === "Despachado") return "bg-green-200 border-green-300";
-                          if (sub === "Separado") return "bg-green-100 border-green-200";
-                          return "bg-green-50";
+                          if (sub === "Despachado") return FUNDO_LINHA.despachado;
+                          if (sub === "Separado") return FUNDO_LINHA.separado;
+                          return FUNDO_LINHA.confirmado;
                         }
                         if (agendamento.statusAgendamento === "Previsto") {
-                          return scoreCard > 85 ? "bg-purple-50 border-purple-200" : "bg-yellow-50";
+                          return scoreCard > 85 ? FUNDO_LINHA.provavel : FUNDO_LINHA.previsto;
                         }
-                        return "bg-gray-50";
+                        return FUNDO_LINHA.neutro;
                       };
                       const substatusBadge = agendamento.statusAgendamento === "Agendado" ? (
                         sub === "Despachado" ? (
-                          <Badge variant="outline" className="bg-green-400 text-green-950 border-green-500">Despachado</Badge>
+                          <Badge variant="outline" className={CHIP_STATUS.despachado}>Despachado</Badge>
                         ) : sub === "Separado" ? (
-                          <Badge variant="outline" className="bg-green-200 text-green-900 border-green-300">Separado</Badge>
+                          <Badge variant="outline" className={CHIP_STATUS.separado}>Separado</Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">Confirmado</Badge>
+                          <Badge variant="outline" className={CHIP_STATUS.confirmado}>Confirmado</Badge>
                         )
                       ) : (
                         <Badge variant={agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
@@ -1604,7 +1610,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                   onClick={() => handleConfirmarAgendamento(agendamento)}
                                   disabled={!canEdit}
                                   title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
-                                  className="bg-green-500 hover:bg-green-600 w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
+                                  className={cn(BOTAO_CONFIRMAR, "w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2")}
                                 >
                                   <CheckCheck className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
                                   <span className="ml-1 truncate sm:hidden">Confirmar</span>
@@ -1694,7 +1700,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                       </span>
                     </div>
                     {entregasDiaSelecionado.map(entrega => (
-                      <div key={entrega.id} className="flex items-start gap-3 p-3 border border-blue-200 rounded-lg bg-blue-50">
+                      <div key={entrega.id} className={cn("flex items-start gap-3 p-3 border rounded-controle", FUNDO_ENTREGA)}>
                         <div className="flex-1 text-left">
                           <div className="font-medium text-left">{entrega.clienteNome}</div>
                           <div className="text-sm text-muted-foreground text-left">
@@ -1706,7 +1712,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             </div>
                           )}
                         </div>
-                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300 flex-shrink-0">
+                        <Badge variant="outline" className={cn(CHIP_STATUS.entregue, "flex-shrink-0")}>
                           Entregue
                         </Badge>
                       </div>

@@ -165,13 +165,29 @@ export default function QuantidadesProdutosSemanal({
   );
 
   const isProvavelMode = incluirPrevistos && modoPrevistos === 'provaveis';
-  return <Card className={isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}>
-    <CardHeader>
-      <div className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-          <Package className={`h-4 w-4 md:h-5 md:w-5 ${isProvavelMode ? 'text-purple-500' : 'text-blue-500'}`} />
-          Projeção de Demanda
-        </CardTitle>
+  /*
+   * Cabecalho igual ao do bloco vizinho ("Produtos Entregues"): ponto colorido +
+   * rotulo em maiuscula espacada. Antes este era o unico com titulo grande e
+   * icone, e com o bloco inteiro pintado de lilas quando em modo "provaveis" —
+   * lado a lado com um cartao branco, era o que saltava como fora de esquadro.
+   * O sinal do modo provavel continua: mudou de bloco inteiro para o ponto.
+   */
+  return <Card className="overflow-hidden">
+    <CardHeader className="px-5 pt-5 pb-1">
+      <div className="flex flex-row items-start justify-between gap-2">
+        <div>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className={`h-1.5 w-1.5 rounded-full ${isProvavelMode ? 'bg-purple-500' : 'bg-blue-500'}`} />
+            Projeção de Demanda
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            {isProvavelMode
+              ? 'Confirmados + previstos prováveis da semana'
+              : incluirPrevistos
+                ? 'Confirmados + previstos da semana'
+                : 'Pedidos confirmados da semana'}
+          </p>
+        </div>
         {onToggleIncluirPrevistos && (
           <Dialog>
             <DialogTrigger asChild>
