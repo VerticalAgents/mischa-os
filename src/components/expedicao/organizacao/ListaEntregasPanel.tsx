@@ -27,8 +27,11 @@ export const ListaEntregasPanel = ({
   const totalSelecionadas = entregas.filter(e => e.selecionada).length;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b space-y-3">
+    // Bloco: os dois paineis desta aba eram div crua, sem cartao — canto reto ao
+    // lado de tudo o mais arredondado. overflow-hidden porque a lista rola por
+    // dentro e passaria por cima dos cantos.
+    <div className="flex flex-col h-full overflow-hidden rounded-bloco border border-border bg-card shadow-tema">
+      <div className="p-4 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-lg">Entregas Disponíveis</h2>

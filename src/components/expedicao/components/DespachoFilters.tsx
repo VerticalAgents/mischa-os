@@ -50,7 +50,7 @@ export const DespachoFilters = ({
   ].filter(Boolean).length;
 
   return (
-    <div className="rounded-lg border border-border/60 bg-background p-4 space-y-3">
+    <div className="rounded-bloco border border-border bg-card shadow-tema p-5 space-y-3">
       {/* Presets de período - tabs underline minimalistas */}
       <div className="flex flex-wrap gap-1 border-b border-border/60 -mx-1 px-1">
         {PRESETS.map((p) => {

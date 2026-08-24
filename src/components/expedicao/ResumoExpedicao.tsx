@@ -458,7 +458,12 @@ const StatusFunilCard = ({ titulo, icone, pedidos, unidades, tone, onClick, delt
       type="button"
       onClick={onClick}
       className={cn(
-        "text-left rounded-lg border border-border/60 bg-background p-4 transition-all hover:border-border hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40",
+        // Bloco: estes cartoes ficam direto sobre o chao, nao dentro de outro
+        // cartao. Raio de 28px, como todo bloco do app.
+        "text-left rounded-bloco border border-border bg-card p-5 shadow-tema",
+        "transition-all duration-300 ease-out-expo",
+        "[@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-tema-md",
+        "focus:outline-none focus:ring-2 focus:ring-ring/40",
       )}
     >
       <div className="flex items-center justify-between mb-3">

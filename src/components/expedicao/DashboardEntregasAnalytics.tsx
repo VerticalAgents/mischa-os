@@ -389,7 +389,7 @@ export default function DashboardEntregasAnalytics() {
           <CardContent>
             <div className="space-y-4">
               {/* Total Geral */}
-              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-controle border border-primary/20">
                 <p className="text-sm text-muted-foreground mb-1">Total Entregue</p>
                 <p className="text-3xl font-bold text-primary">
                   {dadosRevenda.totalUnidades.toLocaleString('pt-BR')} un
@@ -463,7 +463,7 @@ export default function DashboardEntregasAnalytics() {
           <CardContent>
             <div className="space-y-4">
               {/* Total Geral */}
-              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-controle border border-primary/20">
                 <p className="text-sm text-muted-foreground mb-1">Total Entregue</p>
                 <p className="text-3xl font-bold text-primary">
                   {dadosFoodService.totalUnidades.toLocaleString('pt-BR')} un

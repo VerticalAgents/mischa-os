@@ -25,8 +25,8 @@ export const PreviewTextoPanel = ({ texto }: PreviewTextoPanelProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-muted/30">
-      <div className="p-4 border-b bg-background">
+    <div className="flex flex-col h-full overflow-hidden rounded-bloco border border-border bg-card shadow-tema">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-lg">Preview do Texto</h2>
