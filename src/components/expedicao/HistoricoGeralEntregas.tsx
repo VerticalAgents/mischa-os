@@ -83,8 +83,8 @@ export const HistoricoGeralEntregas = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Histórico Geral de Entregas</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Histórico Geral de Entregas</h2>
+            <p className="text-xs text-muted-foreground">
               Visualize todas as entregas e retornos confirmados no sistema.
             </p>
           </div>
@@ -95,7 +95,7 @@ export const HistoricoGeralEntregas = () => {
         </div>
 
         {/* Filtros */}
-        <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+        <div className="bg-muted/50 p-4 rounded-controle space-y-4">
           <div className="flex items-center gap-4">
             <Calendar className="h-5 w-5 text-muted-foreground" />
             <span className="font-medium">Filtros de Período</span>
@@ -140,7 +140,7 @@ export const HistoricoGeralEntregas = () => {
 
         {/* Debug info para desenvolvimento */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="bg-yellow-50 p-3 rounded text-sm">
+          <div className="bg-yellow-50 dark:bg-yellow-950/40 dark:text-yellow-100 p-3 rounded-controle text-sm">
             <strong>Debug:</strong> {registros.length} registros carregados, {registrosFiltrados.length} após filtros
           </div>
         )}

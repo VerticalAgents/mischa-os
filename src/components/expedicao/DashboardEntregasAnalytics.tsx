@@ -296,7 +296,7 @@ export default function DashboardEntregasAnalytics() {
         {/* Entregas Mês Atual */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Entregas Mês Atual
             </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -318,7 +318,7 @@ export default function DashboardEntregasAnalytics() {
         {/* Comparação Ano Anterior */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               vs {format(mesmoMesAnoPassado, "MMMM yyyy", { locale: ptBR })}
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -341,8 +341,8 @@ export default function DashboardEntregasAnalytics() {
       {/* Filtro de Período */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <Filter className="h-3.5 w-3.5" />
             Filtros de Período
           </CardTitle>
           <CardDescription className="text-left">
@@ -376,8 +376,8 @@ export default function DashboardEntregasAnalytics() {
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <Package className="h-3.5 w-3.5" />
                   Entregas Revenda
                 </CardTitle>
                 <CardDescription className="text-left">
@@ -452,8 +452,8 @@ export default function DashboardEntregasAnalytics() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Package className="h-3.5 w-3.5" />
               Entregas Food-Service
             </CardTitle>
             <CardDescription className="text-left">
@@ -523,8 +523,8 @@ export default function DashboardEntregasAnalytics() {
       {/* Gráfico Comparativo */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <BarChart3 className="h-3.5 w-3.5" />
             Evolução da Entrega por Categoria
           </CardTitle>
           <CardDescription className="text-left">
@@ -596,7 +596,7 @@ export default function DashboardEntregasAnalytics() {
       {/* Card com detalhes adicionais */}
       <Card>
         <CardHeader>
-          <CardTitle>Resumo de Entregas</CardTitle>
+          <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Resumo de Entregas</CardTitle>
           <CardDescription className="text-left">
             Análise comparativa do período selecionado
           </CardDescription>
