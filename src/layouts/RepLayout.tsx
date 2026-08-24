@@ -51,7 +51,7 @@ export default function RepLayout({ children }: RepLayoutProps) {
       <RepMobileDock />
 
       <main
-        className={`flex-1 overflow-auto rolagem-contida espaco-cabecalho-flutuante espaco-barra-flutuante transition-all duration-200 ease-out-expo ${
+        className={`flex-1 overflow-auto espaco-cabecalho-flutuante espaco-barra-flutuante transition-all duration-200 ease-out-expo ${
           sidebarExpandido ? "lg:pt-0 lg:ml-[calc(15rem+1.5rem)]" : "lg:pt-[4.25rem] lg:ml-0"
         }`}
       >

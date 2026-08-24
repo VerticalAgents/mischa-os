@@ -162,8 +162,13 @@ html[data-barra-navegador="1"] .barra-flutuante { bottom: 8px; }
 /* Quem rola no celular é o documento (o layout cresce em vez de rolar por
    dentro), então é no html/body que o gesto precisa parar de ser devolvido ao
    navegador — senão o "puxar para recarregar" do app disputa com o do próprio
-   Safari e nenhum dos dois responde direito. A classe fica para o caso de uma
-   área interna passar a rolar. */
+   Safari e nenhum dos dois responde direito.
+   
+   CUIDADO: `overscroll-behavior: contain` só pode ir em elemento que REALMENTE
+   rola. Num `overflow: auto` que cresceu até o conteúdo — como o <main> dos
+   layouts — ele não tem para onde rolar E ainda impede que o movimento passe
+   adiante para o documento: a roda do mouse morre ali e a página inteira trava.
+   Foi exatamente o que aconteceu ao colocar esta classe no <main>. */
 .rolagem-contida {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
