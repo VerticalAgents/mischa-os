@@ -15,7 +15,7 @@ import type { ItemBarra } from "@/components/mobile/BarraInferior";
  */
 
 const candidatosApp: ItemBarra[] = [
-  { path: "/home", label: "Início", Icon: Home },
+  { path: "/home", label: "Painel", Icon: Home },
   { path: "/agendamento", label: "Agenda", Icon: Clipboard },
   { path: "/expedicao", label: "Expedição", Icon: Truck },
   { path: "/pcp", label: "PCP", Icon: Layers },

@@ -26,7 +26,7 @@ export const menuGroups: MenuGroup[] = [
     variant: "main",
     items: [
       {
-        label: "Início",
+        label: "Painel",
         path: "/home",
         icon: <Home className="h-4 w-4" />,
       },
