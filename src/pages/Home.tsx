@@ -1,5 +1,8 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { BARRA_ABAS, ABA, abaManual, GRADE_ABAS_CELULAR } from '@/components/common/abas';
 import ManualCard from '@/components/manual/ManualCard';
 import CartaoAcao from '@/components/common/CartaoAcao';
 import { useClienteStore } from '@/hooks/useClienteStore';
@@ -27,9 +30,40 @@ import {
   HomeSugestaoProducao,
   HomeFunilLeadsResumo
 } from '@/components/home';
+import HomeSemanaOperacional from '@/components/home/HomeSemanaOperacional';
+
+/**
+ * A Inicio em tres abas.
+ *
+ * Antes era uma pilha unica que misturava analise macro (giro por PDV,
+ * distribuicao de status, funil de leads) com o que se usa para tocar o dia.
+ * Sao duas leituras diferentes: uma responde "como o negocio vai", a outra
+ * responde "o que eu faco agora". Empilhadas, a segunda ficava embaixo da
+ * primeira — e e a que se abre todo dia.
+ *
+ * Por isso a Principal e a primeira e a padrao.
+ */
+const ABAS_INICIO = [
+  { id: 'principal', label: 'Principal' },
+  { id: 'indicadores', label: 'Indicadores' },
+  { id: 'graficos', label: 'Gráficos' },
+];
 
 export default function Home() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const abaAtiva = searchParams.get('tab') ?? 'principal';
+
+  const trocarAba = (nova: string) => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set('tab', nova);
+        return p;
+      },
+      { replace: true }
+    );
+  };
   
   // Carregar dados necessários
   const { carregarClientes, clientes } = useClienteStore();
@@ -111,23 +145,28 @@ export default function Home() {
         <p className="mt-1 text-sm text-muted-foreground">Panorama geral do seu negócio</p>
       </div>
 
-      {/* Seção 1: Indicadores Principais */}
-      <HomeIndicadoresClientes />
+      <Tabs value={abaAtiva} onValueChange={trocarAba} className="space-y-4">
+        <div className={GRADE_ABAS_CELULAR}>
+          {ABAS_INICIO.map((aba) => (
+            <button key={aba.id} onClick={() => trocarAba(aba.id)} className={abaManual(abaAtiva === aba.id)}>
+              {aba.label}
+            </button>
+          ))}
+        </div>
+        <TabsList className={cn(BARRA_ABAS, 'hidden lg:inline-flex')}>
+          {ABAS_INICIO.map((aba) => (
+            <TabsTrigger key={aba.id} value={aba.id} className={ABA}>{aba.label}</TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Seção 2: Gráficos - Giro e Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <HomeGiroSemanalChart />
-        <HomeStatusPieChart />
-      </div>
+        {/* Principal: o operacional da semana e os atalhos. Abre por padrao. */}
+        <TabsContent value="principal" className="space-y-6">
+          <HomeSemanaOperacional />
 
-      {/* Seção 3: Produção */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <HomeProducaoSemana />
-        <HomeSugestaoProducao />
-      </div>
-
-      {/* Seção 4: Funil de Leads */}
-      <HomeFunilLeadsResumo />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <HomeProducaoSemana />
+            <HomeSugestaoProducao />
+          </div>
 
       {/* Seção 5: Ações Rápidas */}
       <div>
@@ -163,6 +202,22 @@ export default function Home() {
           ))}
         </div>
       </div>
+        </TabsContent>
+
+        {/* Indicadores: os numeros do negocio. */}
+        <TabsContent value="indicadores" className="space-y-4">
+          <HomeIndicadoresClientes />
+          <HomeFunilLeadsResumo />
+        </TabsContent>
+
+        {/* Graficos: a leitura macro. */}
+        <TabsContent value="graficos" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <HomeGiroSemanalChart />
+            <HomeStatusPieChart />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
