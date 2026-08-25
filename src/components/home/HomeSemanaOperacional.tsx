@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { startOfWeek, endOfWeek, addDays, isSameDay, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import DetalheIndicador, { type ConteudoDetalhe } from "@/components/mobile/DetalheIndicador";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,7 @@ const Contador = ({
 
 export default function HomeSemanaOperacional() {
   const navigate = useNavigate();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { agendamentos } = useAgendamentoClienteStore();
   const { separacaoPedidos, pedidosDespachados } = useDashboardMetrics();
 
@@ -71,15 +74,17 @@ export default function HomeSemanaOperacional() {
       return d && d >= inicio && d <= fim;
     });
 
-    const contar = (fn: (a: (typeof daSemana)[number]) => boolean) => daSemana.filter(fn).length;
+    // Guarda as LISTAS, nao so as contagens: e o que o resumo mostra ao clicar,
+    // e sai do mesmo filtro — nao ha conta feita duas vezes.
+    const filtrar = (fn: (a: (typeof daSemana)[number]) => boolean) => daSemana.filter(fn);
 
     return {
       rotulo: `${format(inicio, "dd/MM")} – ${format(fim, "dd/MM")}`,
       total: daSemana.length,
-      previstos: contar((a) => a.statusAgendamento === "Previsto"),
-      confirmados: contar((a) => a.statusAgendamento === "Agendado"),
-      separados: contar((a) => a.substatus_pedido === "Separado"),
-      despachados: contar((a) => a.substatus_pedido === "Despachado"),
+      previstos: filtrar((a) => a.statusAgendamento === "Previsto"),
+      confirmados: filtrar((a) => a.statusAgendamento === "Agendado"),
+      separados: filtrar((a) => a.substatus_pedido === "Separado"),
+      despachados: filtrar((a) => a.substatus_pedido === "Despachado"),
       dias: Array.from({ length: 7 }, (_, i) => {
         const dia = addDays(inicio, i);
         return {
@@ -90,6 +95,27 @@ export default function HomeSemanaOperacional() {
       }),
     };
   }, [agendamentos]);
+
+  const abrir = (
+    titulo: string,
+    lista: typeof semana.previstos,
+    rota: string,
+    rotuloAcao: string
+  ) =>
+    setDetalhe({
+      titulo,
+      resumo: `${semana.rotulo} · ${lista.length} pedidos`,
+      linhas: lista
+        .slice()
+        .sort((a, b) => +new Date(a.dataReposicao) - +new Date(b.dataReposicao))
+        .map((a, i) => ({
+          id: a.id ?? `${a.cliente?.id ?? i}`,
+          titulo: a.cliente?.nome ?? "Cliente",
+          subtitulo: `${a.substatus_pedido || a.statusAgendamento} · ${format(new Date(a.dataReposicao), "dd/MM")}`,
+        })),
+      vazio: "Nenhum pedido nesta situação.",
+      acao: { rotulo: rotuloAcao, aoClicar: () => navigate(rota) },
+    });
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -105,10 +131,10 @@ export default function HomeSemanaOperacional() {
         </div>
         <CardContent className="flex-1">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Contador ponto="bg-amber-500" rotulo="Previstos" valor={semana.previstos} aoClicar={() => navigate("/agendamento")} />
-            <Contador ponto="bg-emerald-500" rotulo="Confirmados" valor={semana.confirmados} aoClicar={() => navigate("/agendamento")} />
-            <Contador ponto="bg-blue-500" rotulo="Separados" valor={semana.separados} aoClicar={() => navigate("/expedicao?tab=separacao")} />
-            <Contador ponto="bg-purple-500" rotulo="Despachados" valor={semana.despachados} aoClicar={() => navigate("/expedicao?tab=despacho")} />
+            <Contador ponto="bg-amber-500" rotulo="Previstos" valor={semana.previstos.length} aoClicar={() => abrir("Previstos da semana", semana.previstos, "/agendamento", "Ver agendamento")} />
+            <Contador ponto="bg-emerald-500" rotulo="Confirmados" valor={semana.confirmados.length} aoClicar={() => abrir("Confirmados da semana", semana.confirmados, "/agendamento", "Ver agendamento")} />
+            <Contador ponto="bg-blue-500" rotulo="Separados" valor={semana.separados.length} aoClicar={() => abrir("Separados da semana", semana.separados, "/expedicao?tab=separacao", "Ver separação")} />
+            <Contador ponto="bg-purple-500" rotulo="Despachados" valor={semana.despachados.length} aoClicar={() => abrir("Despachados da semana", semana.despachados, "/expedicao?tab=despacho", "Ver despacho")} />
           </div>
 
           {/* A semana dia a dia: onde o volume se concentra se lê antes de qualquer número. */}
@@ -165,6 +191,8 @@ export default function HomeSemanaOperacional() {
           </div>
         </CardContent>
       </Card>
+
+      <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
     </div>
   );
 }

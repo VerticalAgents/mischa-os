@@ -10,7 +10,6 @@ import { useSupabaseLeads } from '@/hooks/useSupabaseLeads';
 import { useNavigate } from 'react-router-dom';
 import { STATUS_LABELS, type LeadStatus } from '@/types/lead';
 import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
-import { useEhCelular } from '@/hooks/useEhCelular';
 
 const LoadingState = () => (
   <Card className="flex h-full flex-col shadow-tema">
@@ -48,7 +47,6 @@ const EFETIVADOS: LeadStatus[] = ['efetivado_imediato', 'efetivado_wpp', 'efetiv
 
 export default function HomeFunilLeadsResumo() {
   const navigate = useNavigate();
-  const ehCelular = useEhCelular();
   const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { leads, loading, carregarLeads } = useSupabaseLeads();
 
@@ -162,15 +160,12 @@ export default function HomeFunilLeadsResumo() {
               {metricas.map((metrica, index) => (
                 <div 
                   key={index}
-                  role={ehCelular ? 'button' : undefined}
+                  role="button"
                   onClick={(e) => {
-                    if (!ehCelular) return;
                     e.stopPropagation(); // o cartao inteiro leva ao funil; o azulejo, ao detalhe
                     abrirMetrica(metrica);
                   }}
-                  className={`${metrica.bgColor} rounded-lg p-2 text-center ${
-                    ehCelular ? 'cursor-pointer active:scale-[0.97] transition-transform' : ''
-                  }`}
+                  className={`${metrica.bgColor} rounded-controle p-2 text-center cursor-pointer transition-transform active:scale-[0.97]`}
                 >
                   <metrica.icon className={`h-4 w-4 mx-auto mb-1 ${metrica.color}`} />
                   <div className={`text-lg font-bold ${metrica.color}`}>

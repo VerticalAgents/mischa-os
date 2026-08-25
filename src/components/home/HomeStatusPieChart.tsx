@@ -6,7 +6,6 @@ import { useClienteStore } from '@/hooks/useClienteStore';
 import { useNavigate } from 'react-router-dom';
 import { apenasOperacionais } from '@/utils/clienteTipo';
 import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
-import { useEhCelular } from '@/hooks/useEhCelular';
 
 const STATUS_COLORS: Record<string, string> = {
   'Ativo': '#22c55e',
@@ -32,7 +31,6 @@ LoadingState.displayName = 'LoadingState';
 
 export default function HomeStatusPieChart() {
   const navigate = useNavigate();
-  const ehCelular = useEhCelular();
   const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { clientes: clientesTodos, loading } = useClienteStore();
   const clientes = useMemo(() => apenasOperacionais(clientesTodos), [clientesTodos]);
@@ -95,9 +93,7 @@ export default function HomeStatusPieChart() {
   return (
     <>
     <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
-      onClick={() =>
-        ehCelular ? setDetalhe(detalhe_) : navigate('/gestao-comercial?tab=representantes')
-      }
+      onClick={() => setDetalhe(detalhe_)}
     >
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-medium text-left">

@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import IndicadorCardComTooltip from '@/components/common/IndicadorCardComTooltip';
 import IndicadorCardComTendencia from '@/components/common/IndicadorCardComTendencia';
 import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
-import { useEhCelular } from '@/hooks/useEhCelular';
 import { GIRO_TOOLTIPS } from '@/data/indicadoresTooltips';
 
 /** "2026-W34" → "Semana 34 / 2026". Número de semana ISO não se lê sozinho. */
@@ -16,7 +15,6 @@ const rotuloSemana = (chave: string) => {
 
 export default function HomeIndicadoresClientes() {
   const navigate = useNavigate();
-  const ehCelular = useEhCelular();
   const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
 
   const {
@@ -87,9 +85,12 @@ export default function HomeIndicadoresClientes() {
     giroMedio4Semanas, giroPorPDV, navigate
   ]);
 
-  /** No celular a folha chega antes da tela cheia; no computador, vai direto. */
-  const aoTocar = (chave: keyof typeof detalhes, rota: string) => () =>
-    ehCelular ? setDetalhe(detalhes[chave]) : navigate(rota);
+  /**
+   * Clicar SEMPRE abre o resumo — no celular e no computador. O Painel é para
+   * ter o panorama sem sair do lugar; a tela inteira continua a um clique, pelo
+   * botão no rodapé do resumo.
+   */
+  const aoTocar = (chave: keyof typeof detalhes) => () => setDetalhe(detalhes[chave]);
 
   return (
     <>
@@ -102,7 +103,7 @@ export default function HomeIndicadoresClientes() {
           isLoading={giroLoading}
           className="h-full"
           tooltip={GIRO_TOOLTIPS.clientesAtivos}
-          onClick={aoTocar('pdvs', '/clientes')}
+          onClick={aoTocar('pdvs')}
         />
 
         <IndicadorCardComTendencia
@@ -113,7 +114,7 @@ export default function HomeIndicadoresClientes() {
           isLoading={giroLoading}
           className="h-full"
           tooltip={GIRO_TOOLTIPS.giroSemanalTotal}
-          onClick={aoTocar('giroTotal', '/insights-pdv')}
+          onClick={aoTocar('giroTotal')}
           variacao={variacaoGiroTotal}
           variacaoLabel="vs histórico"
         />
@@ -126,7 +127,7 @@ export default function HomeIndicadoresClientes() {
           isLoading={giroLoading}
           className="h-full"
           tooltip={GIRO_TOOLTIPS.giroMedioPorPDV}
-          onClick={aoTocar('giroMedio', '/insights-pdv')}
+          onClick={aoTocar('giroMedio')}
           variacao={variacaoGiroMedio}
           variacaoLabel="vs histórico"
         />
