@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import DetalheIndicador, { type ConteudoDetalhe } from "@/components/mobile/DetalheIndicador";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
-import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { cn } from "@/lib/utils";
 
 /**
@@ -62,7 +62,25 @@ export default function HomeSemanaOperacional() {
   const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { agendamentos } = useAgendamentoClienteStore();
-  const { separacaoPedidos, pedidosDespachados } = useDashboardMetrics();
+  const { pedidos } = useExpedicaoStore();
+
+  /**
+   * O de hoje na expedição, direto da loja de pedidos.
+   *
+   * Antes vinham do `useDashboardMetrics`, que devolve só as CONTAGENS — e para
+   * abrir o resumo é preciso a lista. É a mesma origem e o mesmo filtro; o que
+   * muda é guardar quem está em cada situação, em vez de só quantos são.
+   */
+  const hoje = useMemo(() => {
+    const doDia = (pedidos ?? []).filter((p) =>
+      isSameDay(new Date(p.data_prevista_entrega), new Date())
+    );
+    return {
+      aSeparar: doDia.filter((p) => p.substatus_pedido === "Agendado"),
+      separados: doDia.filter((p) => p.substatus_pedido === "Separado"),
+      despachados: doDia.filter((p) => p.substatus_pedido === "Despachado"),
+    };
+  }, [pedidos]);
 
   const semana = useMemo(() => {
     const hoje = new Date();
@@ -114,6 +132,28 @@ export default function HomeSemanaOperacional() {
           subtitulo: `${a.substatus_pedido || a.statusAgendamento} · ${format(new Date(a.dataReposicao), "dd/MM")}`,
         })),
       vazio: "Nenhum pedido nesta situação.",
+      acao: { rotulo: rotuloAcao, aoClicar: () => navigate(rota) },
+    });
+
+  const abrirPedidos = (
+    titulo: string,
+    lista: typeof hoje.aSeparar,
+    rota: string,
+    rotuloAcao: string
+  ) =>
+    setDetalhe({
+      titulo,
+      resumo: `Hoje · ${lista.length} pedidos · ${lista.reduce((t, p) => t + (p.quantidade_total || 0), 0)} unidades`,
+      linhas: lista
+        .slice()
+        .sort((a, b) => (a.cliente_nome || "").localeCompare(b.cliente_nome || ""))
+        .map((p) => ({
+          id: p.id,
+          titulo: p.cliente_nome,
+          subtitulo: p.tipo_pedido,
+          valor: p.quantidade_total ? `${p.quantidade_total} un` : undefined,
+        })),
+      vazio: "Nenhum pedido nesta situação hoje.",
       acao: { rotulo: rotuloAcao, aoClicar: () => navigate(rota) },
     });
 
@@ -173,20 +213,20 @@ export default function HomeSemanaOperacional() {
             <Contador
               ponto="bg-amber-500"
               rotulo="A separar"
-              valor={separacaoPedidos.aguardando}
-              aoClicar={() => navigate("/expedicao?tab=separacao")}
+              valor={hoje.aSeparar.length}
+              aoClicar={() => abrirPedidos("A separar hoje", hoje.aSeparar, "/expedicao?tab=separacao", "Ver separação")}
             />
             <Contador
               ponto="bg-blue-500"
               rotulo="Separados"
-              valor={separacaoPedidos.separados}
-              aoClicar={() => navigate("/expedicao?tab=separacao")}
+              valor={hoje.separados.length}
+              aoClicar={() => abrirPedidos("Separados hoje", hoje.separados, "/expedicao?tab=separacao", "Ver separação")}
             />
             <Contador
               ponto="bg-purple-500"
               rotulo="Despachados"
-              valor={pedidosDespachados?.total ?? 0}
-              aoClicar={() => navigate("/expedicao?tab=despacho")}
+              valor={hoje.despachados.length}
+              aoClicar={() => abrirPedidos("Despachados hoje", hoje.despachados, "/expedicao?tab=despacho", "Ver despacho")}
             />
           </div>
         </CardContent>

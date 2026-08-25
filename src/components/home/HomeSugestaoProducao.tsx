@@ -1,9 +1,10 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Factory, Package, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
 import { useRendimentosReceitaProduto } from '@/hooks/useRendimentosReceitaProduto';
 import { useMediaVendasSemanais } from '@/hooks/useMediaVendasSemanais';
 import { useEstoqueDisponivel } from '@/hooks/useEstoqueDisponivel';
@@ -23,6 +24,7 @@ LoadingState.displayName = 'LoadingState';
 
 export default function HomeSugestaoProducao() {
   const navigate = useNavigate();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   
   // Usar useEstoqueDisponivel para ter o estoque calculado igual ao PCP
   const { produtos: produtosEstoque, loading: loadingEstoque } = useEstoqueDisponivel({});
@@ -107,7 +109,10 @@ export default function HomeSugestaoProducao() {
       totalFormas,
       totalProdutos: produtosComSugestao.length,
       produtosComEstoqueSuficiente,
-      top5
+      top5,
+      // A lista inteira, para o resumo que abre ao clicar no bloco. O cartao
+      // mostra o top 5; o resumo mostra tudo.
+      produtos: produtosComSugestao
     };
   }, [produtosEstoque, obterRendimentoPorProduto, mediaVendasPorProduto, loadingRendimentos, loadingMediaVendas, loadingEstoque]);
 
@@ -117,7 +122,19 @@ export default function HomeSugestaoProducao() {
 
   return (
     <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
-      onClick={() => navigate('/pcp?tab=projecao')}
+      onClick={() =>
+        setDetalhe({
+          titulo: 'Sugestão de produção',
+          resumo: `${sugestoes?.totalFormas ?? 0} formas sugeridas`,
+          linhas: (sugestoes?.produtos ?? []).map((prod: any) => ({
+            id: prod.id,
+            titulo: prod.nome,
+            valor: `${prod.formasSugeridas} formas`,
+          })),
+          vazio: 'Nada a produzir por enquanto.',
+          acao: { rotulo: 'Ver projeção do PCP', aoClicar: () => navigate('/pcp?tab=projecao') },
+        })
+      }
     >
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -171,6 +188,7 @@ export default function HomeSugestaoProducao() {
           </div>
         )}
       </CardContent>
+      <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
     </Card>
   );
 }

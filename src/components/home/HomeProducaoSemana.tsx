@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Factory, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
 import { useNavigate } from 'react-router-dom';
+import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
 import { startOfWeek, endOfWeek, format, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,6 +26,7 @@ LoadingState.displayName = 'LoadingState';
 export default function HomeProducaoSemana() {
   const navigate = useNavigate();
   const { historico, loading } = useSupabaseHistoricoProducao();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
 
   const dadosSemana = useMemo(() => {
     const hoje = new Date();
@@ -89,7 +91,20 @@ export default function HomeProducaoSemana() {
 
   return (
     <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
-      onClick={() => navigate('/pcp?tab=historico')}
+      onClick={() =>
+        setDetalhe({
+          titulo: 'Produção da semana',
+          resumo: `${dadosSemana.totalRegistros} registros · ${dadosSemana.totalFormas} formas · ${dadosSemana.totalUnidades} unidades`,
+          linhas: Object.entries(dadosSemana.porDia).map(([dia, d]: any) => ({
+            id: dia,
+            titulo: dia,
+            subtitulo: `${d.registros} registro(s) · ${d.formas} formas`,
+            valor: `${d.unidades} un`,
+          })),
+          vazio: 'Nenhum registro de produção nesta semana.',
+          acao: { rotulo: 'Ver histórico do PCP', aoClicar: () => navigate('/pcp?tab=historico') },
+        })
+      }
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -198,6 +213,7 @@ export default function HomeProducaoSemana() {
           </div>
         )}
       </CardContent>
+      <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
     </Card>
   );
 }

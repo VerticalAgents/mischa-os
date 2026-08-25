@@ -1,4 +1,4 @@
-import { useMemo, memo } from 'react';
+import { useMemo, memo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useGiroDashboardGeral } from '@/hooks/useGiroDashboardGeral';
 import { useNavigate } from 'react-router-dom';
+import DetalheIndicador, { type ConteudoDetalhe } from '@/components/mobile/DetalheIndicador';
 import {
   ComposedChart,
   Line,
@@ -60,6 +61,7 @@ LoadingState.displayName = 'LoadingState';
 
 export default function HomeGiroSemanalChart() {
   const navigate = useNavigate();
+  const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
   const { dados, loading, error } = useGiroDashboardGeral();
 
   const chartData = useMemo(() => {
@@ -95,7 +97,22 @@ export default function HomeGiroSemanalChart() {
 
   return (
     <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
-      onClick={() => navigate('/gestao-comercial?tab=analise-giro')}
+      onClick={() =>
+        setDetalhe({
+          titulo: 'Giro semanal',
+          resumo: `${chartData.length} semanas`,
+          linhas: chartData.map((d: any, i: number) => ({
+            id: String(d.semana ?? d.name ?? i),
+            titulo: String(d.semana ?? d.name ?? `Semana ${i + 1}`),
+            valor: `${(d.giro ?? d.valor ?? d.unidades ?? 0).toLocaleString()} un`,
+          })),
+          vazio: 'Sem dados de giro no período.',
+          acao: {
+            rotulo: 'Ver análise de giro',
+            aoClicar: () => navigate('/gestao-comercial?tab=analise-giro'),
+          },
+        })
+      }
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -156,6 +173,7 @@ export default function HomeGiroSemanalChart() {
           <span>Projetado: {dados.giroProjetado}</span>
         </div>
       </CardContent>
+      <DetalheIndicador conteudo={detalhe} aoFechar={() => setDetalhe(null)} />
     </Card>
   );
 }

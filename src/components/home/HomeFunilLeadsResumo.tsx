@@ -137,7 +137,22 @@ export default function HomeFunilLeadsResumo() {
   return (
     <>
     <Card className="flex h-full flex-col shadow-tema cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50"
-      onClick={() => navigate('/gestao-comercial?tab=funil-leads')}
+      onClick={() =>
+        setDetalhe({
+          titulo: 'Funil de leads',
+          resumo: `${leads.length} leads no funil`,
+          linhas: metricas.map((m) => ({
+            id: m.label,
+            titulo: m.label,
+            valor: m.label === 'Conversão' ? `${m.valor}%` : String(m.valor),
+          })),
+          vazio: 'Nenhum lead cadastrado.',
+          acao: {
+            rotulo: 'Ver funil completo',
+            aoClicar: () => navigate('/gestao-comercial?tab=funil-leads'),
+          },
+        })
+      }
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
