@@ -37,14 +37,17 @@ const Contador = ({
     type="button"
     onClick={aoClicar}
     className={cn(
-      "flex h-full flex-col justify-between gap-2 rounded-pilula border border-border p-3 text-left transition-all duration-200 ease-out-expo",
+      // Centralizado, nao encostado. Com o cartao alto, `justify-between`
+      // deixava o numero sozinho no pe e o rotulo la em cima — os dois se
+      // desgrudavam. Juntos e no meio, o par se le como uma coisa so.
+      "flex h-full flex-col items-center justify-center gap-2 rounded-pilula border border-border p-3 text-center transition-all duration-200 ease-out-expo",
       aoClicar && "cursor-pointer hover:bg-muted/40"
     )}
   >
     {/* Sem `truncate`: em quatro colunas "Confirmados" e "Despachados" viravam
         "CONFIRMA…". Rotulo cortado nao e rotulo — melhor deixar quebrar. */}
-    <span className="flex items-start gap-2">
-      <span className={cn("mt-1 h-1.5 w-1.5 shrink-0 rounded-full", ponto)} />
+    <span className="flex items-center justify-center gap-2">
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", ponto)} />
       <span className="text-[10px] font-semibold uppercase leading-tight tracking-[1px] text-muted-foreground">
         {rotulo}
       </span>
@@ -136,8 +139,11 @@ export default function HomeSemanaOperacional() {
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">O que ainda precisa sair da casa</p>
         </div>
-        <CardContent className="flex-1">
-          <div className="grid grid-cols-3 gap-2">
+        {/* flex-1 no conteudo + h-full na grade: os tres contadores esticam ate a
+            base do cartao, em vez de ficarem uma faixa no topo com vazio embaixo.
+            O `justify-between` do proprio contador leva o numero para o pe. */}
+        <CardContent className="flex flex-1 flex-col">
+          <div className="grid h-full grid-cols-3 gap-2">
             <Contador
               ponto="bg-amber-500"
               rotulo="A separar"
