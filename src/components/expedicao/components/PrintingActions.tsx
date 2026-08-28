@@ -637,6 +637,7 @@ export const PrintingActions = ({
       <div class="etiqueta">
         <div class="topo">
           <div class="cliente">${escapar(pedido.cliente_nome)}</div>
+          <div class="slot-pilula">${pacote.rotulo ? `<span class="pilula">${pacote.rotulo}</span>` : ""}</div>
         </div>
         <div class="regua"></div>
         <div class="entrega">
@@ -644,7 +645,6 @@ export const PrintingActions = ({
           <span class="data">${formatDate(new Date(pedido.data_prevista_entrega))}</span>
         </div>
         <div class="meio">
-          <div class="slot-pilula">${pacote.rotulo ? `<span class="pilula">${pacote.rotulo}</span>` : ""}</div>
           <div class="unidades">${pacote.unidades}<span> un.</span></div>
         </div>
         <div class="rodape">

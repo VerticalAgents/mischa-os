@@ -121,7 +121,13 @@ export const estilosEtiquetaLote = (): string => `
     text-transform: uppercase;
   }
 
-  /* Bloco que precisa sobreviver ao destaque da picotada. */
+  /*
+    Bloco que precisa sobreviver ao destaque da picotada: nome e volume.
+
+    Altura fixa de propósito. A pílula é empurrada para o pé do bloco
+    (margin-top auto), então ela cai sempre na mesma linha, tenha o nome uma
+    ou três linhas — e nada abaixo dela se mexe.
+  */
   .topo {
     height: ${PICOTADA_MM - 3}mm;
     overflow: hidden;
@@ -130,6 +136,7 @@ export const estilosEtiquetaLote = (): string => `
     justify-content: flex-start;
   }
 
+  /* O único negrito pesado da etiqueta: é o que se lê primeiro. */
   .cliente {
     font-size: 8.5pt;
     font-weight: bold;
@@ -152,9 +159,10 @@ export const estilosEtiquetaLote = (): string => `
     gap: 1mm;
   }
 
+  /* Peso normal de propósito: com tudo em negrito, nada se destacava e o nome
+     do cliente sumia no meio. */
   .data {
     font-size: 8.5pt;
-    font-weight: bold;
     letter-spacing: -0.02em;
   }
 
@@ -167,18 +175,15 @@ export const estilosEtiquetaLote = (): string => `
   }
 
   /*
-    O espaço da pílula é reservado SEMPRE, tenha ela ou não.
+    A pílula fica no pé do bloco do nome, acima da régua.
 
-    Antes o número de unidades subia nas etiquetas de volume único e descia nas
-    de volume numerado — com as três etiquetas lado a lado no rolo, essa
-    diferença de altura saltava aos olhos. Agora o número cai sempre na mesma
-    linha, e a pílula aparece acima dele sem empurrar nada.
+    Como o bloco tem altura fixa, ela cai sempre na mesma linha e não empurra
+    nada — que era o problema de quando ela morava no meio da etiqueta.
   */
   .slot-pilula {
-    height: 7mm;
+    margin-top: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   /* "1 de 3" é o que a pessoa procura com a caixa na mão. */
@@ -187,8 +192,8 @@ export const estilosEtiquetaLote = (): string => `
     background: #000;
     color: #fff;
     border-radius: 99mm;
-    padding: 1.1mm 3mm;
-    font-size: 11pt;
+    padding: 0.9mm 2.6mm;
+    font-size: 10pt;
     font-weight: bold;
     line-height: 1.05;
     letter-spacing: -0.01em;
@@ -204,7 +209,6 @@ export const estilosEtiquetaLote = (): string => `
 
   .unidades span {
     font-size: 8pt;
-    font-weight: bold;
     letter-spacing: 0;
   }
 
@@ -219,7 +223,6 @@ export const estilosEtiquetaLote = (): string => `
 
   .total {
     font-size: 8.5pt;
-    font-weight: bold;
     letter-spacing: -0.02em;
   }
 `;
