@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Eye, Edit, Trash2, Copy } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, Trash2, Copy, ArrowDown, ArrowUp } from "lucide-react";
 import { Cliente } from "@/types";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -13,6 +13,9 @@ import { toast } from "@/hooks/use-toast";
 import ClienteFormDialog from "./ClienteFormDialog";
 
 import { useRazaoSocialGC } from "@/hooks/useRazaoSocialGC";
+import { useScoresFinanceiros } from "@/hooks/useScoresFinanceiros";
+import BadgeScore from "./BadgeScore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ColumnOption {
   id: string;
@@ -44,6 +47,38 @@ export default function ClientesTable({
   showSelectionControls
 }: ClientesTableProps) {
   const { duplicarCliente } = useClienteStore();
+  // Só busca se a coluna estiver à vista: é uma varredura de 12 meses na API
+  // externa e não faz sentido pagá-la quando ninguém vai olhar.
+  const mostrandoScore = visibleColumns.includes("scorePagamento");
+  const { scores, loading: carregandoScores } = useScoresFinanceiros(mostrandoScore);
+
+  // A ordenação mora aqui porque depende das notas, que são buscadas aqui.
+  // `null` preserva a ordem que a página entregou (nome, filtros etc.).
+  const [ordemScore, setOrdemScore] = useState<"pior" | "melhor" | null>(null);
+
+  const alternarOrdemScore = () =>
+    setOrdemScore((atual) => (atual === null ? "pior" : atual === "pior" ? "melhor" : null));
+
+  const notaDe = (cliente: Cliente): number | null => {
+    const gcId = cliente.gestaoClickClienteId;
+    const s = gcId ? scores[String(gcId)] : undefined;
+    return s?.score ?? null;
+  };
+
+  const clientesOrdenados = useMemo(() => {
+    if (!ordemScore) return clientes;
+    return [...clientes].sort((a, b) => {
+      const na = notaDe(a);
+      const nb = notaDe(b);
+      // Quem não tem nota vai para o fim nas duas direções: não é "nota zero",
+      // é ausência de informação, e misturar os dois enganaria a leitura.
+      if (na === null && nb === null) return 0;
+      if (na === null) return 1;
+      if (nb === null) return -1;
+      return ordemScore === "pior" ? na - nb : nb - na;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes, scores, ordemScore]);
   const { buscarRazoesSociaisLote, getRazaoSocial, loading: loadingRazaoSocial } = useRazaoSocialGC();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [clienteParaEditar, setClienteParaEditar] = useState<Cliente | null>(null);
@@ -161,6 +196,11 @@ export default function ClientesTable({
     const value = getColumnValue(cliente, columnId);
     
     switch (columnId) {
+      case "scorePagamento": {
+        if (carregandoScores) return <Skeleton className="h-5 w-16" />;
+        const gcId = cliente.gestaoClickClienteId;
+        return <BadgeScore score={gcId ? scores[String(gcId)] : null} />;
+      }
       case "status":
         return <StatusBadge status={cliente.statusCliente} />;
       case "tipoCliente": {
@@ -246,13 +286,28 @@ export default function ClientesTable({
               )}
               {columnOptions
                 .filter(col => visibleColumns.includes(col.id))
-                .map((column) => (
-                  <TableHead key={column.id}>{column.label}</TableHead>
-                ))}
+                .map((column) =>
+                  column.id === "scorePagamento" ? (
+                    <TableHead key={column.id}>
+                      <button
+                        type="button"
+                        onClick={alternarOrdemScore}
+                        className="flex items-center gap-1 hover:text-foreground"
+                        title="Ordenar pelos piores pagadores"
+                      >
+                        {column.label}
+                        {ordemScore === "pior" && <ArrowUp className="h-3 w-3" />}
+                        {ordemScore === "melhor" && <ArrowDown className="h-3 w-3" />}
+                      </button>
+                    </TableHead>
+                  ) : (
+                    <TableHead key={column.id}>{column.label}</TableHead>
+                  )
+                )}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clientes.length === 0 ? (
+            {clientesOrdenados.length === 0 ? (
               <TableRow>
                 <TableCell 
                   colSpan={visibleColumns.length + (showSelectionControls ? 1 : 0)} 
@@ -262,7 +317,7 @@ export default function ClientesTable({
                 </TableCell>
               </TableRow>
             ) : (
-              clientes.map((cliente) => (
+              clientesOrdenados.map((cliente) => (
                 <TableRow 
                   key={cliente.id}
                   className="cursor-pointer hover:bg-muted/50"

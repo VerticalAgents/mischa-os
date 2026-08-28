@@ -5,11 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertTriangle, ChevronDown, ChevronUp, Gauge } from "lucide-react";
 import { useHistoricoFinanceiroCliente } from "@/hooks/useHistoricoFinanceiroCliente";
-import {
-  ROTULO_CLASSIFICACAO,
-  atrasoEfetivo,
-  type Classificacao,
-} from "@/utils/scoreFinanceiro";
+import { ROTULO_CLASSIFICACAO, atrasoEfetivo } from "@/utils/scoreFinanceiro";
+import { CORES_CLASSIFICACAO, TEXTO_ALERTA } from "@/components/clientes/BadgeScore";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,22 +18,6 @@ import { cn } from "@/lib/utils";
  */
 
 const ROTULO = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
-
-/**
- * `text-destructive` no tema escuro é um vermelho fechado: sobre fundo escuro
- * ele quase somia. Toda marca de alerta passa por aqui para clarear no escuro.
- */
-const TEXTO_ALERTA = "text-destructive dark:text-red-400";
-
-/** Toda variante declara os dois temas (seção 12 do DESIGN.md). */
-const CORES: Record<Classificacao, string> = {
-  excelente:
-    "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  bom: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400",
-  atencao: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  risco: "border-destructive/30 bg-destructive/10 text-destructive dark:text-red-400",
-  "sem-historico": "border-border bg-muted/40 text-muted-foreground",
-};
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -131,7 +112,7 @@ export default function ScoreFinanceiroCliente({
             <Gauge className="h-3.5 w-3.5" />
             Comportamento de pagamento · {meses} meses
           </h3>
-          <Badge variant="outline" className={cn("rounded-pilula", CORES[score.classificacao])}>
+          <Badge variant="outline" className={cn("rounded-pilula", CORES_CLASSIFICACAO[score.classificacao])}>
             {ROTULO_CLASSIFICACAO[score.classificacao]}
           </Badge>
         </div>
@@ -140,7 +121,7 @@ export default function ScoreFinanceiroCliente({
           <div
             className={cn(
               "flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-bloco border",
-              CORES[score.classificacao]
+              CORES_CLASSIFICACAO[score.classificacao]
             )}
           >
             <span className="text-2xl font-bold leading-none tabular-nums">

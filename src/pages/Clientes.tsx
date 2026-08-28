@@ -264,6 +264,7 @@ export default function Clientes() {
     { id: "contato", label: "Contato", canToggle: true },
     { id: "periodicidade", label: "Period.", canToggle: true },
     { id: "status", label: "Status", canToggle: true },
+    { id: "scorePagamento", label: "Pagamento", canToggle: true },
     { id: "statusAgendamento", label: "Status Agendamento", canToggle: true },
     { id: "proximaDataReposicao", label: "Próx. Reposição", canToggle: true },
     { id: "acoes", label: "Ações", canToggle: false }
@@ -272,11 +273,15 @@ export default function Clientes() {
   // Column visibility state with persistence
   const defaultColumns = [
     "idGestaoClick", "razaoSocial", "nome", "tipoCliente", "cnpjCpf", "contato",
-    "periodicidade", "status", "acoes"
+    "periodicidade", "status", "scorePagamento", "acoes"
   ];
   
+  // A chave muda quando uma coluna nova entra no padrão. A escolha de colunas
+  // fica salva no navegador, então quem já usou a tela tem uma lista antiga
+  // gravada — sem trocar a chave, a coluna nova simplesmente não apareceria
+  // para quem mais usa o sistema.
   const { visibleColumns, setVisibleColumns } = useColumnVisibility(
-    'clientes-visible-columns',
+    'clientes-visible-columns-v2',
     defaultColumns
   );
 

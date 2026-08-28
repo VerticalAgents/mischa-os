@@ -2662,6 +2662,64 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'historico_financeiro_geral': {
+        // Todos os títulos do período, de todos os clientes, numa varredura só.
+        // É o que alimenta a coluna de pagamento na lista de clientes: pedir por
+        // cliente seria uma requisição por linha, e o limite da API é 3/s.
+        const { meses } = params;
+
+        let access_token: string | undefined = params.access_token;
+        let secret_token: string | undefined = params.secret_token;
+
+        if (!access_token || !secret_token) {
+          const doDono = await resolveTokensDoDono(supabase, userId);
+          if (!doDono) {
+            return new Response(
+              JSON.stringify({ error: 'Integração com o GestãoClick não configurada' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          access_token = doDono.access_token;
+          secret_token = doDono.secret_token;
+        }
+
+        const janelaMeses = Number(meses) > 0 ? Number(meses) : 12;
+        const hoje = new Date();
+        const dataInicio = formatDate(addDays(hoje, -30 * janelaMeses));
+        const dataFim = formatDate(addDays(hoje, 120));
+
+        const titulos = await fetchGCPaginado(
+          `recebimentos?data_inicio=${dataInicio}&data_fim=${dataFim}`,
+          access_token,
+          secret_token,
+          'Recebimento',
+        );
+
+        console.log(
+          `[gestaoclick-proxy] historico geral: ${titulos.length} títulos desde ${dataInicio}`
+        );
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            periodo: { data_inicio: dataInicio, data_fim: dataFim },
+            // Só os campos que a nota usa: a lista pode passar de mil títulos e
+            // o resto do payload seria peso morto na rede.
+            titulos: titulos
+              .filter((t: any) => t.cliente_id)
+              .map((t: any) => ({
+                id: String(t.id),
+                cliente_id: String(t.cliente_id),
+                valor: t.valor_total ?? t.valor,
+                data_vencimento: t.data_vencimento,
+                data_liquidacao: t.data_liquidacao,
+                liquidado: t.liquidado,
+              })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'listar_contas_bancarias': {
         const { access_token, secret_token } = params;
         if (!access_token || !secret_token) {
