@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { dividirEmPacotes } from "@/utils/pacotesEtiqueta";
 import { ROLO, escapar, estilosEtiquetaLote } from "@/utils/etiquetaLote";
+import { MARCA_TERMICA } from "@/assets/marcaTermica";
 import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
 import { SelecaoPedidosImpressaoDialog } from "./SelecaoPedidosImpressaoDialog";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
@@ -658,9 +659,11 @@ export const PrintingActions = ({
       .map((linha) => {
         // Última linha incompleta ganha etiquetas invisíveis para que as reais
         // continuem nas colunas certas do rolo.
+        // Etiqueta que sobra na última linha vira a marca da casa, em vez de
+        // sair em branco. Continua ocupando a coluna.
         const vazias = Array.from(
           { length: ROLO.colunas - linha.length },
-          () => '<div class="etiqueta vazia"></div>'
+          () => `<div class="etiqueta marca"><img src="${MARCA_TERMICA}" alt="" /></div>`
         ).join("");
         return `<div class="linha">${linha.map(desenharEtiqueta).join("")}${vazias}</div>`;
       })
