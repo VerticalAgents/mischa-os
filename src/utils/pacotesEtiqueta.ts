@@ -17,7 +17,7 @@ export interface PacoteEtiqueta {
   /** 1-based: é o que sai impresso. */
   numero: number;
   total: number;
-  /** Unidades neste volume — o último costuma vir incompleto. */
+  /** Unidades neste volume. */
   unidades: number;
   /** Unidades do pedido inteiro, repetido em toda etiqueta do pedido. */
   unidadesDoPedido: number;
@@ -38,9 +38,20 @@ export function dividirEmPacotes(quantidadeTotal: number): PacoteEtiqueta[] {
 
   const quantosPacotes = Math.max(1, Math.ceil(unidadesDoPedido / UNIDADES_POR_PACOTE));
 
+  /*
+    As unidades se repartem por IGUAL entre os pacotes, e não "enche 40, sobra o
+    resto". Um pedido de 50 vira 25 + 25, não 40 + 10: dois volumes parecidos
+    são mais fáceis de carregar e de conferir do que um cheio e um quase vazio.
+
+    Quando a divisão não é exata, a sobra é distribuída de um em um pelos
+    primeiros pacotes — 41 vira 21 + 20. Como o número de pacotes vem do teto de
+    40, o maior deles nunca passa do limite.
+  */
+  const base = Math.floor(unidadesDoPedido / quantosPacotes);
+  const sobra = unidadesDoPedido % quantosPacotes;
+
   return Array.from({ length: quantosPacotes }, (_, i) => {
-    const jaEmbalado = i * UNIDADES_POR_PACOTE;
-    const unidades = Math.max(0, Math.min(UNIDADES_POR_PACOTE, unidadesDoPedido - jaEmbalado));
+    const unidades = base + (i < sobra ? 1 : 0);
     return {
       numero: i + 1,
       total: quantosPacotes,
