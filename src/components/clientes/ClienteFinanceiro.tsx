@@ -4,15 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { AlertCircle, TrendingUp, TrendingDown, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertCircle, TrendingDown, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { useClienteFinanceiro } from "@/hooks/useClienteFinanceiro";
+import ScoreFinanceiroCliente from "@/components/clientes/ScoreFinanceiroCliente";
+import FaturamentoRealCliente from "@/components/clientes/FaturamentoRealCliente";
 interface ClienteFinanceiroProps {
   cliente: Cliente;
 }
 export default function ClienteFinanceiro({
   cliente
 }: ClienteFinanceiroProps) {
-  const [isCustosOpen, setIsCustosOpen] = useState(false);
   const [isProdutosOpen, setIsProdutosOpen] = useState(false);
   
   const {
@@ -20,206 +21,89 @@ export default function ClienteFinanceiro({
     isLoading,
     error
   } = useClienteFinanceiro(cliente);
+  /**
+   * Os dois blocos de dado real vêm do GestãoClick e não dependem de entrega
+   * confirmada nem de categoria habilitada. Ficavam escondidos atrás dos
+   * avisos abaixo — justamente nos clientes sobre os quais se quer saber mais.
+   */
+  const blocosReais = (
+    <>
+      <ScoreFinanceiroCliente gestaoClickClienteId={cliente.gestaoClickClienteId} />
+      <FaturamentoRealCliente gestaoClickClienteId={cliente.gestaoClickClienteId} />
+    </>
+  );
+
+  const comBlocosReais = (aviso: React.ReactNode) => (
+    <div className="space-y-6">
+      {blocosReais}
+      {aviso}
+    </div>
+  );
+
+  const avisoSimples = (icone: React.ReactNode, titulo: string, detalhe?: string) => (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-center h-40">
+          <div className="text-center space-y-2">
+            {icone}
+            <p className="text-muted-foreground">{titulo}</p>
+            {detalhe && <p className="text-sm text-muted-foreground">{detalhe}</p>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   if (isLoading) {
-    return <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center space-y-2">
-              <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full mx-auto"></div>
-              <p className="text-muted-foreground">Carregando dados financeiros...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>;
-  }
-  if (error) {
-    return <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center space-y-2">
-              <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-              <p className="text-destructive">Erro ao carregar dados financeiros</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>;
-  }
-  if (!dadosFinanceiros) {
-    return null;
+    return comBlocosReais(
+      avisoSimples(
+        <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full mx-auto" />,
+        "Carregando dados de entrega..."
+      )
+    );
   }
 
-  // Verificar se há categorias habilitadas
-  const temCategoriasHabilitadas = cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0;
+  if (error || !dadosFinanceiros) {
+    return comBlocosReais(
+      avisoSimples(
+        <AlertCircle className="h-8 w-8 text-destructive mx-auto" />,
+        "Erro ao carregar os dados de entrega"
+      )
+    );
+  }
+
+  const temCategoriasHabilitadas =
+    cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0;
+
   if (!temCategoriasHabilitadas) {
-    return <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center space-y-2">
-              <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto" />
-              <p className="text-muted-foreground">Nenhuma categoria de produto habilitada para este cliente.</p>
-              <p className="text-sm text-muted-foreground">
-                Configure as categorias na aba "Informações" para visualizar os dados financeiros.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>;
+    return comBlocosReais(
+      avisoSimples(
+        <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto" />,
+        "Nenhuma categoria de produto habilitada para este cliente.",
+        'Configure as categorias na aba "Informações" para ver preços e quantidades.'
+      )
+    );
   }
+
   const temDados = dadosFinanceiros.quantidadesMedias.length > 0;
+
   if (!temDados) {
-    return <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center space-y-2">
-              <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto" />
-              <p className="text-muted-foreground">Ainda não há entregas suficientes para calcular médias financeiras.</p>
-              <p className="text-sm text-muted-foreground">
-                Os dados serão exibidos após as primeiras entregas serem confirmadas.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>;
+    return comBlocosReais(
+      avisoSimples(
+        <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto" />,
+        "Ainda não há entregas confirmadas para calcular preços e quantidades."
+      )
+    );
   }
+
   return <div className="space-y-6">
-      {/* Banner informativo */}
-      <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-        <p className="text-sm">
-          📊 <strong>Análise baseada nas últimas 12 semanas</strong> de histórico de entregas
-        </p>
-      </div>
+      {/* Como o cliente paga. Vem antes da margem de propósito: adianta pouco
+          saber que o cliente é rentável se o dinheiro não entra na data. */}
+      <ScoreFinanceiroCliente gestaoClickClienteId={cliente.gestaoClickClienteId} />
 
-      {/* Grid 2 colunas - Blocos principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 1. Resumo Financeiro Mensal */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Resumo Financeiro Mensal
-                </CardTitle>
-                <CardDescription className="text-left">
-                  Projeção baseada nas últimas 12 semanas
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Total Geral - Destaque */}
-              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
-                <p className="text-sm text-muted-foreground mb-1">
-                  Faturamento Médio Mensal
-                </p>
-                <p className="text-3xl font-bold text-primary">
-                  R$ {dadosFinanceiros.resumoMensal.faturamentoMedio.toFixed(2)}
-                </p>
-                <Badge variant="default" className="mt-2">
-                  {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas/mês
-                </Badge>
-              </div>
-
-              {/* Custos Operacionais - Collapsible */}
-              <Collapsible open={isCustosOpen} onOpenChange={setIsCustosOpen}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Detalhes de Custos
-                  </p>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                      {isCustosOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                
-                <CollapsibleContent className="space-y-2">
-                  {/* Custo de Produtos */}
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Custo de Produtos</span>
-                    </div>
-                    <span className="font-medium text-sm">
-                      R$ {dadosFinanceiros.resumoMensal.custoProdutos.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {/* Custo Logístico (se aplicável) */}
-                  {(cliente.tipoLogistica?.toUpperCase() === 'PROPRIA' || cliente.tipoLogistica === 'Própria') && (
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-orange-500" />
-                        <span className="text-sm">Custo Logístico</span>
-                      </div>
-                      <span className="font-medium text-sm text-orange-600">
-                        R$ {dadosFinanceiros.resumoMensal.custoLogistico.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Imposto (se aplicável) */}
-                  {cliente.emiteNotaFiscal && (
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-purple-500" />
-                        <span className="text-sm">Imposto (4%)</span>
-                      </div>
-                      <span className="font-medium text-sm text-purple-600">
-                        R$ {dadosFinanceiros.resumoMensal.impostoEstimado.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Taxa Boleto (se aplicável) */}
-                  {(cliente.formaPagamento?.toUpperCase() === 'BOLETO' || cliente.formaPagamento === 'Boleto') && (
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-pink-500" />
-                        <span className="text-sm">Taxa Boleto</span>
-                      </div>
-                      <span className="font-medium text-sm text-pink-600">
-                        R$ {dadosFinanceiros.resumoMensal.taxaBoleto.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Total de Custos */}
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg font-medium">
-                    <span className="text-sm">Total de Custos</span>
-                    <span className="text-sm">
-                      R$ {dadosFinanceiros.resumoMensal.totalCustosOperacionais.toFixed(2)}
-                    </span>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Margem Bruta */}
-              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-green-700 dark:text-green-400">
-                    Margem Bruta
-                  </span>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-green-800 dark:text-green-300">
-                      R$ {dadosFinanceiros.resumoMensal.margemBruta.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-green-600 dark:text-green-400">
-                      {dadosFinanceiros.resumoMensal.margemBrutaPercentual.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 2. Preços Aplicados */}
+      {/* Preços aplicados: configuração do cliente, não projeção. */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Preços Aplicados */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -254,7 +138,7 @@ export default function ClienteFinanceiro({
         </Card>
       </div>
 
-      {/* 3. Quantidades Médias - Largura total */}
+      {/* Quantidades médias, medidas nas entregas confirmadas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -322,7 +206,7 @@ export default function ClienteFinanceiro({
         </CardContent>
       </Card>
 
-      {/* 4. Custos por Categoria - Largura total */}
+      {/* Custos por categoria */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

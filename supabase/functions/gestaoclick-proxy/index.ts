@@ -2591,6 +2591,77 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'historico_financeiro_cliente': {
+        // Histórico de títulos de UM cliente — pagos e em aberto — para medir
+        // pontualidade cruzando vencimento com liquidação. As outras ações só
+        // trazem o que está em aberto, que não diz nada sobre comportamento.
+        const { cliente_id, meses } = params;
+
+        if (!cliente_id) {
+          return new Response(
+            JSON.stringify({ error: 'cliente_id não informado' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        let access_token: string | undefined = params.access_token;
+        let secret_token: string | undefined = params.secret_token;
+
+        if (!access_token || !secret_token) {
+          const doDono = await resolveTokensDoDono(supabase, userId);
+          if (!doDono) {
+            return new Response(
+              JSON.stringify({ error: 'Integração com o GestãoClick não configurada' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          access_token = doDono.access_token;
+          secret_token = doDono.secret_token;
+        }
+
+        const janelaMeses = Number(meses) > 0 ? Number(meses) : 12;
+        const hoje = new Date();
+        const dataInicio = formatDate(addDays(hoje, -30 * janelaMeses));
+        // Inclui o que ainda vai vencer: um título futuro em aberto faz parte
+        // da situação do cliente, mesmo não entrando na conta de pontualidade.
+        const dataFim = formatDate(addDays(hoje, 120));
+
+        // Sem filtro `liquidado`: a API devolve pagos e em aberto de uma vez, e
+        // a separação é feita pelo próprio campo. Evita depender de um valor de
+        // filtro e corta pela metade o número de requisições (o limite é de 3
+        // por segundo).
+        const titulos = await fetchGCPaginado(
+          `recebimentos?cliente_id=${encodeURIComponent(String(cliente_id))}` +
+            `&data_inicio=${dataInicio}&data_fim=${dataFim}`,
+          access_token,
+          secret_token,
+          'Recebimento',
+        );
+
+        console.log(
+          `[gestaoclick-proxy] historico do cliente ${cliente_id}: ${titulos.length} títulos desde ${dataInicio}`
+        );
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            periodo: { data_inicio: dataInicio, data_fim: dataFim },
+            titulos: titulos.map((t: any) => ({
+              id: String(t.id),
+              codigo: t.codigo,
+              descricao: t.descricao,
+              valor: t.valor,
+              valor_total: t.valor_total,
+              data_vencimento: t.data_vencimento,
+              data_liquidacao: t.data_liquidacao,
+              liquidado: t.liquidado,
+              nome_forma_pagamento: t.nome_forma_pagamento,
+            })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'listar_contas_bancarias': {
         const { access_token, secret_token } = params;
         if (!access_token || !secret_token) {
