@@ -247,14 +247,14 @@ export const estilosEtiquetaLote = (): string => `
   }
 
   .unidades {
-    font-size: 15pt;
+    font-size: 21pt;
     font-weight: bold;
     line-height: 1;
     letter-spacing: -0.03em;
   }
 
   .unidades span {
-    font-size: 8pt;
+    font-size: 10pt;
     letter-spacing: 0;
   }
 
