@@ -55,7 +55,7 @@ export const SeparacaoActionsCard = ({
 
         <button type="button" onClick={onAplicarPadrao} className={cn(itemBase, itemIdle)}>
           <Wand2 className={iconBase} strokeWidth={1.5} />
-          Aplicar Proporção Padrão
+          Aplicar Proporção
         </button>
 
         <PrintingActions

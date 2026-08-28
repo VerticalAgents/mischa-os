@@ -58,6 +58,9 @@ interface ExpedicaoStore {
   confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   converterParaPadrao: (pedidoIds: string[]) => Promise<void>;
+  aplicarProporcaoEmMassa: (
+    itensPorPedido: Record<string, { produto: string; quantidade: number }[]>
+  ) => Promise<void>;
   
   // Remoção imediata de pedido da lista (para atualização otimista)
   removerPedidoDaLista: (pedidoId: string) => void;
@@ -1191,6 +1194,57 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         }));
         
         return resultado;
+      },
+
+      /**
+       * Grava uma proporção de uso único nos pedidos selecionados.
+       *
+       * Ao contrário de `converterParaPadrao`, que apaga os itens e deixa a
+       * proporção global mandar, aqui cada pedido recebe a sua própria lista de
+       * itens — por isso vira "Alterado" e por isso o update é um por pedido:
+       * as quantidades dependem da quantidade_total de cada um.
+       */
+      aplicarProporcaoEmMassa: async (itensPorPedido: Record<string, { produto: string; quantidade: number }[]>) => {
+        const pedidoIds = Object.keys(itensPorPedido);
+        if (pedidoIds.length === 0) return;
+
+        try {
+          // Atualização otimista
+          set(state => ({
+            pedidos: state.pedidos.map(p =>
+              itensPorPedido[p.id]
+                ? { ...p, tipo_pedido: 'Alterado', itens_personalizados: itensPorPedido[p.id] }
+                : p
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
+          }));
+
+          // Sem update em lote: cada pedido tem itens diferentes. São poucos
+          // (o que couber na tela de separação), então o custo é aceitável.
+          for (const pedidoId of pedidoIds) {
+            const { error } = await supabase
+              .from('agendamentos_clientes')
+              .update({
+                tipo_pedido: 'Alterado',
+                itens_personalizados: JSON.parse(JSON.stringify(itensPorPedido[pedidoId])) as any,
+              })
+              .eq('id', pedidoId);
+
+            if (error) throw error;
+          }
+
+          toast.success(
+            pedidoIds.length === 1
+              ? 'Proporção aplicada ao pedido'
+              : `Proporção aplicada a ${pedidoIds.length} pedidos`
+          );
+
+          await get().recarregarSilencioso();
+        } catch (error: any) {
+          console.error('Erro ao aplicar proporção em massa:', error);
+          toast.error('Erro ao aplicar a proporção');
+          await get().carregarPedidos();
+        }
       },
 
       converterParaPadrao: async (pedidoIds: string[]) => {

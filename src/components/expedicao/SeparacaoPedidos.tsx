@@ -13,7 +13,7 @@ import { SeparacaoActionsCard } from "./components/SeparacaoActionsCard";
 import { SeparacaoFilters } from "./components/SeparacaoFilters";
 import { SeparacaoEmMassaDialog } from "./components/SeparacaoEmMassaDialog";
 import { GerarVendasEmMassaDialog } from "./components/GerarVendasEmMassaDialog";
-import { AplicarPadraoEmMassaDialog } from "./components/AplicarPadraoEmMassaDialog";
+import { AplicarProporcaoDialog } from "./components/AplicarProporcaoDialog";
 import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
@@ -26,7 +26,8 @@ const SeparacaoPedidos = () => {
     isLoading, 
     carregarPedidos, 
     confirmarSeparacao,
-    converterParaPadrao
+    converterParaPadrao,
+    aplicarProporcaoEmMassa
   } = useExpedicaoStore();
 
   // Usar store UI para persistir filtros
@@ -183,9 +184,11 @@ const SeparacaoPedidos = () => {
   };
 
   const handleAbrirAplicarPadrao = () => {
-    const alterados = pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado');
-    if (alterados.length === 0) {
-      toast.error("Não há pedidos Alterados nos filtros atuais.");
+    // Sem bloqueio por "não há Alterados": só o modo Padrão depende disso.
+    // Os modos de proporção própria valem para qualquer tipo de pedido, desde
+    // que o cliente seja Revenda Padrão — quem filtra é o próprio diálogo.
+    if (pedidosFiltrados.length === 0) {
+      toast.error("Não há pedidos nos filtros atuais.");
       return;
     }
     setAplicarPadraoOpen(true);
@@ -202,6 +205,26 @@ const SeparacaoPedidos = () => {
         await atualizarVendaGC(p.id, p.cliente_id, p.gestaoclick_venda_id!);
       } catch (e) {
         console.error('Falha ao atualizar venda GC após converter para padrão', p.id, e);
+      }
+    }
+    await carregarPedidos();
+  };
+
+  const handleAplicarProporcaoEmMassa = async (
+    itensPorPedido: Record<string, { produto: string; quantidade: number }[]>
+  ) => {
+    const ids = Object.keys(itensPorPedido);
+    // Mesma regra do modo Padrão: quem já tem venda no GestãoClick precisa da
+    // composição reenviada, senão a venda fica com os produtos antigos.
+    const pedidosComVenda = pedidosFiltrados.filter(
+      p => ids.includes(p.id) && p.gestaoclick_venda_id
+    );
+    await aplicarProporcaoEmMassa(itensPorPedido);
+    for (const p of pedidosComVenda) {
+      try {
+        await atualizarVendaGC(p.id, p.cliente_id, p.gestaoclick_venda_id!);
+      } catch (e) {
+        console.error('Falha ao atualizar venda GC após aplicar proporção', p.id, e);
       }
     }
     await carregarPedidos();
@@ -462,11 +485,12 @@ const SeparacaoPedidos = () => {
         loading={loadingGC}
       />
 
-      <AplicarPadraoEmMassaDialog
+      <AplicarProporcaoDialog
         open={aplicarPadraoOpen}
         onOpenChange={setAplicarPadraoOpen}
         pedidosDisponiveis={pedidosFiltrados}
-        onConfirm={handleAplicarPadraoEmMassa}
+        onConfirmPadrao={handleAplicarPadraoEmMassa}
+        onConfirmProporcao={handleAplicarProporcaoEmMassa}
       />
     </div>
   );
