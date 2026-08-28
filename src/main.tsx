@@ -1,4 +1,7 @@
 
+// Precisa ser o primeiro import: envolve o fetch antes que o cliente do
+// Supabase seja criado e guarde a referência original.
+import './utils/rede';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';

@@ -159,6 +159,14 @@
    barra do app e a do navegador. Quem marca o atributo é useBarraDoNavegador. */
 html[data-barra-navegador="1"] .barra-flutuante { bottom: 8px; }
 
+/* Aviso de queda de conexão: flutua embaixo, acima da barra no celular. O
+   env() precisa vir da folha de estilo — o WebKit do iOS descarta env()
+   aplicado por JavaScript. */
+.aviso-conexao { bottom: 16px; }
+@media (max-width: 1023px) {
+  .aviso-conexao { bottom: calc(84px + max(env(safe-area-inset-bottom, 0px), 10px)); }
+}
+
 /* Quem rola no celular é o documento (o layout cresce em vez de rolar por
    dentro), então é no html/body que o gesto precisa parar de ser devolvido ao
    navegador — senão o "puxar para recarregar" do app disputa com o do próprio

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
+import AvisoDeConexao from '@/components/common/AvisoDeConexao';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { RoleBasedRoute } from '@/components/auth/RoleBasedRoute';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -413,6 +414,7 @@ function App() {
               </SidebarProvider>
             </RouteGuard>
             <Toaster />
+            <AvisoDeConexao />
           </AuthProvider>
         </Router>
       </ThemeProvider>
