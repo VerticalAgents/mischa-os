@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Eye, Edit, Trash2, Copy, ArrowDown, ArrowUp } from "lucide-react";
 import { Cliente } from "@/types";
+import { cn } from "@/lib/utils";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { toast } from "@/hooks/use-toast";
@@ -16,6 +17,33 @@ import { useRazaoSocialGC } from "@/hooks/useRazaoSocialGC";
 import { useScoresFinanceiros } from "@/hooks/useScoresFinanceiros";
 import BadgeScore from "./BadgeScore";
 import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Largura máxima de cada coluna.
+ *
+ * Sem isto a tabela pedia 1613 px: nenhuma célula podia quebrar nem cortar
+ * (`whitespace-nowrap` em todas), então a razão social sozinha esticava 436 px.
+ * Numa janela de 1366, com a barra lateral, sobram ~1050 px — e o que passava
+ * disso ficava escondido, sem barra de rolagem à vista.
+ *
+ * Texto que não cabe é cortado com reticências e mostrado inteiro ao passar o
+ * mouse. Cortar é melhor que esconder: pelo menos o começo do nome identifica.
+ */
+const LARGURA_COLUNA: Record<string, string> = {
+  idGestaoClick: "w-[48px]",
+  razaoSocial: "max-w-[164px]",
+  nome: "max-w-[158px]",
+  tipoCliente: "w-[76px]",
+  cnpjCpf: "w-[118px] text-xs tabular-nums",
+  contato: "max-w-[120px]",
+  periodicidade: "w-[62px] text-xs",
+  status: "w-[78px]",
+  scorePagamento: "w-[74px]",
+  acoes: "w-[48px]",
+};
+
+/** Colunas cujo conteúdo é texto livre e pode ser cortado. */
+const CORTAVEL = new Set(["razaoSocial", "nome", "contato"]);
 
 interface ColumnOption {
   id: string;
@@ -199,7 +227,7 @@ export default function ClientesTable({
       case "scorePagamento": {
         if (carregandoScores) return <Skeleton className="h-5 w-16" />;
         const gcId = cliente.gestaoClickClienteId;
-        return <BadgeScore score={gcId ? scores[String(gcId)] : null} />;
+        return <BadgeScore score={gcId ? scores[String(gcId)] : null} compacto />;
       }
       case "status":
         return <StatusBadge status={cliente.statusCliente} />;
@@ -276,7 +304,7 @@ export default function ClientesTable({
           <TableHeader>
             <TableRow>
               {showSelectionControls && (
-                <TableHead className="w-12">
+                <TableHead className="w-12 px-2">
                   <Checkbox
                     checked={selectedClientes.length === clientes.length && clientes.length > 0}
                     onCheckedChange={onSelectAllClientes}
@@ -288,7 +316,7 @@ export default function ClientesTable({
                 .filter(col => visibleColumns.includes(col.id))
                 .map((column) =>
                   column.id === "scorePagamento" ? (
-                    <TableHead key={column.id}>
+                    <TableHead key={column.id} className={cn("px-2", LARGURA_COLUNA[column.id])}>
                       <button
                         type="button"
                         onClick={alternarOrdemScore}
@@ -301,7 +329,9 @@ export default function ClientesTable({
                       </button>
                     </TableHead>
                   ) : (
-                    <TableHead key={column.id}>{column.label}</TableHead>
+                    <TableHead key={column.id} className={cn("px-2", LARGURA_COLUNA[column.id])}>
+                      {column.label}
+                    </TableHead>
                   )
                 )}
             </TableRow>
@@ -324,7 +354,7 @@ export default function ClientesTable({
                   onClick={(e) => handleRowClick(cliente.id, e)}
                 >
                   {showSelectionControls && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="px-2" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedClientes.includes(cliente.id)}
                         onCheckedChange={() => onToggleClienteSelection(cliente.id)}
@@ -335,7 +365,19 @@ export default function ClientesTable({
                   {columnOptions
                     .filter(col => visibleColumns.includes(col.id))
                     .map((column) => (
-                      <TableCell key={`${cliente.id}-${column.id}`} className="whitespace-nowrap">
+                      <TableCell
+                        key={`${cliente.id}-${column.id}`}
+                        className={cn(
+                          "whitespace-nowrap px-2",
+                          LARGURA_COLUNA[column.id],
+                          CORTAVEL.has(column.id) && "overflow-hidden text-ellipsis"
+                        )}
+                        title={
+                          CORTAVEL.has(column.id)
+                            ? String(getColumnValue(cliente, column.id) ?? "")
+                            : undefined
+                        }
+                      >
                         {renderCellContent(cliente, column.id)}
                       </TableCell>
                     ))}
