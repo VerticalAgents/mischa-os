@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { dividirEmPacotes } from "@/utils/pacotesEtiqueta";
+import { ROLO, escapar, estilosEtiquetaLote } from "@/utils/etiquetaLote";
 import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
 import { SelecaoPedidosImpressaoDialog } from "./SelecaoPedidosImpressaoDialog";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
@@ -612,114 +614,64 @@ export const PrintingActions = ({
   
   const imprimirEtiquetas = () => {
     const { lista: listaAtual } = getListaAtual();
-    
+
     if (listaAtual.length === 0) {
       toast.error("Não há pedidos para gerar etiquetas nesta categoria.");
       return;
     }
-    
-    let printContent = `
+
+    // A etiqueta é do PACOTE, não do pedido: cabem 40 unidades por volume,
+    // então um pedido de 120 rende três etiquetas ("1 de 3", "2 de 3"...).
+    const etiquetas = listaAtual.flatMap((pedido) =>
+      dividirEmPacotes(pedido.quantidade_total).map((pacote) => ({ pedido, pacote }))
+    );
+
+    // O rolo tem três colunas e a impressora avança a linha inteira, então cada
+    // PÁGINA é uma linha com até três etiquetas — não uma etiqueta.
+    const linhas: typeof etiquetas[] = [];
+    for (let i = 0; i < etiquetas.length; i += ROLO.colunas) {
+      linhas.push(etiquetas.slice(i, i + ROLO.colunas));
+    }
+
+    const desenharEtiqueta = ({ pedido, pacote }: (typeof etiquetas)[number]) => `
+      <div class="etiqueta">
+        <div class="topo">
+          <div class="cliente">${escapar(pedido.cliente_nome)}</div>
+        </div>
+        <div class="data">${formatDate(new Date(pedido.data_prevista_entrega))}</div>
+        <div class="meio">
+          ${pacote.rotulo ? `<div class="volume">${pacote.rotulo}</div>` : ""}
+          <div class="unidades">${pacote.unidades} un.</div>
+        </div>
+        <div class="rodape">
+          Pedido<br /><strong>${pacote.unidadesDoPedido} un.</strong>
+        </div>
+      </div>
+    `;
+
+    const corpo = linhas
+      .map((linha) => {
+        // Última linha incompleta ganha etiquetas invisíveis para que as reais
+        // continuem nas colunas certas do rolo.
+        const vazias = Array.from(
+          { length: ROLO.colunas - linha.length },
+          () => '<div class="etiqueta vazia"></div>'
+        ).join("");
+        return `<div class="linha">${linha.map(desenharEtiqueta).join("")}${vazias}</div>`;
+      })
+      .join("");
+
+    const printContent = `
       <html>
         <head>
-          <title>Etiquetas de Pedidos</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-            .etiqueta {
-              width: 4in;
-              height: 2.5in;
-              padding: 0.2in;
-              margin: 0.1in;
-              border: 1px dashed #aaa;
-              page-break-inside: avoid;
-              display: inline-block;
-              box-sizing: border-box;
-            }
-            .cliente { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
-            .data { margin-bottom: 5px; font-size: 12px; }
-            .produtos { font-size: 10px; margin-bottom: 5px; max-height: 0.6in; overflow: hidden; }
-            .produto-linha { display: flex; justify-content: space-between; margin-bottom: 1px; }
-            .total-etiqueta { font-size: 12px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 2px; }
-            .detalhes { font-size: 10px; color: #666; }
-            .trocas-badge { 
-              background-color: #fef3c7; 
-              color: #92400e; 
-              font-size: 9px; 
-              padding: 2px 6px; 
-              border-radius: 3px; 
-              margin-top: 4px; 
-              display: inline-block;
-              border: 1px solid #d97706;
-            }
-            .obs-badge {
-              background-color: #e0f2fe;
-              color: #0369a1;
-              font-size: 8px;
-              padding: 2px 4px;
-              border-radius: 2px;
-              margin-top: 2px;
-              display: block;
-              max-height: 0.3in;
-              overflow: hidden;
-            }
-          </style>
+          <meta charset="utf-8" />
+          <title>Etiquetas de Pacotes</title>
+          <style>${estilosEtiquetaLote()}</style>
         </head>
-        <body>
-    `;
-    
-    listaAtual.forEach(pedido => {
-      const produtosParaExibir = buildProdutosParaExibir(pedido);
-      
-      let produtosHtml = '';
-      produtosParaExibir.forEach((item: any) => {
-        const quantidade = item.quantidade || item.quantidade_sabor || 0;
-        produtosHtml += `
-          <div class="produto-linha">
-            <span>${(item.nome || item.produto || item.sabor || 'Produto').substring(0, 25)}</span>
-            <span>${quantidade}</span>
-          </div>
-        `;
-      });
-      
-      // Indicador de trocas pendentes
-      const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
-      let trocasBadgeHtml = '';
-      if (trocasPendentes.length > 0) {
-        const totalTrocas = trocasPendentes.reduce((sum, t) => sum + t.quantidade, 0);
-        trocasBadgeHtml = `<div class="trocas-badge">⚠️ ${trocasPendentes.length} troca(s) - ${totalTrocas} un.</div>`;
-      }
-      
-      // Indicador de observações
-      let obsBadgeHtml = '';
-      const temObs = pedido.observacoes_gerais || pedido.observacoes_agendamento;
-      if (temObs) {
-        const obsTexto = (pedido.observacoes_agendamento || pedido.observacoes_gerais || '').substring(0, 50);
-        obsBadgeHtml = `<div class="obs-badge">📝 ${obsTexto}${obsTexto.length >= 50 ? '...' : ''}</div>`;
-      }
-      
-      // Verificar se razão social é diferente do nome
-      const razaoSocialDiferente = pedido.cliente_razao_social && 
-        pedido.cliente_razao_social !== '-' && 
-        pedido.cliente_razao_social.toLowerCase() !== pedido.cliente_nome.toLowerCase();
-      
-      printContent += `
-        <div class="etiqueta">
-          <div class="cliente">${pedido.cliente_nome}</div>
-          ${razaoSocialDiferente ? `<div style="font-size: 10px; color: #555; margin-bottom: 3px;">${pedido.cliente_razao_social}</div>` : ''}
-          <div class="data">Entrega: ${formatDate(new Date(pedido.data_prevista_entrega))}</div>
-          <div class="produtos">${produtosHtml}</div>
-          <div class="total-etiqueta">Total: ${pedido.quantidade_total} unidades</div>
-          <div class="detalhes">Pedido - ${pedido.tipo_pedido}</div>
-          ${trocasBadgeHtml}
-          ${obsBadgeHtml}
-        </div>
-      `;
-    });
-    
-    printContent += `
-        </body>
+        <body>${corpo}</body>
       </html>
     `;
-    
+
     if (printFrameRef.current) {
       const iframe = printFrameRef.current;
       const iframeWindow = iframe.contentWindow;
@@ -727,14 +679,16 @@ export const PrintingActions = ({
         iframe.style.height = "0px";
         iframe.style.width = "0px";
         iframe.style.position = "absolute";
-        
+
         iframeWindow.document.open();
         iframeWindow.document.write(printContent);
         iframeWindow.document.close();
-        
+
         setTimeout(() => {
           iframeWindow.print();
-          toast.success("As etiquetas foram enviadas para impressão.");
+          toast.success(
+            `${etiquetas.length} etiqueta(s) enviada(s). Escolha a impressora "Lote" e deixe a escala em 100%.`
+          );
         }, 500);
       }
     }
