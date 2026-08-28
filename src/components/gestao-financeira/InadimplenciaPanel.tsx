@@ -563,8 +563,9 @@ export default function InadimplenciaPanel() {
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                               <span>Venc. {dataBR(t.dataVencimento)}</span>
                               {t.atrasado && (
-                                <span className="text-destructive">
-                                  {t.diasAtraso} dias em atraso
+                                <span className="font-medium text-destructive">
+                                  {t.diasAtraso} {t.diasAtraso === 1 ? "dia" : "dias"} em
+                                  atraso
                                 </span>
                               )}
                               {t.formaPagamento && (
@@ -719,9 +720,19 @@ export default function InadimplenciaPanel() {
                                         {t.descricao || `Título ${t.codigo || t.id}`}
                                       </div>
                                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        {/* O atraso é destacado aqui como no
+                                            cartão: era a mesma informação em
+                                            vermelho numa visão e em preto na
+                                            outra. */}
                                         <span>
                                           Vencimento {dataBR(t.dataVencimento)}
-                                          {t.atrasado ? ` · ${t.diasAtraso} dias em atraso` : ""}
+                                          {t.atrasado && (
+                                            <span className="font-medium text-destructive">
+                                              {" · "}
+                                              {t.diasAtraso}{" "}
+                                              {t.diasAtraso === 1 ? "dia" : "dias"} em atraso
+                                            </span>
+                                          )}
                                         </span>
                                         {t.formaPagamento && (
                                           <FormaPagamentoBadge forma={t.formaPagamento} />
