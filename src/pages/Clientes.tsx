@@ -276,12 +276,8 @@ export default function Clientes() {
     "periodicidade", "status", "scorePagamento", "acoes"
   ];
   
-  // A chave muda quando uma coluna nova entra no padrão. A escolha de colunas
-  // fica salva no navegador, então quem já usou a tela tem uma lista antiga
-  // gravada — sem trocar a chave, a coluna nova simplesmente não apareceria
-  // para quem mais usa o sistema.
   const { visibleColumns, setVisibleColumns } = useColumnVisibility(
-    'clientes-visible-columns-v2',
+    'clientes-visible-columns',
     defaultColumns
   );
 
