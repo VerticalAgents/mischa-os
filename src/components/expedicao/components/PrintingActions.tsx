@@ -638,13 +638,18 @@ export const PrintingActions = ({
         <div class="topo">
           <div class="cliente">${escapar(pedido.cliente_nome)}</div>
         </div>
-        <div class="data">${formatDate(new Date(pedido.data_prevista_entrega))}</div>
+        <div class="regua"></div>
+        <div class="entrega">
+          <span class="rotulo">Entrega</span>
+          <span class="data">${formatDate(new Date(pedido.data_prevista_entrega))}</span>
+        </div>
         <div class="meio">
-          ${pacote.rotulo ? `<div class="volume">${pacote.rotulo}</div>` : ""}
-          <div class="unidades">${pacote.unidades} un.</div>
+          ${pacote.rotulo ? `<div class="pilula">${pacote.rotulo}</div>` : ""}
+          <div class="unidades">${pacote.unidades}<span> un.</span></div>
         </div>
         <div class="rodape">
-          Pedido<br /><strong>${pacote.unidadesDoPedido} un.</strong>
+          <span class="rotulo">Pedido</span>
+          <span class="total">${pacote.unidadesDoPedido} un.</span>
         </div>
       </div>
     `;

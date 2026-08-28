@@ -54,8 +54,14 @@ export const escapar = (valor: unknown): string =>
 /**
  * CSS da folha de etiquetas.
  *
- * Impressão térmica não tem meio-tom: cinza vira pontilhado e some em corpo
- * pequeno. Todo texto é preto, e a hierarquia vem de tamanho e peso.
+ * O sistema visual do app não atravessa inteiro para a térmica: não existe cor,
+ * não existe cinza (vira pontilhado e some em corpo pequeno) e não existe
+ * sombra. O que atravessa são os princípios — hierarquia por tamanho e peso,
+ * rótulo em maiúscula espaçada, a pílula de marcação e o alinhamento firme.
+ *
+ * A pílula do volume é o equivalente térmico da marcação "você está aqui" do
+ * app: lá é marca da casa a 12%, aqui é preto cheio com texto vazado, porque é
+ * o único jeito de destacar sem cor.
  */
 export const estilosEtiquetaLote = (): string => `
   @page {
@@ -96,7 +102,7 @@ export const estilosEtiquetaLote = (): string => `
   .etiqueta {
     width: ${ROLO.largura}mm;
     height: ${ROLO.altura}mm;
-    padding: 1.5mm;
+    padding: 2mm 2.2mm;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -107,54 +113,99 @@ export const estilosEtiquetaLote = (): string => `
      etiquetas restantes nas colunas certas. */
   .vazia { visibility: hidden; }
 
+  /* Rótulo de interface: maiúscula espaçada, como no app. */
+  .rotulo {
+    font-size: 5pt;
+    font-weight: bold;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
   /* Bloco que precisa sobreviver ao destaque da picotada. */
   .topo {
-    height: ${PICOTADA_MM - 2.5}mm;
+    height: ${PICOTADA_MM - 3}mm;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
   }
 
   .cliente {
     font-size: 8.5pt;
     font-weight: bold;
-    line-height: 1.05;
+    line-height: 1.08;
     text-transform: uppercase;
+    letter-spacing: -0.01em;
     word-break: break-word;
   }
 
+  .regua {
+    height: 0;
+    border-top: 0.35mm solid #000;
+    margin: 1.4mm 0;
+  }
+
+  .entrega {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1mm;
+  }
+
   .data {
-    font-size: 8pt;
+    font-size: 8.5pt;
     font-weight: bold;
-    margin-top: 1mm;
+    letter-spacing: -0.02em;
   }
 
   .meio {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    text-align: center;
+    justify-content: center;
+    gap: 2mm;
   }
 
-  /* "1 de 3" é o que a pessoa procura com a caixa na mão: é o maior da etiqueta. */
-  .volume {
-    font-size: 14pt;
+  /* "1 de 3" é o que a pessoa procura com a caixa na mão. */
+  .pilula {
+    display: inline-block;
+    background: #000;
+    color: #fff;
+    border-radius: 99mm;
+    padding: 1.1mm 3mm;
+    font-size: 11pt;
     font-weight: bold;
-    line-height: 1;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
   }
 
   .unidades {
-    font-size: 11pt;
+    font-size: 15pt;
     font-weight: bold;
-    margin-top: 1.5mm;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .unidades span {
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 0;
   }
 
   .rodape {
-    border-top: 1px solid #000;
-    padding-top: 1mm;
-    font-size: 7pt;
-    line-height: 1.2;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1mm;
+    border-top: 0.35mm solid #000;
+    padding-top: 1.2mm;
   }
 
-  .rodape strong { font-size: 8pt; }
+  .total {
+    font-size: 8.5pt;
+    font-weight: bold;
+    letter-spacing: -0.02em;
+  }
 `;
