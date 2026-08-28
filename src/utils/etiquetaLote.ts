@@ -164,7 +164,21 @@ export const estilosEtiquetaLote = (): string => `
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2mm;
+  }
+
+  /*
+    O espaço da pílula é reservado SEMPRE, tenha ela ou não.
+
+    Antes o número de unidades subia nas etiquetas de volume único e descia nas
+    de volume numerado — com as três etiquetas lado a lado no rolo, essa
+    diferença de altura saltava aos olhos. Agora o número cai sempre na mesma
+    linha, e a pílula aparece acima dele sem empurrar nada.
+  */
+  .slot-pilula {
+    height: 7mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* "1 de 3" é o que a pessoa procura com a caixa na mão. */

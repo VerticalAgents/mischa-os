@@ -644,7 +644,7 @@ export const PrintingActions = ({
           <span class="data">${formatDate(new Date(pedido.data_prevista_entrega))}</span>
         </div>
         <div class="meio">
-          ${pacote.rotulo ? `<div class="pilula">${pacote.rotulo}</div>` : ""}
+          <div class="slot-pilula">${pacote.rotulo ? `<span class="pilula">${pacote.rotulo}</span>` : ""}</div>
           <div class="unidades">${pacote.unidades}<span> un.</span></div>
         </div>
         <div class="rodape">
