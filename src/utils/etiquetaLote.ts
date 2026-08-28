@@ -38,10 +38,21 @@ export const LARGURA_LINHA =
 export const ALTURA_LINHA = ROLO.altura + ROLO.espacoLinha;
 
 /**
- * O rolo tem uma picotada a 18,5 mm do topo. O que precisa sobreviver ao
- * destaque fica acima dela — aqui, o nome do cliente.
+ * O rolo tem uma picotada a 18,5 mm do topo.
+ *
+ * No sistema de rastreabilidade, tudo o que precisa sobreviver ao destaque cabe
+ * acima dela. Aqui o bloco do topo passa disso de propósito: com o nome em 10pt
+ * (pedido do dono, porque em 8,5pt estava pequeno demais para ler de longe) e a
+ * pílula maior, os dois não cabem em 15,5 mm.
+ *
+ * O que se perde: se alguém destacar a etiqueta na picotada, a pílula do volume
+ * pode ser cortada ao meio em nomes de três linhas. O NOME continua inteiro
+ * acima dela, que é o dado que não pode se perder.
  */
 export const PICOTADA_MM = 18.5;
+
+/** Altura do bloco do topo: nome (até 3 linhas de 10pt) + pílula. */
+export const ALTURA_TOPO = 21;
 
 /** Escapa texto vindo do banco antes de entrar no HTML de impressão. */
 export const escapar = (valor: unknown): string =>
@@ -129,21 +140,36 @@ export const estilosEtiquetaLote = (): string => `
     ou três linhas — e nada abaixo dela se mexe.
   */
   .topo {
-    height: ${PICOTADA_MM - 3}mm;
+    height: ${ALTURA_TOPO}mm;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
   }
 
-  /* O único negrito pesado da etiqueta: é o que se lê primeiro. */
+  /*
+    O único negrito pesado da etiqueta: é o que se lê primeiro.
+
+    Teto de três linhas. Sem ele, um nome comprido em 10pt ocupava cinco linhas
+    e empurrava a pílula para fora do bloco — ela sumia justamente nas etiquetas
+    em que mais importa. Nome maior que isso sai cortado com reticências: o
+    começo do nome identifica o cliente, a pílula não tem substituto.
+  */
   .cliente {
-    font-size: 8.5pt;
+    /* Arial Narrow cabe ~30% mais caractere na mesma altura de letra, e existe
+       em toda instalacao do Windows. Numa etiqueta de 34 mm isso e a diferenca
+       entre o nome inteiro e o nome cortado. */
+    font-family: "Arial Narrow", "Liberation Sans Narrow", Arial, sans-serif;
+    font-size: 10.5pt;
     font-weight: bold;
-    line-height: 1.08;
+    line-height: 1.1;
     text-transform: uppercase;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .regua {
@@ -183,7 +209,7 @@ export const estilosEtiquetaLote = (): string => `
   .slot-pilula {
     margin-top: auto;
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   /* "1 de 3" é o que a pessoa procura com a caixa na mão. */
@@ -192,8 +218,8 @@ export const estilosEtiquetaLote = (): string => `
     background: #000;
     color: #fff;
     border-radius: 99mm;
-    padding: 0.9mm 2.6mm;
-    font-size: 10pt;
+    padding: 1.3mm 3.6mm;
+    font-size: 13pt;
     font-weight: bold;
     line-height: 1.05;
     letter-spacing: -0.01em;
