@@ -122,27 +122,10 @@ export const estilosEtiquetaLote = (): string => `
 
   /*
     Sobra de linha: quando o último avanço do rolo tem menos de três pacotes, as
-    etiquetas restantes seriam papel em branco. Viram a marca da casa.
-
-    Elas continuam ocupando a coluna — é isso que mantém as etiquetas reais no
-    lugar certo do rolo.
+    etiquetas restantes ficam em branco — mas continuam ocupando a coluna, que é
+    o que mantém as reais no lugar certo do rolo.
   */
-  .marca {
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .marca img {
-    width: 27mm;
-    height: 27mm;
-    display: block;
-    /* A imagem já é de dois tons; qualquer suavização viraria cinza, que na
-       térmica é chuvisco. */
-    image-rendering: pixelated;
-  }
+  .vazia { visibility: hidden; }
 
   /* Rótulo de interface: maiúscula espaçada, como no app. */
   .rotulo {
