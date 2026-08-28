@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { hojeISO } from "@/utils/dataLocal";
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -58,7 +59,6 @@ const dataBR = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 const URL_RECEBIMENTOS_PADRAO =
   "https://gestaoclick.com/financeiro/movimentacoes_financeiras/index_recebimento/?venda={vendaId}&loja={lojaId}";

@@ -18,13 +18,13 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { ClienteInadimplente } from "@/hooks/useInadimplencia";
 import { useAcoesRecebimentos } from "@/hooks/useAcoesRecebimentos";
+import { hojeISO } from "@/utils/dataLocal";
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dataBR = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 };
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 type Acao = "vencimento" | "situacao";
 

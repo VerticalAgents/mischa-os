@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { hojeISO } from '@/utils/dataLocal';
 
 interface EntregaOrganizada {
   id: string;
@@ -38,7 +39,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
     setLoading(true);
     try {
       // Usar a data de HOJE (não o filtro de data do usuário)
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = hojeISO();
       
       // Query principal: agendamentos de HOJE que estão separados ou despachados
       const { data: agendamentos, error: agendError } = await supabase
