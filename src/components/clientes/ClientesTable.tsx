@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Eye, Edit, Trash2, Copy, ArrowDown, ArrowUp } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, Trash2, Copy, ArrowDown, ArrowUp, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Cliente } from "@/types";
 import { cn } from "@/lib/utils";
 import StatusBadge from "@/components/common/StatusBadge";
@@ -41,6 +41,25 @@ const LARGURA_COLUNA: Record<string, string> = {
   scorePagamento: "w-[74px]",
   acoes: "w-[48px]",
 };
+
+/**
+ * Colunas que dá para ordenar clicando no cabeçalho.
+ *
+ * Ficam de fora "Ações" (não é dado) e "Tipo" (três valores, o filtro do topo
+ * resolve melhor).
+ */
+const ORDENAVEL = new Set([
+  "idGestaoClick",
+  "razaoSocial",
+  "nome",
+  "cnpjCpf",
+  "contato",
+  "periodicidade",
+  "status",
+  "statusAgendamento",
+  "proximaDataReposicao",
+  "scorePagamento",
+]);
 
 /** Colunas cujo conteúdo é texto livre e pode ser cortado. */
 const CORTAVEL = new Set(["razaoSocial", "nome", "contato"]);
@@ -80,12 +99,21 @@ export default function ClientesTable({
   const mostrandoScore = visibleColumns.includes("scorePagamento");
   const { scores, loading: carregandoScores } = useScoresFinanceiros(mostrandoScore);
 
-  // A ordenação mora aqui porque depende das notas, que são buscadas aqui.
-  // `null` preserva a ordem que a página entregou (nome, filtros etc.).
-  const [ordemScore, setOrdemScore] = useState<"pior" | "melhor" | null>(null);
+  /**
+   * Ordenação por coluna, em três estados: crescente, decrescente e a ordem
+   * original que a página entregou (que já vem com filtros aplicados).
+   *
+   * Mora aqui porque a nota de pagamento é buscada aqui — ordenar por ela na
+   * página exigiria subir a busca junto, e ela só faz sentido nesta tabela.
+   */
+  const [ordem, setOrdem] = useState<{ coluna: string; sentido: "cresc" | "desc" } | null>(null);
 
-  const alternarOrdemScore = () =>
-    setOrdemScore((atual) => (atual === null ? "pior" : atual === "pior" ? "melhor" : null));
+  const alternarOrdem = (coluna: string) =>
+    setOrdem((atual) => {
+      if (atual?.coluna !== coluna) return { coluna, sentido: "cresc" };
+      if (atual.sentido === "cresc") return { coluna, sentido: "desc" };
+      return null;
+    });
 
   const notaDe = (cliente: Cliente): number | null => {
     const gcId = cliente.gestaoClickClienteId;
@@ -93,20 +121,40 @@ export default function ClientesTable({
     return s?.score ?? null;
   };
 
+  /** Valor comparável de uma coluna. `null` = sem informação, vai para o fim. */
+  const chaveDeOrdem = (cliente: Cliente, coluna: string): string | number | null => {
+    if (coluna === "scorePagamento") return notaDe(cliente);
+    if (coluna === "periodicidade") return cliente.periodicidadePadrao ?? 7;
+    if (coluna === "proximaDataReposicao")
+      return cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao).getTime() : null;
+
+    const bruto = getColumnValue(cliente, coluna);
+    if (bruto === null || bruto === undefined || bruto === "-" || bruto === "") return null;
+    return String(bruto).toLowerCase();
+  };
+
   const clientesOrdenados = useMemo(() => {
-    if (!ordemScore) return clientes;
+    if (!ordem) return clientes;
+
     return [...clientes].sort((a, b) => {
-      const na = notaDe(a);
-      const nb = notaDe(b);
-      // Quem não tem nota vai para o fim nas duas direções: não é "nota zero",
-      // é ausência de informação, e misturar os dois enganaria a leitura.
-      if (na === null && nb === null) return 0;
-      if (na === null) return 1;
-      if (nb === null) return -1;
-      return ordemScore === "pior" ? na - nb : nb - na;
+      const va = chaveDeOrdem(a, ordem.coluna);
+      const vb = chaveDeOrdem(b, ordem.coluna);
+
+      // Sem informação vai para o fim NAS DUAS direções: ausência de dado não é
+      // "menor valor", e misturar os dois enganaria a leitura.
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+
+      const cmp =
+        typeof va === "number" && typeof vb === "number"
+          ? va - vb
+          : String(va).localeCompare(String(vb), "pt-BR");
+
+      return ordem.sentido === "cresc" ? cmp : -cmp;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientes, scores, ordemScore]);
+  }, [clientes, scores, ordem]);
   const { buscarRazoesSociaisLote, getRazaoSocial, loading: loadingRazaoSocial } = useRazaoSocialGC();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [clienteParaEditar, setClienteParaEditar] = useState<Cliente | null>(null);
@@ -193,7 +241,9 @@ export default function ClientesTable({
     }
   };
 
-  const getColumnValue = (cliente: Cliente, columnId: string) => {
+  // Declarada como função (e não como const) de propósito: a ordenação a
+  // chama durante a montagem da lista, ANTES desta linha do arquivo.
+  function getColumnValue(cliente: Cliente, columnId: string) {
     switch (columnId) {
       case "idGestaoClick":
         return cliente.gestaoClickClienteId || "-";
@@ -218,14 +268,23 @@ export default function ClientesTable({
       default:
         return "-";
     }
-  };
+  }
 
   const renderCellContent = (cliente: Cliente, columnId: string) => {
     const value = getColumnValue(cliente, columnId);
     
     switch (columnId) {
       case "scorePagamento": {
-        if (carregandoScores) return <Skeleton className="h-5 w-16" />;
+        // A varredura de 12 meses na API externa leva alguns segundos. O
+        // esqueleto cinza era quase invisível nessa célula estreita e a coluna
+        // parecia vazia — a rodinha diz que ainda está vindo.
+        if (carregandoScores) {
+          return (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+            </span>
+          );
+        }
         const gcId = cliente.gestaoClickClienteId;
         return <BadgeScore score={gcId ? scores[String(gcId)] : null} compacto />;
       }
@@ -313,27 +372,39 @@ export default function ClientesTable({
                 </TableHead>
               )}
               {columnOptions
-                .filter(col => visibleColumns.includes(col.id))
-                .map((column) =>
-                  column.id === "scorePagamento" ? (
+                .filter((col) => visibleColumns.includes(col.id))
+                .map((column) => {
+                  const ordenavel = ORDENAVEL.has(column.id);
+                  const ativa = ordem?.coluna === column.id;
+
+                  return (
                     <TableHead key={column.id} className={cn("px-2", LARGURA_COLUNA[column.id])}>
-                      <button
-                        type="button"
-                        onClick={alternarOrdemScore}
-                        className="flex items-center gap-1 hover:text-foreground"
-                        title="Ordenar pelos piores pagadores"
-                      >
-                        {column.label}
-                        {ordemScore === "pior" && <ArrowUp className="h-3 w-3" />}
-                        {ordemScore === "melhor" && <ArrowDown className="h-3 w-3" />}
-                      </button>
+                      {ordenavel ? (
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdem(column.id)}
+                          className="group flex w-full items-center gap-1 hover:text-foreground"
+                          title={`Ordenar por ${column.label.toLowerCase()}`}
+                        >
+                          <span className="truncate">{column.label}</span>
+                          {ativa && ordem?.sentido === "cresc" && (
+                            <ArrowUp className="h-3 w-3 shrink-0" />
+                          )}
+                          {ativa && ordem?.sentido === "desc" && (
+                            <ArrowDown className="h-3 w-3 shrink-0" />
+                          )}
+                          {/* A seta cinza só no passar do mouse: dizer que dá
+                              para ordenar sem poluir dez cabeçalhos de uma vez. */}
+                          {!ativa && (
+                            <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-40" />
+                          )}
+                        </button>
+                      ) : (
+                        column.label
+                      )}
                     </TableHead>
-                  ) : (
-                    <TableHead key={column.id} className={cn("px-2", LARGURA_COLUNA[column.id])}>
-                      {column.label}
-                    </TableHead>
-                  )
-                )}
+                  );
+                })}
             </TableRow>
           </TableHeader>
           <TableBody>

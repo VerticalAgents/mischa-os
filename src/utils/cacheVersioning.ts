@@ -3,6 +3,22 @@
 const SCHEMA_VERSION = 'clientes.v3';
 const CACHE_PREFIX = 'cliente_app_';
 
+/**
+ * Preferências de tela NÃO são cache.
+ *
+ * A limpeza abaixo apaga qualquer chave que contenha "cliente" — e a escolha de
+ * colunas da lista se chama `clientes-visible-columns`. Ou seja: a cada troca de
+ * versão do schema, a configuração de colunas do usuário ia junto, sem que nada
+ * no cadastro dele tivesse mudado.
+ *
+ * Cache é dado que dá para buscar de novo. Preferência é escolha da pessoa, e
+ * jogar fora é perda de verdade.
+ */
+const PREFERENCIAS = ['-visible-columns', 'sidebar_expandido', 'vite-ui-theme'];
+
+const ehPreferencia = (chave: string) =>
+  PREFERENCIAS.some((marca) => chave.includes(marca));
+
 // Função para verificar e limpar cache quando schema mudar
 export function checkAndClearOutdatedCache(): void {
   try {
@@ -14,8 +30,10 @@ export function checkAndClearOutdatedCache(): void {
         expectedVersion: SCHEMA_VERSION
       });
       
-      // Limpar todas as chaves relacionadas ao cliente
+      // Limpar todas as chaves relacionadas ao cliente, menos as preferências
       Object.keys(localStorage).forEach(key => {
+        if (ehPreferencia(key)) return;
+
         if (key.startsWith(CACHE_PREFIX) || 
             key.includes('cliente') || 
             key.includes('Client') ||

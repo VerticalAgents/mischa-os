@@ -8,19 +8,58 @@ import type { TituloFinanceiro } from "@/utils/scoreFinanceiro";
  * e a mesma pessoa teria notas diferentes em duas telas.
  */
 
+/**
+ * Uma data que EXISTE no calendário.
+ *
+ * O formato bater não basta: "2026-06-35" passa em qualquer expressão regular e
+ * vira Data Inválida, que contamina a conta inteira — o atraso vira NaN, a nota
+ * vira NaN e o título aparece no meio da lista ordenada, sem alarme nenhum.
+ * Melhor descartar o título do que envenenar o score do cliente.
+ */
+const dataReal = (iso: string): boolean => {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return false;
+  // Um dia inexistente é "corrigido" pelo navegador (31/06 vira 01/07), então a
+  // volta precisa bater com a ida.
+  const [a, m, dia] = iso.split("-").map(Number);
+  return d.getFullYear() === a && d.getMonth() + 1 === m && d.getDate() === dia;
+};
+
 /** A API devolve dd/mm/yyyy ou yyyy-mm-dd; aqui sai sempre yyyy-mm-dd. */
 export const paraISO = (valor?: string | null): string | null => {
   if (!valor) return null;
+
+  let iso: string | null = null;
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(valor)) {
     const [d, m, a] = valor.split("/");
-    return `${a}-${m}-${d}`;
+    iso = `${a}-${m}-${d}`;
+  } else if (/^\d{4}-\d{2}-\d{2}/.test(valor)) {
+    iso = valor.slice(0, 10);
   }
-  if (/^\d{4}-\d{2}-\d{2}/.test(valor)) return valor.slice(0, 10);
-  return null;
+
+  return iso && dataReal(iso) ? iso : null;
 };
 
-export const paraNumero = (v: unknown): number =>
-  parseFloat(String(v ?? "0").replace(",", ".")) || 0;
+/**
+ * Valor em dinheiro, nos dois formatos que podem chegar.
+ *
+ * O GestãoClick manda "1599.99", com ponto decimal. Mas trocar a vírgula por
+ * ponto às cegas quebra o formato brasileiro: "1.234,56" virava "1.234.56", que
+ * o parseFloat lê como 1,23 — erro de mil vezes, em dinheiro, silencioso.
+ *
+ * Regra: se tem vírgula, ela é o decimal e os pontos são milhar. Se não tem,
+ * o ponto é o decimal.
+ */
+export const paraNumero = (v: unknown): number => {
+  const texto = String(v ?? "").trim();
+  if (!texto) return 0;
+
+  const limpo = texto.includes(",")
+    ? texto.replace(/\./g, "").replace(",", ".")
+    : texto;
+
+  return parseFloat(limpo) || 0;
+};
 
 /** Converte um título cru da API. Devolve nulo se não der para datar. */
 export const tituloDeGC = (t: any): TituloFinanceiro | null => {
