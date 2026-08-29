@@ -15,6 +15,7 @@ import ClienteFormDialog from "./ClienteFormDialog";
 
 import { useRazaoSocialGC } from "@/hooks/useRazaoSocialGC";
 import { useScoresFinanceiros } from "@/hooks/useScoresFinanceiros";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import BadgeScore from "./BadgeScore";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -41,6 +42,13 @@ const LARGURA_COLUNA: Record<string, string> = {
   scorePagamento: "w-[74px]",
   acoes: "w-[48px]",
 };
+
+/** Enquanto o dado não chegou: melhor uma rodinha do que um valor errado. */
+const Rodinha = () => (
+  <span className="flex items-center text-muted-foreground">
+    <Loader2 className="h-3 w-3 animate-spin" />
+  </span>
+);
 
 /**
  * Colunas que dá para ordenar clicando no cabeçalho.
@@ -100,6 +108,37 @@ export default function ClientesTable({
   const { scores, loading: carregandoScores } = useScoresFinanceiros(mostrandoScore);
 
   /**
+   * Status e próxima reposição vêm do AGENDAMENTO, não do cadastro.
+   *
+   * A tabela `clientes` tem as colunas `status_agendamento` e
+   * `proxima_data_reposicao`, mas nada no app escreve nelas: todo fluxo de
+   * agendamento grava em `agendamentos_clientes`. A lista lia esses campos
+   * mortos e mostrava "Não Agendado" para o cadastro inteiro, inclusive para
+   * quem tinha reposição marcada para amanhã.
+   */
+  const { agendamentos, carregarTodosAgendamentos, loading: carregandoAgendamentos } =
+    useAgendamentoClienteStore();
+
+  const mostrandoAgendamento =
+    visibleColumns.includes("statusAgendamento") ||
+    visibleColumns.includes("proximaDataReposicao");
+
+  useEffect(() => {
+    if (mostrandoAgendamento && agendamentos.length === 0) {
+      carregarTodosAgendamentos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mostrandoAgendamento]);
+
+  const agendamentoPorCliente = useMemo(() => {
+    const mapa = new Map<string, (typeof agendamentos)[number]>();
+    agendamentos.forEach((a) => {
+      if (a.cliente?.id) mapa.set(String(a.cliente.id), a);
+    });
+    return mapa;
+  }, [agendamentos]);
+
+  /**
    * Ordenação por coluna, em três estados: crescente, decrescente e a ordem
    * original que a página entregou (que já vem com filtros aplicados).
    *
@@ -125,8 +164,10 @@ export default function ClientesTable({
   const chaveDeOrdem = (cliente: Cliente, coluna: string): string | number | null => {
     if (coluna === "scorePagamento") return notaDe(cliente);
     if (coluna === "periodicidade") return cliente.periodicidadePadrao ?? 7;
-    if (coluna === "proximaDataReposicao")
-      return cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao).getTime() : null;
+    if (coluna === "proximaDataReposicao") {
+      const d = agendamentoPorCliente.get(String(cliente.id))?.dataReposicao;
+      return d ? new Date(d).getTime() : null;
+    }
 
     const bruto = getColumnValue(cliente, coluna);
     if (bruto === null || bruto === undefined || bruto === "-" || bruto === "") return null;
@@ -262,9 +303,17 @@ export default function ClientesTable({
       case "status":
         return formatarStatus(cliente.statusCliente);
       case "statusAgendamento":
-        return formatarStatusAgendamento(cliente.statusAgendamento || 'Não Agendado');
-      case "proximaDataReposicao":
-        return formatarData(cliente.proximaDataReposicao);
+        // Sem isto, a coluna mostraria "Não Agendado" enquanto os agendamentos
+        // ainda estão vindo — exatamente o erro que estamos consertando.
+        if (carregandoAgendamentos) return <Rodinha />;
+        return formatarStatusAgendamento(
+          agendamentoPorCliente.get(String(cliente.id))?.statusAgendamento || 'Não Agendado'
+        );
+      case "proximaDataReposicao": {
+        if (carregandoAgendamentos) return <Rodinha />;
+        const data = agendamentoPorCliente.get(String(cliente.id))?.dataReposicao;
+        return formatarData(data ? new Date(data) : null);
+      }
       default:
         return "-";
     }
@@ -278,13 +327,7 @@ export default function ClientesTable({
         // A varredura de 12 meses na API externa leva alguns segundos. O
         // esqueleto cinza era quase invisível nessa célula estreita e a coluna
         // parecia vazia — a rodinha diz que ainda está vindo.
-        if (carregandoScores) {
-          return (
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-            </span>
-          );
-        }
+        if (carregandoScores) return <Rodinha />;
         const gcId = cliente.gestaoClickClienteId;
         return <BadgeScore score={gcId ? scores[String(gcId)] : null} compacto />;
       }
@@ -308,17 +351,23 @@ export default function ClientesTable({
           </Badge>
         );
       }
-      case "statusAgendamento":
-        const statusAgendamento = cliente.statusAgendamento || 'Não Agendado';
+      case "statusAgendamento": {
+        if (carregandoAgendamentos) return <Rodinha />;
+        // Do agendamento, não do cadastro: a coluna do cadastro nunca é escrita.
+        const statusAgendamento =
+          agendamentoPorCliente.get(String(cliente.id))?.statusAgendamento || 'Não Agendado';
         return (
+          // "Cancelado" saiu: o agendamento só tem Agendar, Previsto e
+          // Agendado. A variante existia porque o campo antigo do cadastro
+          // aceitava outros valores — que nunca chegavam aqui.
           <Badge variant={
             statusAgendamento === 'Agendado' ? 'default' :
-            statusAgendamento === 'Agendar' ? 'secondary' :
-            statusAgendamento === 'Cancelado' ? 'destructive' : 'outline'
+            statusAgendamento === 'Agendar' ? 'secondary' : 'outline'
           }>
             {statusAgendamento}
           </Badge>
         );
+      }
       case "acoes":
         return (
           <DropdownMenu>
