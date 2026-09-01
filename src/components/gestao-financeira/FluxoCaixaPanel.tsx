@@ -194,8 +194,8 @@ export default function FluxoCaixaPanel() {
         <CardHeader>
           <CardTitle className="text-base">Projeção diária de caixa</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Considera todos os títulos em aberto como se fossem se concretizar no vencimento.
-            Títulos vencidos entram no primeiro dia.
+            Considera os títulos que ainda vão vencer, cada um no seu vencimento.
+            O que já está vencido fica de fora — entra no caixa quando for pago.
           </p>
         </CardHeader>
         <CardContent>
@@ -354,6 +354,34 @@ export default function FluxoCaixaPanel() {
           </div>
         </CardContent>
       </Card>
+
+      {/* O que saiu da curva precisa aparecer em algum lugar, senão o dinheiro
+          "some" da tela e a leitura fica pior do que antes. */}
+      {(kpis.vencidoAReceber > 0 || kpis.vencidoAPagar > 0) && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 py-4 text-sm">
+            <span className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Fora da projeção
+            </span>
+            {kpis.vencidoAReceber > 0 && (
+              <span>
+                A receber vencido:{" "}
+                <strong className="tabular-nums">{brl(kpis.vencidoAReceber)}</strong>
+              </span>
+            )}
+            {kpis.vencidoAPagar > 0 && (
+              <span>
+                A pagar vencido:{" "}
+                <strong className="tabular-nums">{brl(kpis.vencidoAPagar)}</strong>
+              </span>
+            )}
+            <span className="text-xs text-muted-foreground">
+              Entram no caixa quando forem quitados, não numa data prevista.
+            </span>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

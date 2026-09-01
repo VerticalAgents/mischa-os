@@ -219,8 +219,28 @@ export function useFluxoCaixa(horizonte: HorizonteFluxo = 30) {
         });
       });
 
-      // Considera apenas o que vence até o fim do horizonte; vencidos entram hoje
-      const noHorizonte = lancamentos.filter((l) => l.dataVencimento <= fim);
+      /*
+        Vencido NÃO entra na curva.
+
+        Antes, todo título vencido era lançado no dia de hoje — ou seja, a
+        projeção assumia que a inadimplência inteira seria recebida hoje, e o
+        saldo de todos os dias seguintes carregava esse otimismo. Com atraso
+        relevante, a curva ficava alta demais para servir de decisão.
+
+        Agora a projeção conta só o que ainda vai vencer. O que está atrasado
+        aparece à parte, como valor fora da curva: se entrar, é a mais.
+      */
+      const vencidos = lancamentos.filter((l) => l.atrasado);
+      const noHorizonte = lancamentos.filter(
+        (l) => !l.atrasado && l.dataVencimento <= fim
+      );
+
+      const vencidoAReceber = vencidos
+        .filter((l) => l.tipo === "entrada")
+        .reduce((s, l) => s + l.valor, 0);
+      const vencidoAPagar = vencidos
+        .filter((l) => l.tipo === "saida")
+        .reduce((s, l) => s + l.valor, 0);
 
       const porDia = new Map<string, { entradas: number; saidas: number; atrasados: boolean }>();
       for (let i = 0; i <= horizonte; i++) {
@@ -228,8 +248,7 @@ export function useFluxoCaixa(horizonte: HorizonteFluxo = 30) {
       }
 
       noHorizonte.forEach((l) => {
-        const dia = l.dataVencimento < hoje ? hoje : l.dataVencimento;
-        const registro = porDia.get(dia);
+        const registro = porDia.get(l.dataVencimento);
         if (!registro) return;
         if (l.tipo === "entrada") registro.entradas += l.valor;
         else registro.saidas += l.valor;
@@ -276,7 +295,10 @@ export function useFluxoCaixa(horizonte: HorizonteFluxo = 30) {
           menorSaldo: menorSaldo.saldo,
           menorSaldoData: menorSaldo.data,
           contasSemSaldo: contas.filter((c) => !c.configurada).length,
-          atrasados: noHorizonte.filter((l) => l.atrasado).length,
+          atrasados: vencidos.length,
+          vencidoAReceber,
+          vencidoAPagar,
+          vencidos: vencidos.sort((a, b) => b.diasAtraso - a.diasAtraso),
         },
         periodo: { inicio: hoje, fim },
       };

@@ -3027,20 +3027,30 @@ Deno.serve(async (req) => {
           : formatDate(addDays(hoje, -90));
         const dataFim = formatDate(hoje);
 
+        // `liquidado=pg` (Confirmado) e o valor DOCUMENTADO da API. O codigo
+        // usava `li`, que nao existe na documentacao — e filtro desconhecido
+        // costuma ser ignorado, devolvendo pago E em aberto. Como isto alimenta
+        // o SALDO ATUAL, titulo nao pago entrava como dinheiro em caixa e a
+        // projecao inteira subia junto.
         const [recebidos, pagos] = await Promise.all([
           fetchGCPaginado(
-            `recebimentos?liquidado=li&data_inicio=${dataInicio}&data_fim=${dataFim}`,
+            `recebimentos?liquidado=pg&data_inicio=${dataInicio}&data_fim=${dataFim}`,
             access_token,
             secret_token,
             'Recebimento',
           ),
           fetchGCPaginado(
-            `pagamentos?liquidado=li&data_inicio=${dataInicio}&data_fim=${dataFim}`,
+            `pagamentos?liquidado=pg&data_inicio=${dataInicio}&data_fim=${dataFim}`,
             access_token,
             secret_token,
             'Pagamento',
           ),
         ]);
+
+        // Cinto e suspensorio: mesmo com o filtro certo, so conta o que o
+        // proprio registro declara como liquidado. E o mesmo cuidado que a acao
+        // de recebimentos em aberto ja tomava.
+        const liquidado = (m: any) => String(m.liquidado ?? '0') === '1';
 
         const porConta: Record<string, { entradas: number; saidas: number }> = {};
         const acumular = (conta: any, valor: number, tipo: 'entradas' | 'saidas') => {
@@ -3049,15 +3059,18 @@ Deno.serve(async (req) => {
           porConta[key][tipo] += valor;
         };
 
-        recebidos.forEach((r: any) =>
+        recebidos.filter(liquidado).forEach((r: any) =>
           acumular(r.conta_bancaria_id, numGC(r.valor_total ?? r.valor), 'entradas')
         );
-        pagos.forEach((p: any) =>
+        pagos.filter(liquidado).forEach((p: any) =>
           acumular(p.conta_bancaria_id, numGC(p.valor_total ?? p.valor), 'saidas')
         );
 
         console.log(
-          `[gestaoclick-proxy] liquidados desde ${dataInicio}: ${recebidos.length} recebidos, ${pagos.length} pagos`
+          `[gestaoclick-proxy] liquidados desde ${dataInicio}: ` +
+          `${recebidos.filter(liquidado).length}/${recebidos.length} recebidos, ` +
+          `${pagos.filter(liquidado).length}/${pagos.length} pagos ` +
+          `(o total revela se o filtro da API foi respeitado)`
         );
 
         return new Response(
