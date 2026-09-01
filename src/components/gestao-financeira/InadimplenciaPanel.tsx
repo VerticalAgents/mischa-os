@@ -26,6 +26,9 @@ import {
   Receipt,
   RefreshCw,
   Search,
+  FileText,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useInadimplencia, type ClienteInadimplente } from "@/hooks/useInadimplencia";
 import { useAcoesRecebimentos } from "@/hooks/useAcoesRecebimentos";
@@ -50,6 +53,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { hojeISO } from "@/utils/dataLocal";
+import { montarRelatorioInadimplencia } from "@/utils/relatorioInadimplencia";
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -163,6 +167,8 @@ export default function InadimplenciaPanel() {
   const [carregandoFormas, setCarregandoFormas] = useState(false);
   const [formaSelecionada, setFormaSelecionada] = useState<string>("");
   const { alterarSituacao, listarFormasPagamento } = useAcoesRecebimentos();
+  const [relatorio, setRelatorio] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   // Carrega formas de pagamento do GestãoClick ao abrir o modal de recebimento
   useEffect(() => {
@@ -350,6 +356,48 @@ export default function InadimplenciaPanel() {
     );
   }, [clientes, filtroRepresentantes]);
 
+  /**
+   * Relatório do que está NA TELA.
+   *
+   * Usa `lista`, que já passou por aba, representante e busca — se a pessoa
+   * filtrou por um representante e clica em gerar, ela espera o texto daquele
+   * representante, não do cadastro inteiro.
+   */
+  const gerarRelatorio = () => {
+    const contexto: string[] = [];
+    if (filtroRepresentantes.length > 0) {
+      contexto.push(
+        filtroRepresentantes.length === 1
+          ? "1 representante selecionado"
+          : `${filtroRepresentantes.length} representantes selecionados`
+      );
+    }
+    if (busca.trim()) contexto.push(`busca: "${busca.trim()}"`);
+
+    setCopiado(false);
+    setRelatorio(
+      montarRelatorioInadimplencia(lista, {
+        hojeBR: dataBR(hojeISO()),
+        subtitulo: contexto.length ? contexto.join(" · ") : undefined,
+        somenteAtrasados: filtro === "atrasados",
+      })
+    );
+  };
+
+  const copiarRelatorio = async () => {
+    if (!relatorio) return;
+    try {
+      await navigator.clipboard.writeText(relatorio);
+      setCopiado(true);
+      toast.success("Relatório copiado");
+      setTimeout(() => setCopiado(false), 2500);
+    } catch {
+      // Área de transferência bloqueada (acontece fora de HTTPS): o texto está
+      // na tela e dá para selecionar à mão, então não é beco sem saída.
+      toast.error("Não foi possível copiar. Selecione o texto e copie à mão.");
+    }
+  };
+
   const lista = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return clientesPorRepresentante
@@ -458,6 +506,18 @@ export default function InadimplenciaPanel() {
                     className="pl-8 sm:w-56"
                   />
                 </div>
+                {/* Relatório do que está NA TELA: usa a lista já filtrada por
+                    aba, representante e busca. Se o filtro mudou, o texto muda
+                    junto — é essa a expectativa de quem clica. */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={gerarRelatorio}
+                  title="Gerar relatório dos clientes na tela"
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="outline"
                   size="icon"
@@ -961,6 +1021,44 @@ export default function InadimplenciaPanel() {
             <Button onClick={salvarSituacao} disabled={salvando || !dataLiquidacao}>
               {salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmar recebimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!relatorio} onOpenChange={(aberto) => !aberto && setRelatorio(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Relatório de inadimplência
+            </DialogTitle>
+            <DialogDescription>
+              Gerado a partir dos clientes que estão na tela agora. Dá para editar
+              antes de enviar.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Campo editável e não bloco de leitura: quase sempre se quer tirar um
+              cliente ou acrescentar uma frase antes de mandar. */}
+          <textarea
+            value={relatorio ?? ""}
+            onChange={(e) => setRelatorio(e.target.value)}
+            spellCheck={false}
+            className="h-[45vh] w-full resize-none rounded-controle border border-border bg-muted/30 p-3 font-mono text-xs leading-relaxed"
+          />
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRelatorio(null)}>
+              Fechar
+            </Button>
+            <Button onClick={copiarRelatorio}>
+              {copiado ? (
+                <Check className="mr-2 h-4 w-4" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              {copiado ? "Copiado" : "Copiar"}
             </Button>
           </DialogFooter>
         </DialogContent>
