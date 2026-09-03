@@ -33,7 +33,10 @@ export default function ProducaoQuebraCard({
   const lista = limite ? itens.slice(0, limite) : itens;
 
   return (
-    <Card className="flex flex-col h-full">
+    // min-w-0: sem isso o cartao e um item de grid com largura minima "auto",
+    // entao o nome do produto (que nao quebra linha, por causa do truncate) empurra
+    // a coluna inteira e a pagina ganha rolagem lateral no celular.
+    <Card className="flex h-full min-w-0 flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">
@@ -85,11 +88,17 @@ export default function ProducaoQuebraCard({
                       </Badge>
                     )}
                   </div>
+                  {/* Colunas de largura fixa: sem isso o valor "desliza" de linha
+                      para linha, porque a largura do badge muda com o percentual
+                      ("7,7%" e "37,5%" nao ocupam o mesmo espaco). */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-semibold tabular-nums">
+                    <span className="w-[92px] text-right text-sm font-semibold tabular-nums">
                       {formatarValor(item.valor, unidade)}
                     </span>
-                    <Badge variant="secondary" className="text-[11px] tabular-nums">
+                    <Badge
+                      variant="secondary"
+                      className="w-[52px] justify-center text-[11px] tabular-nums"
+                    >
                       {item.percentual.toFixed(1)}%
                     </Badge>
                   </div>
