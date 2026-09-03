@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AlertCircle, Save, Lock, Unlock } from "lucide-react";
+import { AlertCircle, Save, Lock, Unlock, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -45,6 +45,34 @@ import {
   type TipoLogisticaType
 } from '@/types/cliente-dto';
 import BuscaPorCep from "@/components/common/BuscaPorCep";
+import { formatarIE, formatarIESeDerConta } from "@/utils/inscricaoEstadual";
+import { rotuloDeStatus, STATUS_SELECIONAVEIS } from "@/utils/statusCliente";
+import NovaRotaInline from "./NovaRotaInline";
+
+/**
+ * Periodicidade sugerida num cadastro novo. Vale so para a sugestao: cliente ja
+ * cadastrado mantem a periodicidade dele.
+ */
+const PERIODICIDADE_PADRAO_DIAS = 14;
+
+/**
+ * O que fica decidido pela Mischa's quando quem cadastra e um representante.
+ *
+ * Nao sao preferencias dele: sao regras internas da empresa. Por isso os campos
+ * correspondentes ficam travados E escondidos — deixar na tela um campo que ele
+ * nao pode mudar so polui o formulario.
+ */
+const REGRAS_DO_REPRESENTANTE = {
+  tipoCliente: 'PDV',
+  /** Eles vendem na rua e o pedido e retirado aqui na fabrica. */
+  tipoLogistica: 'Retirada',
+  emiteNotaFiscal: true,
+  /** Revenda Padrao e Food Service. Odara e Morena Cacau nao sao revendidos por eles. */
+  categoriasPermitidas: [1, 2],
+  /** Ja vem marcada no cliente novo; Food Service a maioria nao pega. */
+  categoriaPadrao: 1,
+  prazosEmDias: [7, 14],
+} as const;
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -53,6 +81,19 @@ interface ClienteFormDialogProps {
   dadosIniciais?: Partial<Cliente>;
   onClienteUpdate?: () => void;
 }
+
+/**
+ * O que ja vai preenchido e travado quando quem cadastra e um representante.
+ *
+ * Fica separado do getDefaultFormData porque nao e um valor sugerido — e regra
+ * da empresa, e o campo correspondente nem aparece na tela para ele.
+ */
+const valoresDoRepresentante = (): Partial<Cliente> => ({
+  tipoCliente: REGRAS_DO_REPRESENTANTE.tipoCliente as Cliente['tipoCliente'],
+  tipoLogistica: REGRAS_DO_REPRESENTANTE.tipoLogistica as Cliente['tipoLogistica'],
+  emiteNotaFiscal: REGRAS_DO_REPRESENTANTE.emiteNotaFiscal,
+  categoriasHabilitadas: [REGRAS_DO_REPRESENTANTE.categoriaPadrao],
+});
 
 const getDefaultFormData = (): Partial<Cliente> => ({
   nome: '',
@@ -65,7 +106,7 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   contatoTelefone: '',
   contatoEmail: '',
   quantidadePadrao: 0,
-  periodicidadePadrao: 7,
+  periodicidadePadrao: PERIODICIDADE_PADRAO_DIAS,
   statusCliente: 'Ativo',
   tipoLogistica: 'Própria',
   tipoCobranca: 'À vista',
@@ -105,7 +146,7 @@ export default function ClienteFormDialog({
   // Representante não pode editar dados básicos de clientes já criados.
   // Só pode preencher no primeiro cadastro. Depois, somente admin altera.
   const lockBasicForRep = isRep && !!cliente;
-  const { rotasEntrega } = useSupabaseRotasEntrega();
+  const { rotasEntrega, adicionarRotaEntrega } = useSupabaseRotasEntrega();
   const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
   const { formasPagamento } = useSupabaseFormasPagamento();
   const { tiposCobranca } = useSupabaseTiposCobranca();
@@ -118,6 +159,7 @@ export default function ClienteFormDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [isIdUnlocked, setIsIdUnlocked] = useState(false);
+  const [criandoRota, setCriandoRota] = useState(false);
   
   const initializedRef = useRef(false);
   const lastClienteIdRef = useRef<string | null>(null);
@@ -159,16 +201,23 @@ export default function ClienteFormDialog({
         setFormData({
           ...getDefaultFormData(),
           ...dadosIniciais,
+          ...(isRep ? valoresDoRepresentante() : {}),
           representanteId: isRep && meuRepresentanteId
             ? meuRepresentanteId
             : (dadosIniciais.representanteId ?? undefined),
-          categoriasHabilitadas: dadosIniciais.categoriasHabilitadas || []
+          // Vem por ultimo no objeto, entao precisa respeitar o padrao do
+          // representante em vez de sobrescrever com lista vazia.
+          categoriasHabilitadas:
+            dadosIniciais.categoriasHabilitadas?.length
+              ? dadosIniciais.categoriasHabilitadas
+              : (isRep ? [REGRAS_DO_REPRESENTANTE.categoriaPadrao] : []),
         });
         lastClienteIdRef.current = null;
       } else {
         // MODO DE CRIAÇÃO VAZIA: Novo cliente em branco
         setFormData({
           ...getDefaultFormData(),
+          ...(isRep ? valoresDoRepresentante() : {}),
           representanteId: isRep && meuRepresentanteId ? meuRepresentanteId : undefined,
         });
         lastClienteIdRef.current = null;
@@ -299,7 +348,7 @@ export default function ClienteFormDialog({
     contatoTelefone: formData.contatoTelefone || '',
     contatoEmail: formData.contatoEmail || '',
     quantidadePadrao: formData.quantidadePadrao || 0,
-    periodicidadePadrao: formData.desabilitarReagendamento ? 0 : (formData.periodicidadePadrao || 7),
+    periodicidadePadrao: formData.desabilitarReagendamento ? 0 : (formData.periodicidadePadrao || PERIODICIDADE_PADRAO_DIAS),
     statusCliente: formData.statusCliente || 'Ativo',
     tipoLogistica: formData.tipoLogistica || 'Própria',
     tipoCobranca: formData.tipoCobranca || 'À vista',
@@ -370,6 +419,9 @@ export default function ClienteFormDialog({
                 </Alert>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* O ID vincula o cliente ao GestaoClick. O representante nao pode
+                    mexer nele e nao tem o que fazer com o numero, entao nem aparece. */}
+                {!isRep && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="gestaoClickClienteId">ID do Cliente</Label>
@@ -405,6 +457,7 @@ export default function ClienteFormDialog({
                     className={(!isIdUnlocked || lockBasicForRep) ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="nome">
                     Nome <span className="text-destructive">*</span>
@@ -455,9 +508,13 @@ export default function ClienteFormDialog({
                     <Label htmlFor="inscricaoEstadual">Inscrição Estadual</Label>
                     <Input
                       id="inscricaoEstadual"
+                      inputMode="numeric"
                       value={formData.inscricaoEstadual || ''}
-                      onChange={(e) => handleInputChange('inscricaoEstadual', e.target.value)}
-                      placeholder="Ex: 123456789"
+                      onChange={(e) => handleInputChange('inscricaoEstadual', formatarIE(e.target.value))}
+                      onBlur={(e) =>
+                        handleInputChange('inscricaoEstadual', formatarIESeDerConta(e.target.value))
+                      }
+                      placeholder="000/0000000"
                       disabled={!!cliente?.gestaoClickClienteId || lockBasicForRep}
                       className={(!!cliente?.gestaoClickClienteId || lockBasicForRep) ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                     />
@@ -465,37 +522,46 @@ export default function ClienteFormDialog({
                 )}
               </div>
 
-              {formData.tipoLogistica?.toLowerCase() !== 'retirada' && (
-                <>
-                  <div className="space-y-2">
-                    <BuscaPorCep
-                      disabled={lockBasicForRep}
-                      onEndereco={(endereco) => handleInputChange('enderecoEntrega', endereco)}
-                    />
-                    <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
-                    <Input
-                      id="enderecoEntrega"
-                      value={formData.enderecoEntrega || ''}
-                      onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
-                      disabled={lockBasicForRep}
-                      className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
-                    />
-                  </div>
+              {/* Antes isto sumia quando a logistica era "Retirada". Cliente de
+                  retirada tem endereco fisico do mesmo jeito — serve para o mapa e
+                  para a prospeccao —, e esconder o campo tirava da tela justamente
+                  a busca por CEP para quem mais precisa dela. */}
+              <div className="space-y-2">
+                <BuscaPorCep
+                  disabled={lockBasicForRep}
+                  onEndereco={(endereco, linkMaps) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      enderecoEntrega: endereco,
+                      // Nao pisa num link que a pessoa ja tenha colado na mao.
+                      linkGoogleMaps: prev.linkGoogleMaps?.trim()
+                        ? prev.linkGoogleMaps
+                        : linkMaps,
+                    }));
+                  }}
+                />
+                <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
+                <Input
+                  id="enderecoEntrega"
+                  value={formData.enderecoEntrega || ''}
+                  onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
+                  disabled={lockBasicForRep}
+                  className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
-                    <Input
-                      id="linkGoogleMaps"
-                      type="url"
-                      placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
-                      value={formData.linkGoogleMaps || ''}
-                      onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
-                      disabled={lockBasicForRep}
-                      className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
-                    />
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
+                <Input
+                  id="linkGoogleMaps"
+                  type="url"
+                  placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
+                  value={formData.linkGoogleMaps || ''}
+                  onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
+                  disabled={lockBasicForRep}
+                  className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                />
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -539,6 +605,9 @@ export default function ClienteFormDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Representante so abre PDV; cliente industrial e decisao interna.
+                    Ver REGRAS_DO_REPRESENTANTE. */}
+                {!isRep && (
                 <div className="space-y-2">
                   <Label htmlFor="tipoCliente">Tipo de cliente</Label>
                   <Select
@@ -563,7 +632,8 @@ export default function ClienteFormDialog({
                     Industrial = envia insumos e coleta produção terceirizada. Não aparece em fluxos de venda.
                   </p>
                 </div>
-                {(formData.tipoCliente === 'INDUSTRIAL' || formData.tipoCliente === 'AMBOS') && (
+                )}
+                {!isRep && (formData.tipoCliente === 'INDUSTRIAL' || formData.tipoCliente === 'AMBOS') && (
                   <div className="space-y-2">
                     <Label htmlFor="precoIndustrializacaoUnitario">
                       Preço por unidade industrializada (R$) <span className="text-destructive">*</span>
@@ -593,8 +663,8 @@ export default function ClienteFormDialog({
                     id="periodicidadePadrao"
                     type="number"
                     min="0"
-                    value={formData.desabilitarReagendamento ? 0 : (formData.periodicidadePadrao || 7)}
-                    onChange={(e) => handleInputChange('periodicidadePadrao', parseInt(e.target.value) || 7)}
+                    value={formData.desabilitarReagendamento ? 0 : (formData.periodicidadePadrao || PERIODICIDADE_PADRAO_DIAS)}
+                    onChange={(e) => handleInputChange('periodicidadePadrao', parseInt(e.target.value) || PERIODICIDADE_PADRAO_DIAS)}
                     disabled={formData.desabilitarReagendamento}
                     className={formData.desabilitarReagendamento ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
@@ -606,11 +676,11 @@ export default function ClienteFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent translate="no" data-translate="no">
-                      <SelectItem value="Ativo" translate="no">Ativo</SelectItem>
-                      <SelectItem value="Inativo" translate="no">Inativo</SelectItem>
-                      <SelectItem value="Em análise" translate="no">Em análise</SelectItem>
-                      <SelectItem value="A ativar" translate="no">A ativar</SelectItem>
-                      <SelectItem value="Standby" translate="no">Standby</SelectItem>
+                      {STATUS_SELECIONAVEIS.map((status) => (
+                        <SelectItem key={status} value={status} translate="no">
+                          {rotuloDeStatus(status)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -630,7 +700,7 @@ export default function ClienteFormDialog({
                   checked={formData.desabilitarReagendamento || false}
                   onCheckedChange={(checked) => {
                     handleInputChange('desabilitarReagendamento', checked);
-                    handleInputChange('periodicidadePadrao', checked ? 0 : 7);
+                    handleInputChange('periodicidadePadrao', checked ? 0 : PERIODICIDADE_PADRAO_DIAS);
                   }}
                 />
               </div>
@@ -677,38 +747,54 @@ export default function ClienteFormDialog({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
-                  {formData.tipoLogistica?.toLowerCase() === 'retirada' ? (
-                    <Input value="Retirada" disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
-                  ) : rotasEntrega.length === 0 && formData.rotaEntregaId ? (
+                  {rotasEntrega.length === 0 && formData.rotaEntregaId ? (
                     <Input value="Carregando..." disabled className="bg-muted" />
-                  ) : isRep && rotasEntrega.length === 0 ? (
-                    <div className="text-xs text-muted-foreground border border-dashed rounded-md p-3">
-                      Você ainda não cadastrou rotas de entrega.{' '}
-                      <a
-                        href="/rep/configuracoes"
-                        className="text-primary underline underline-offset-2"
-                      >
-                        Cadastrar em Configurações
-                      </a>
-                      .
-                    </div>
+                  ) : criandoRota ? (
+                    <NovaRotaInline
+                      onCriar={adicionarRotaEntrega}
+                      onPronto={(id) => {
+                        handleInputChange('rotaEntregaId', id);
+                        setCriandoRota(false);
+                      }}
+                      onCancelar={() => setCriandoRota(false)}
+                    />
                   ) : (
-                    <Select 
-                      key={`rota-${rotasEntrega.length}`}
-                      value={formData.rotaEntregaId?.toString() || undefined} 
-                      onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma rota" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rotasEntrega.map((rota) => (
-                          <SelectItem key={rota.id} value={rota.id.toString()}>
-                            {rota.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      {rotasEntrega.length === 0 ? (
+                        <p className="flex-1 text-xs text-muted-foreground">
+                          Nenhuma rota cadastrada ainda.
+                        </p>
+                      ) : (
+                        <Select 
+                          key={`rota-${rotasEntrega.length}`}
+                          value={formData.rotaEntregaId?.toString() || undefined} 
+                          onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Selecione uma rota" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rotasEntrega.map((rota) => (
+                              <SelectItem key={rota.id} value={rota.id.toString()}>
+                                {rota.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {/* Criar aqui mesmo: mandar para outra tela no meio do
+                          cadastro faz perder o que ja estava preenchido. */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => setCriandoRota(true)}
+                      >
+                        <Plus className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Nova rota</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -737,6 +823,9 @@ export default function ClienteFormDialog({
                     </Select>
                   )}
                 </div>
+                  {/* Se o pedido e entregue ou retirado e decisao da Mischa's, nao
+                      do representante — e para eles e sempre retirada na fabrica. */}
+                  {!isRep && (
                   <div className="space-y-2">
                    <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
                    <Select 
@@ -763,6 +852,7 @@ export default function ClienteFormDialog({
                     </SelectContent>
                   </Select>
                  </div>
+                  )}
               </div>
 
               <div className="space-y-2">
@@ -861,7 +951,7 @@ export default function ClienteFormDialog({
                                 placeholder="Ex: 7"
                               />
                               <div className="flex gap-1 flex-wrap">
-                                {[7, 14, 21, 28].map((d) => (
+                                {(isRep ? REGRAS_DO_REPRESENTANTE.prazosEmDias : [7, 14, 21, 28]).map((d) => (
                                   <button
                                     key={d}
                                     type="button"
@@ -919,6 +1009,8 @@ export default function ClienteFormDialog({
                       </div>
                     );
                   })()}
+                {/* Para cliente de representante a nota sai sempre. */}
+                {!isRep && (
                 <div className="space-y-2">
                   <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
                   <Select 
@@ -934,6 +1026,7 @@ export default function ClienteFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
+                )}
               </div>
 
             </CardContent>
@@ -943,6 +1036,7 @@ export default function ClienteFormDialog({
             value={formData.categoriasHabilitadas || []}
             onChange={handleCategoriasChange}
             clienteId={cliente?.id}
+            idsPermitidos={isRep ? [...REGRAS_DO_REPRESENTANTE.categoriasPermitidas] : undefined}
           />
 
           {(formData.categoriasHabilitadas?.length ?? 0) > 0 && (

@@ -11,14 +11,24 @@ interface CategoriasProdutoSelectorProps {
   value: number[];
   onChange: (categorias: number[]) => void;
   clienteId?: string;
+  /**
+   * Ids das categorias que podem ser escolhidas. Sem isto, aparecem todas.
+   * O representante so revende Revenda Padrao e Food Service — Odara e Morena
+   * Cacau sao acordos separados, que ele nao vende para os clientes dele.
+   */
+  idsPermitidos?: number[];
 }
 
 export default function CategoriasProdutoSelector({ 
   value, 
   onChange,
-  clienteId 
+  clienteId,
+  idsPermitidos
 }: CategoriasProdutoSelectorProps) {
   const { categorias, loading } = useSupabaseCategoriasProduto();
+  const categoriasVisiveis = idsPermitidos
+    ? categorias.filter((c) => idsPermitidos.includes(c.id))
+    : categorias;
   const { carregarCategoriasCliente } = useClientesCategorias();
   const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>([]);
   const [carregandoCategorias, setCarregandoCategorias] = useState(false);
@@ -98,7 +108,7 @@ export default function CategoriasProdutoSelector({
         )}
         
         <div className="space-y-3">
-          {categorias.map((categoria) => {
+          {categoriasVisiveis.map((categoria) => {
             const isChecked = categoriasHabilitadas.includes(categoria.id);
             
             return (
@@ -124,7 +134,7 @@ export default function CategoriasProdutoSelector({
           })}
         </div>
         
-        {categorias.length === 0 && (
+        {categoriasVisiveis.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Nenhuma categoria disponível no sistema.
           </p>
