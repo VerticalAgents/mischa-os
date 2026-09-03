@@ -122,6 +122,7 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
             {/* Botão para carregar preços */}
             <div className="flex justify-center">
               <Button
+                type="button"
                 onClick={handleCarregarPrecos}
                 disabled={loading}
                 variant="outline"
@@ -171,6 +172,7 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
                             <>
                               {precoCategoria.precoPersonalizado && (
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleResetToPadrao(precoCategoria.categoriaId)}
@@ -181,6 +183,7 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
                                 </Button>
                               )}
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditStart(precoCategoria.categoriaId, precoCategoria.preco)}
@@ -213,6 +216,9 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
+                                  // Enter num input dentro de form tambem submete:
+                                  // sem isto, confirmar o preco fecharia o cadastro.
+                                  e.preventDefault();
                                   handleEditSave(precoCategoria.categoriaId);
                                 } else if (e.key === 'Escape') {
                                   handleEditCancel();
@@ -220,6 +226,7 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
                               }}
                             />
                             <Button
+                              type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditSave(precoCategoria.categoriaId)}
@@ -229,6 +236,7 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
                               <Check className="h-4 w-4" />
                             </Button>
                             <Button
+                              type="button"
                               variant="ghost"
                               size="sm"
                               onClick={handleEditCancel}
