@@ -173,8 +173,15 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
 
               <div className="space-y-2">
                 <BuscaPorCep
-                  onEndereco={(endereco) =>
-                    setFormData({ ...formData, enderecoEntrega: endereco })
+                  onEndereco={(endereco, linkMaps) =>
+                    setFormData({
+                      ...formData,
+                      enderecoEntrega: endereco,
+                      // Nao pisa num link ja colado na mao.
+                      linkGoogleMaps: formData.linkGoogleMaps?.trim()
+                        ? formData.linkGoogleMaps
+                        : linkMaps,
+                    })
                   }
                 />
                 <Label htmlFor="enderecoEntrega">Endereço</Label>

@@ -67,3 +67,16 @@ export const enderecoEmUmaLinha = (e: EnderecoDoCep, numero?: string): string =>
     .filter(Boolean)
     .join(" - ");
 };
+
+/**
+ * Link que abre o endereço no Google Maps.
+ *
+ * Usa o Maps URLs, que é a via oficial do Google e **não pede chave de API, conta
+ * de faturamento nem tem cota** — ao contrário do Geocoding e do Places. Como o
+ * endereço já vem com rua, número, bairro, cidade/UF e CEP, a busca costuma cair
+ * no ponto certo sem precisar converter para coordenadas.
+ *
+ * O `api=1` é obrigatório: sem ele o Google ignora os outros parâmetros.
+ */
+export const linkDoGoogleMaps = (endereco: string): string =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`;

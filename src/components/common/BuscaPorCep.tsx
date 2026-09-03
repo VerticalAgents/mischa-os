@@ -8,11 +8,16 @@ import {
   cepCompleto,
   enderecoEmUmaLinha,
   formatarCep,
+  linkDoGoogleMaps,
 } from "@/utils/cep";
 
 interface BuscaPorCepProps {
-  /** Recebe o endereço pronto, numa linha, para gravar no campo de texto. */
-  onEndereco: (endereco: string) => void;
+  /**
+   * Recebe o endereço pronto numa linha e o link do Google Maps para ele.
+   * Quem chama decide o que fazer com cada um — o link não sobrescreve um que
+   * já tenha sido colado na mão.
+   */
+  onEndereco: (endereco: string, linkMaps: string) => void;
   disabled?: boolean;
 }
 
@@ -37,7 +42,8 @@ export default function BuscaPorCep({ onEndereco, disabled }: BuscaPorCepProps) 
     setErro(null);
     try {
       const achado = await buscarEnderecoPorCep(cep);
-      onEndereco(enderecoEmUmaLinha(achado, numero));
+      const endereco = enderecoEmUmaLinha(achado, numero);
+      onEndereco(endereco, linkDoGoogleMaps(endereco));
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível buscar o CEP.");
     } finally {
@@ -88,7 +94,16 @@ export default function BuscaPorCep({ onEndereco, disabled }: BuscaPorCepProps) 
           />
         </div>
 
-        <Button type="button" variant="secondary" onClick={buscar} disabled={!pronto}>
+        {/* No celular o botao desce para a linha de baixo: dividindo a mesma
+            linha com os dois campos, sobrava pouco espaco e o CEP ficava com o
+            ultimo digito cortado. */}
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full sm:w-auto"
+          onClick={buscar}
+          disabled={!pronto}
+        >
           {buscando ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

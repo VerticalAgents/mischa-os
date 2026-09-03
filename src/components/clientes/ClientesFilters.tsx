@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
+import { rotuloDeStatus, STATUS_SELECIONAVEIS } from "@/utils/statusCliente";
 
 // Define the available columns for the table
 export interface ColumnOption {
@@ -74,11 +75,11 @@ export default function ClientesFilters({
         onChange={e => setFiltroStatus(e.target.value as StatusCliente | 'Todos' | '')}
       >
         <option value="">Todos os status</option>
-        <option value="Ativo">Ativo</option>
-        <option value="Em análise">Em análise</option>
-        <option value="Inativo">Inativo</option>
-        <option value="A ativar">A ativar</option>
-        <option value="Standby">Standby</option>
+        {STATUS_SELECIONAVEIS.map((status) => (
+          <option key={status} value={status}>
+            {rotuloDeStatus(status)}
+          </option>
+        ))}
       </select>
       <select
         className="h-10 rounded-md border border-input bg-background px-3 py-2 min-w-[140px]"

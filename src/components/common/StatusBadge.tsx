@@ -1,6 +1,7 @@
 
 import { StatusCliente, StatusPedido } from "@/types";
 import { cn } from "@/lib/utils";
+import { rotuloDeStatus } from "@/utils/statusCliente";
 
 type StatusBadgeProps = {
   status: StatusCliente | StatusPedido;
@@ -48,7 +49,7 @@ export default function StatusBadge({ status, size = "md", className }: StatusBa
         className
       )}
     >
-      {status}
+      {rotuloDeStatus(status)}
     </span>
   );
 }

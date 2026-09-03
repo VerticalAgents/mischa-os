@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { rotuloDeStatus, STATUS_SELECIONAVEIS } from "@/utils/statusCliente";
 
 interface ClientesBulkActionsProps {
   selectedClienteIds: string[];
@@ -482,11 +483,11 @@ export default function ClientesBulkActions({
                       <SelectValue placeholder="Selecione um status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Ativo">Ativo</SelectItem>
-                      <SelectItem value="Em análise">Em análise</SelectItem>
-                      <SelectItem value="Inativo">Inativo</SelectItem>
-                      <SelectItem value="A ativar">A ativar</SelectItem>
-                      <SelectItem value="Standby">Standby</SelectItem>
+                      {STATUS_SELECIONAVEIS.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {rotuloDeStatus(status)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
