@@ -10,6 +10,7 @@ import { Lead, LeadStatus, ORIGENS } from "@/types/lead";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
 import { toast } from "sonner";
+import BuscaPorCep from "@/components/common/BuscaPorCep";
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -171,6 +172,11 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
               </div>
 
               <div className="space-y-2">
+                <BuscaPorCep
+                  onEndereco={(endereco) =>
+                    setFormData({ ...formData, enderecoEntrega: endereco })
+                  }
+                />
                 <Label htmlFor="enderecoEntrega">Endereço</Label>
                 <Input
                   id="enderecoEntrega"

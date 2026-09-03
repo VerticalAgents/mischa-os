@@ -44,6 +44,7 @@ import {
   type StatusClienteType,
   type TipoLogisticaType
 } from '@/types/cliente-dto';
+import BuscaPorCep from "@/components/common/BuscaPorCep";
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -467,6 +468,10 @@ export default function ClienteFormDialog({
               {formData.tipoLogistica?.toLowerCase() !== 'retirada' && (
                 <>
                   <div className="space-y-2">
+                    <BuscaPorCep
+                      disabled={lockBasicForRep}
+                      onEndereco={(endereco) => handleInputChange('enderecoEntrega', endereco)}
+                    />
                     <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
                     <Input
                       id="enderecoEntrega"
