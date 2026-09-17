@@ -1,0 +1,107 @@
+/* O painel é estreito (uns 400px). Tudo aqui é pensado para essa largura. */
+
+:root {
+  --fundo: #ffffff;
+  --texto: #1a1a1a;
+  --suave: #6b7280;
+  --borda: #e5e7eb;
+  --destaque: #7c3aed;
+  --erro: #b91c1c;
+  --caixa: #f9fafb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #111114;
+    --texto: #f3f4f6;
+    --suave: #9ca3af;
+    --borda: #2a2a31;
+    --destaque: #a78bfa;
+    --erro: #fca5a5;
+    --caixa: #1a1a20;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.painel { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.titulo { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); margin: 0; }
+
+.cartao { border: 1px solid var(--borda); border-radius: 10px; padding: 12px; background: var(--caixa); }
+
+.linha { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.linha span:first-child { color: var(--suave); }
+.linha span:last-child { text-align: right; word-break: break-word; }
+
+label { display: block; font-size: 13px; color: var(--suave); margin-bottom: 4px; }
+
+input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--fundo);
+  color: var(--texto);
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--destaque);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:disabled { opacity: .6; cursor: default; }
+button.secundario { background: transparent; color: var(--destaque); border: 1px solid var(--borda); }
+
+.aviso { color: var(--erro); font-size: 13px; }
+.apagado { color: var(--suave); font-size: 13px; }
+.campos { display: flex; flex-direction: column; gap: 10px; }
+
+.diagnostico {
+  margin: 0;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--caixa);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.identificacao {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--borda);
+}
+.identificacao strong { font-size: 15px; }
+
+button.estreito { width: auto; padding: 4px 8px; font-size: 12px; font-weight: 500; }
+
+.cartao h2.titulo { margin: 0 0 6px; }
+
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow: auto; }
+.lista button { text-align: left; }
+
+details > summary { cursor: pointer; margin-bottom: 8px; }

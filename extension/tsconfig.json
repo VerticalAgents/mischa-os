@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["chrome", "vite/client"],
+    "strict": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/integrations/supabase/client": ["./src/lib/supabase.ts"],
+      "@ext/*": ["./src/*"],
+      "@/*": ["../src/*"]
+    }
+  },
+  "include": ["src", "../src"]
+}
