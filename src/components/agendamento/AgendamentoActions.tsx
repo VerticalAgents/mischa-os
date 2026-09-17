@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
+import { paraWaMe } from "@/utils/telefone";
 
 interface AgendamentoItem {
   cliente: { 
@@ -30,10 +31,9 @@ export default function AgendamentoActions({ agendamento }: AgendamentoActionsPr
     const cliente = agendamento.cliente;
     if (!cliente.contatoTelefone) return;
     
-    let phone = cliente.contatoTelefone.replace(/\D/g, '');
-    if (phone.startsWith('0')) phone = phone.substring(1);
-    if (!phone.startsWith('55')) phone = '55' + phone;
-    
+    const phone = paraWaMe(cliente.contatoTelefone);
+    if (!phone) return;
+
     const dataFormatada = format(agendamento.dataReposicao, 'dd/MM/yyyy');
     
     const message = encodeURIComponent(

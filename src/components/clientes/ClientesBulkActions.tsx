@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Cliente } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { CheckSquare, Trash2, Download } from "lucide-react";
+import { normalizarTelefoneBR } from "@/utils/telefone";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -55,30 +56,10 @@ export default function ClientesBulkActions({
   
   const { removerCliente, clientes, atualizarCliente } = useClienteStore();
 
-  // Função para normalizar telefone para E164
+  // A regra vive em @/utils/telefone — a mesma que monta o link do WhatsApp.
   const normalizarTelefone = (telefone: string): { e164: string; original: string } => {
-    if (!telefone) return { e164: '', original: '' };
-    
-    const original = telefone.trim();
-    let limpo = telefone.replace(/\D/g, '');
-    
-    // Se começar com 55 (Brasil) e tem 13 dígitos, já está no formato correto
-    if (limpo.startsWith('55') && limpo.length === 13) {
-      return { e164: `+${limpo}`, original };
-    }
-    
-    // Se tem 11 dígitos (celular brasileiro sem código país)
-    if (limpo.length === 11 && limpo.startsWith('9')) {
-      return { e164: `+55${limpo}`, original };
-    }
-    
-    // Se tem 10 dígitos (fixo brasileiro sem código país)
-    if (limpo.length === 10) {
-      return { e164: `+55${limpo}`, original };
-    }
-    
-    // Se não conseguir normalizar, deixa E164 vazio
-    return { e164: '', original };
+    const { e164, original } = normalizarTelefoneBR(telefone);
+    return { e164: e164 ?? '', original };
   };
 
   // Função para inferir tipo de documento
