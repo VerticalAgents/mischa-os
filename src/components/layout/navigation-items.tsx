@@ -178,16 +178,6 @@ export const gestaoComercialItems = [
     path: "/gestao-comercial/funil-leads",
     icon: <UserCircle className="h-4 w-4" />,
   },
-  {
-    label: "Distribuidores",
-    path: "/gestao-comercial/distribuidores",
-    icon: <Building className="h-4 w-4" />,
-  },
-  {
-    label: "Parceiros",
-    path: "/gestao-comercial/parceiros",
-    icon: <HelpingHand className="h-4 w-4" />,
-  },
 ];
 
 // For gestão-financeira sub-navigation

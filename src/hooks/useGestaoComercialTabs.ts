@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-const VALID_TABS = ['representantes', 'funil-leads', 'distribuidores', 'parceiros'] as const;
+const VALID_TABS = ['representantes', 'funil-leads'] as const;
 type ValidTab = typeof VALID_TABS[number];
 
 interface TabState {

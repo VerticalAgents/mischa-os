@@ -34,8 +34,6 @@ const PCP = lazy(() => import('@/pages/PCP'));
 const Precificacao = lazy(() => import('@/pages/Precificacao'));
 const GestaoComercial = lazy(() => import('@/pages/GestaoComercial'));
 const FunilLeads = lazy(() => import('@/pages/gestao-comercial/FunilLeads'));
-const Distribuidores = lazy(() => import('@/pages/gestao-comercial/Distribuidores'));
-const Parceiros = lazy(() => import('@/pages/gestao-comercial/Parceiros'));
 const DashboardAnalytics = lazy(() => import('@/pages/DashboardAnalytics'));
 const AnaliseGiro = lazy(() => import('@/pages/AnaliseGiro'));
 const GestaoFinanceira = lazy(() => import('@/pages/GestaoFinanceira'));
@@ -242,20 +240,6 @@ function App() {
                       <ProtectedRoute>
                         <AppLayout>
                           <FunilLeads />
-                        </AppLayout>
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/gestao-comercial/distribuidores" element={
-                      <ProtectedRoute>
-                        <AppLayout>
-                          <Distribuidores />
-                        </AppLayout>
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/gestao-comercial/parceiros" element={
-                      <ProtectedRoute>
-                        <AppLayout>
-                          <Parceiros />
                         </AppLayout>
                       </ProtectedRoute>
                     } />

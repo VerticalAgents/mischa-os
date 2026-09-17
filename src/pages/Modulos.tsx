@@ -43,7 +43,7 @@ const modules: ModuleInfo[] = [
   { name: "Dashboard & Analytics", icon: <BarChart3 className="h-5 w-5" />, description: "Visão consolidada de KPIs e métricas do negócio", tier: "intelligence", dependencies: ["Todos os módulos"] },
   { name: "Insights PDV", icon: <TrendingUp className="h-5 w-5" />, description: "Análise de giro, performance e alertas por PDV", tier: "intelligence", dependencies: ["Expedição", "Clientes"] },
   { name: "Mapas", icon: <MapPin className="h-5 w-5" />, description: "Visualização geográfica de clientes e rotas", tier: "intelligence", dependencies: ["Clientes"] },
-  { name: "Gestão Comercial", icon: <ShoppingBag className="h-5 w-5" />, description: "Funil de leads, distribuidores e parceiros", tier: "intelligence", dependencies: ["Clientes"] },
+  { name: "Gestão Comercial", icon: <ShoppingBag className="h-5 w-5" />, description: "Funil de leads e desempenho dos representantes", tier: "intelligence", dependencies: ["Clientes"] },
 ];
 
 const tierConfig: Record<TierKey, { label: string; subtitle: string; color: string; bgColor: string; borderColor: string; badgeClass: string }> = {

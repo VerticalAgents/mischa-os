@@ -34,16 +34,6 @@ const routeMap: { [key: string]: BreadcrumbPathItem[] } = {
     { title: "Gestão Comercial", href: "/gestao-comercial" },
     { title: "Funil de Leads", href: "/gestao-comercial/funil-leads", current: true }
   ],
-  "/gestao-comercial/distribuidores": [
-    { title: "Painel", href: "/home" },
-    { title: "Gestão Comercial", href: "/gestao-comercial" },
-    { title: "Distribuidores", href: "/gestao-comercial/distribuidores", current: true }
-  ],
-  "/gestao-comercial/parceiros": [
-    { title: "Painel", href: "/home" },
-    { title: "Gestão Comercial", href: "/gestao-comercial" },
-    { title: "Parceiros", href: "/gestao-comercial/parceiros", current: true }
-  ],
   "/gestao-financeira": [
     { title: "Painel", href: "/home" },
     { title: "Gestão Financeira", href: "/gestao-financeira", current: true }

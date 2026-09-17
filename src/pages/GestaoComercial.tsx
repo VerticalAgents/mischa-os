@@ -5,25 +5,35 @@ import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Building, HelpingHand, UserCircle, Users } from "lucide-react";
+import { UserCircle, Users } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
-import Distribuidores from "./gestao-comercial/Distribuidores";
-import Parceiros from "./gestao-comercial/Parceiros";
 import RepresentantesOptimized from "./gestao-comercial/RepresentantesOptimized";
 import { useGestaoComercialUiStore } from "@/hooks/useGestaoComercialUiStore";
+
+const ABAS_VALIDAS = ["representantes", "funil-leads"];
 
 export default function GestaoComercial() {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Usar store para persistir estado
-  const { activeTab, setActiveTab } = useGestaoComercialUiStore();
+  const { activeTab: abaSalva, setActiveTab } = useGestaoComercialUiStore();
+
+  // Abas removidas podem ter ficado salvas no navegador ou na URL
+  const activeTab = ABAS_VALIDAS.includes(abaSalva) ? abaSalva : "representantes";
+
+  useEffect(() => {
+    if (!ABAS_VALIDAS.includes(abaSalva)) {
+      setActiveTab("representantes");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abaSalva]);
   
   // Sincronização com a URL
   const tabFromUrl = searchParams.get('tab');
   
   // Sincronizar com URL ao montar (apenas reagir a mudanças na URL)
   useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
+    if (tabFromUrl && ABAS_VALIDAS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     } else if (!tabFromUrl && activeTab) {
       // Se não há tab na URL, usar a do store e atualizar a URL
@@ -69,8 +79,6 @@ export default function GestaoComercial() {
           {[
             { id: "representantes", label: "Dashboard" },
             { id: "funil-leads", label: "Funil de Leads" },
-            { id: "distribuidores", label: "Distribuidores" },
-            { id: "parceiros", label: "Parceiros" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -95,14 +103,6 @@ export default function GestaoComercial() {
             <UserCircle className="h-4 w-4" />
             Funil de Leads
           </TabsTrigger>
-          <TabsTrigger value="distribuidores" className="flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            Distribuidores
-          </TabsTrigger>
-          <TabsTrigger value="parceiros" className="flex items-center gap-2">
-            <HelpingHand className="h-4 w-4" />
-            Parceiros
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="representantes" className="space-y-6 mt-6" forceMount={activeTab === "representantes" ? true : undefined}>
@@ -111,14 +111,6 @@ export default function GestaoComercial() {
 
         <TabsContent value="funil-leads" className="space-y-6 mt-6" forceMount={activeTab === "funil-leads" ? true : undefined}>
           {activeTab === "funil-leads" && <FunilLeads />}
-        </TabsContent>
-
-        <TabsContent value="distribuidores" className="space-y-6 mt-6">
-          {activeTab === "distribuidores" && <Distribuidores />}
-        </TabsContent>
-
-        <TabsContent value="parceiros" className="space-y-6 mt-6">
-          {activeTab === "parceiros" && <Parceiros />}
         </TabsContent>
       </Tabs>
     </div>

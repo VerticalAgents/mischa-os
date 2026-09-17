@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Check, Copy } from "lucide-react";
+import { copiarCredenciais, montarTextoCredenciais } from "@/utils/credenciaisAcesso";
 
 interface Props {
   open: boolean;
@@ -33,11 +35,16 @@ export default function EditarAcessoRepresentanteDialog({
   const [email, setEmail] = useState(emailAtual);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // Depois de salvar com senha nova, mostra as credenciais para copiar
+  const [senhaSalva, setSenhaSalva] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     if (open) {
       setEmail(emailAtual);
       setPassword("");
+      setSenhaSalva(null);
+      setCopiado(false);
     }
   }, [open, emailAtual]);
 
@@ -73,7 +80,11 @@ export default function EditarAcessoRepresentanteDialog({
 
       toast.success("Acesso atualizado com sucesso");
       onSuccess();
-      onOpenChange(false);
+      if (senhaInformada) {
+        setSenhaSalva(password);
+      } else {
+        onOpenChange(false);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Erro ao atualizar acesso");
@@ -81,6 +92,60 @@ export default function EditarAcessoRepresentanteDialog({
       setLoading(false);
     }
   };
+
+  const handleCopiar = async () => {
+    const ok = await copiarCredenciais({
+      nome: representanteNome,
+      email: email.trim(),
+      senha: senhaSalva ?? undefined,
+    });
+    if (!ok) {
+      toast.error("Nao foi possivel copiar. Selecione o texto e copie na mao.");
+      return;
+    }
+    setCopiado(true);
+    toast.success("Credenciais copiadas");
+  };
+
+  if (senhaSalva) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-green-600" />
+              Senha nova de {representanteNome}
+            </DialogTitle>
+            <DialogDescription>
+              Copie e mande agora. A senha nao fica guardada no sistema: depois
+              que fechar esta janela, so definindo outra.
+            </DialogDescription>
+          </DialogHeader>
+
+          <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">
+            {montarTextoCredenciais({
+              nome: representanteNome,
+              email: email.trim(),
+              senha: senhaSalva,
+            })}
+          </pre>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+            <Button onClick={handleCopiar}>
+              {copiado ? (
+                <><Check className="h-4 w-4 mr-2" />Copiado</>
+              ) : (
+                <><Copy className="h-4 w-4 mr-2" />Copiar credenciais</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

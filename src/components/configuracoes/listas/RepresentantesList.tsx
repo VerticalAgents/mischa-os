@@ -21,7 +21,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Plus, KeyRound, ShieldOff, ShieldCheck } from "lucide-react";
+import { Edit, Trash2, Plus, KeyRound, ShieldOff, ShieldCheck, Copy } from "lucide-react";
+import { toast } from "sonner";
+import { copiarCredenciais } from "@/utils/credenciaisAcesso";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useRepresentanteAccounts } from "@/hooks/useRepresentanteAccounts";
 import CriarAcessoRepresentanteDialog from "./CriarAcessoRepresentanteDialog";
@@ -88,6 +90,17 @@ export default function RepresentantesList() {
   const handleDelete = async (id: number) => {
     if (confirm("Tem certeza que deseja remover este representante?")) {
       await removerRepresentante(id);
+    }
+  };
+
+  // Copia link e email de quem ja tem acesso. Sem a senha: ela nao fica
+  // guardada, so aparece na hora em que e definida.
+  const handleCopiarAcesso = async (nome: string, loginEmail: string) => {
+    const ok = await copiarCredenciais({ nome, email: loginEmail });
+    if (ok) {
+      toast.success("Link e email copiados");
+    } else {
+      toast.error("Nao foi possivel copiar");
     }
   };
 
@@ -249,6 +262,16 @@ export default function RepresentantesList() {
                       <span className="text-xs text-muted-foreground truncate max-w-[160px]">
                         {acc.login_email}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          handleCopiarAcesso(representante.nome, acc.login_email)
+                        }
+                        title="Copiar link e email de acesso"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
