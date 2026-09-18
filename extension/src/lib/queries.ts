@@ -75,7 +75,7 @@ export async function listarClientesAtivos(): Promise<ClienteResumido[]> {
 export async function listarVinculos(): Promise<VinculoWhatsapp[]> {
   const { data, error } = await supabase
     .from('whatsapp_vinculos')
-    .select('id, cliente_id, lead_id, chat_titulo, telefone_e164, lid');
+    .select('id, cliente_id, lead_id, contato_id, chat_titulo, telefone_e164, lid');
 
   if (error) throw error;
   return (data || []) as VinculoWhatsapp[];
@@ -88,12 +88,13 @@ export async function listarVinculos(): Promise<VinculoWhatsapp[]> {
  * novo substitui o vínculo anterior em vez de criar um segundo.
  */
 export async function vincularConversa(params: {
-  clienteId: string;
+  clienteId?: string;
+  contatoId?: string;
   chatTitulo: string | null;
   telefoneE164: string | null;
   lid: string | null;
 }) {
-  const { clienteId, chatTitulo, telefoneE164, lid } = params;
+  const { clienteId, contatoId, chatTitulo, telefoneE164, lid } = params;
 
   if (chatTitulo) {
     await supabase.from('whatsapp_vinculos').delete().ilike('chat_titulo', chatTitulo);
@@ -106,7 +107,8 @@ export async function vincularConversa(params: {
   }
 
   const { error } = await supabase.from('whatsapp_vinculos').insert({
-    cliente_id: clienteId,
+    cliente_id: clienteId ?? null,
+    contato_id: contatoId ?? null,
     chat_titulo: chatTitulo,
     telefone_e164: telefoneE164,
     lid,
@@ -116,7 +118,7 @@ export async function vincularConversa(params: {
 
   // Aproveita para completar o cadastro: hoje só 42 dos 214 clientes ativos
   // têm telefone, e é justamente o que faria o reconhecimento ser automático.
-  if (telefoneE164) {
+  if (telefoneE164 && clienteId) {
     const { data } = await supabase
       .from('clientes')
       .select('contato_telefone')

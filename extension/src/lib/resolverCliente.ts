@@ -29,6 +29,8 @@ export interface VinculoWhatsapp {
   id: string;
   cliente_id: string | null;
   lead_id: string | null;
+  /** Entregador, fornecedor, parceiro ou representante. */
+  contato_id: string | null;
   chat_titulo: string | null;
   telefone_e164: string | null;
   lid: string | null;

@@ -6,7 +6,7 @@
  * o do app (2px, pontas arredondadas).
  */
 
-type Nome = 'calendario' | 'carteira' | 'caminhao' | 'balao' | 'troca' | 'raio';
+type Nome = 'calendario' | 'carteira' | 'caminhao' | 'balao' | 'troca' | 'raio' | 'sol' | 'lua';
 
 const CAMINHOS: Record<Nome, JSX.Element> = {
   calendario: (
@@ -35,6 +35,13 @@ const CAMINHOS: Record<Nome, JSX.Element> = {
     </>
   ),
   raio: <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z" />,
+  sol: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+    </>
+  ),
+  lua: <path d="M20 13.5A8.5 8.5 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z" />,
 };
 
 export default function Icone({ nome, tamanho = 16 }: { nome: Nome; tamanho?: number }) {

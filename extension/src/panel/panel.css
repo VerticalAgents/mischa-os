@@ -559,3 +559,58 @@ button.secundario.acao-atencao {
 button.secundario.acao-atencao:hover:not(:disabled) { background: hsl(var(--alerta) / 0.2); }
 
 :root[data-tema='escuro'] button.secundario.acao-boa { color: hsl(155 60% 66%); }
+
+.cartao.copiavel { cursor: pointer; }
+.cartao.copiavel:hover { background: hsl(var(--accent)); }
+.titulo-com-icone .dica { margin-left: auto; font-size: 11px; text-transform: none; letter-spacing: 0; }
+
+/*
+ * O cabeçalho vermelho passa a abrigar as duas visões do painel. Ele deixa de
+ * ser pílula e vira bloco, com a marca em cima e as abas embaixo — em 400px,
+ * marca e duas abas na mesma linha não cabem sem apertar o texto.
+ */
+.cabecalho-painel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  border-radius: var(--raio-bloco);
+  padding: 12px 14px;
+}
+.cabecalho-painel .marca { display: flex; align-items: center; gap: 8px; }
+.cabecalho-painel .abas.principal { margin: 0; }
+
+/* Aba dentro do vermelho: branca translúcida, e a ativa branca sólida. */
+.cabecalho-painel button.aba {
+  flex: 1;
+  background: hsl(0 0% 100% / 0.14);
+  border-color: hsl(0 0% 100% / 0.28);
+  color: #fff;
+}
+.cabecalho-painel button.aba:hover:not(.ativa) { background: hsl(0 0% 100% / 0.24); }
+.cabecalho-painel button.aba.ativa {
+  background: #fff;
+  border-color: #fff;
+  color: hsl(var(--marca));
+}
+
+/* Toggle de tema: só o ícone, redondo, sobre o vermelho da marca. */
+.cabecalho-painel button.tema {
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: hsl(0 0% 100% / 0.16);
+  border: 1px solid hsl(0 0% 100% / 0.3);
+  color: #fff;
+}
+.cabecalho-painel button.tema:hover { background: hsl(0 0% 100% / 0.3); }
+
+.parada { padding: 8px 0; border-bottom: 1px solid hsl(var(--border) / 0.5); }
+.parada:last-of-type { border-bottom: 0; }
+.parada .linha { border-bottom: 0; padding: 2px 0; }
+.parada button.estreito { width: 100%; margin-top: 6px; }

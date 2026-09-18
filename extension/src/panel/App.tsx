@@ -17,9 +17,12 @@ import {
 import { listarClientesAtivos, listarVinculos, vincularConversa } from '@ext/lib/queries';
 import PainelCliente from './PainelCliente';
 import { useTema } from './useTema';
+import Icone from './Icone';
 import Vincular from './Vincular';
 import NovoCliente from './NovoCliente';
 import Filas from './Filas';
+import PainelEntregador from './PainelEntregador';
+import { listarContatos, criarContato, type ContatoExterno } from '@ext/lib/entregador';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -101,12 +104,19 @@ function Conversa() {
   const [achado, setAchado] = useState<ClienteDaConversa | null>(null);
   const [trocando, setTrocando] = useState(false);
   const [criandoCliente, setCriandoCliente] = useState(false);
+  const [contatos, setContatos] = useState<ContatoExterno[]>([]);
+  const [novoEntregador, setNovoEntregador] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   const recarregarCadastro = useCallback(async () => {
     try {
-      const [cs, vs] = await Promise.all([listarClientesAtivos(), listarVinculos()]);
+      const [cs, vs, contatosExternos] = await Promise.all([
+        listarClientesAtivos(),
+        listarVinculos(),
+        listarContatos().catch(() => [] as ContatoExterno[]),
+      ]);
+      setContatos(contatosExternos);
       setClientes(cs);
       setVinculos(vs);
       return { cs, vs };
@@ -147,6 +157,30 @@ function Conversa() {
 
   const telefone = normalizarTelefoneBR(chat?.telefone).e164;
 
+  /** A conversa é de um entregador, fornecedor, parceiro ou representante? */
+  const contatoDaConversa = (() => {
+    if (!chat) return null;
+    const v = vinculos.find(
+      (x) =>
+        x.contato_id &&
+        ((x.lid && x.lid === chat.lid) ||
+          (x.telefone_e164 && x.telefone_e164 === telefone) ||
+          (x.chat_titulo && x.chat_titulo.toLowerCase() === (chat.titulo || '').toLowerCase()))
+    );
+    return v ? contatos.find((c) => c.id === v.contato_id) || null : null;
+  })();
+
+  const vincularContato = async (contatoId: string) => {
+    await vincularConversa({
+      contatoId,
+      chatTitulo: chat?.titulo ?? null,
+      telefoneE164: telefone,
+      lid: chat?.lid ?? null,
+    });
+    await recarregarCadastro();
+    setNovoEntregador(false);
+  };
+
   const vincular = async (clienteId: string) => {
     // Sem título, telefone e lid não há o que guardar: o vínculo nasceria
     // apontando para lugar nenhum e o painel nunca mais reconheceria a conversa.
@@ -171,7 +205,9 @@ function Conversa() {
 
   return (
     <>
-      {criandoCliente ? (
+      {contatoDaConversa ? (
+        <PainelEntregador contato={contatoDaConversa} />
+      ) : criandoCliente ? (
         <NovoCliente
           nomeSugerido={chat?.titulo ?? null}
           telefone={telefone}
@@ -204,6 +240,39 @@ function Conversa() {
           <button className="secundario" onClick={() => setCriandoCliente(true)}>
             É um cliente novo, cadastrar
           </button>
+
+          {/* Nem toda conversa é de cliente: entregador, fornecedor, parceiro
+              e representante também passam por aqui. */}
+          {!novoEntregador ? (
+            <button className="secundario" onClick={() => setNovoEntregador(true)}>
+              Não é cliente (entregador, fornecedor…)
+            </button>
+          ) : (
+            <div className="cartao campos">
+              <p className="apagado">Quem é nesta conversa?</p>
+              {contatos.map((c) => (
+                <button key={c.id} className="secundario" onClick={() => vincularContato(c.id)}>
+                  {c.nome} · {c.tipo}
+                </button>
+              ))}
+              <button
+                className="secundario"
+                onClick={async () => {
+                  const id = await criarContato({
+                    nome: chat?.titulo || 'sem nome',
+                    tipo: 'entregador',
+                    telefone,
+                  });
+                  await vincularContato(id);
+                }}
+              >
+                Cadastrar "{chat?.titulo}" como entregador
+              </button>
+              <button className="secundario" onClick={() => setNovoEntregador(false)}>
+                Cancelar
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -227,29 +296,36 @@ export default function App() {
   return (
     <div className="painel">
       <div className="cabecalho-painel">
-        <span className="ponto" />
-        Mischa OS
-        <button className="secundario estreito tema" onClick={trocar} title="trocar o tema do painel">
-          {tema === 'claro' ? 'escuro' : 'claro'}
-        </button>
-      </div>
-
-      {logado && (
-        <div className="abas principal">
+        <div className="marca">
+          <span className="ponto" />
+          Mischa OS
           <button
-            className={`aba ${vendo === 'conversa' ? 'ativa' : ''}`}
-            onClick={() => setVendo('conversa')}
+            className="tema"
+            onClick={trocar}
+            title={tema === 'claro' ? 'passar para o tema escuro' : 'passar para o tema claro'}
+            aria-label={tema === 'claro' ? 'passar para o tema escuro' : 'passar para o tema claro'}
           >
-            Esta conversa
-          </button>
-          <button
-            className={`aba ${vendo === 'filas' ? 'ativa' : ''}`}
-            onClick={() => setVendo('filas')}
-          >
-            Com quem falar
+            <Icone nome={tema === 'claro' ? 'lua' : 'sol'} tamanho={15} />
           </button>
         </div>
-      )}
+
+        {logado && (
+          <div className="abas principal">
+            <button
+              className={`aba ${vendo === 'conversa' ? 'ativa' : ''}`}
+              onClick={() => setVendo('conversa')}
+            >
+              Esta conversa
+            </button>
+            <button
+              className={`aba ${vendo === 'filas' ? 'ativa' : ''}`}
+              onClick={() => setVendo('filas')}
+            >
+              Com quem falar
+            </button>
+          </div>
+        )}
+      </div>
 
       {!logado && <Login />}
       {logado && vendo === 'conversa' && <Conversa />}

@@ -92,7 +92,13 @@ describe('últimos pedidos', () => {
         },
       ],
     });
-    expect(texto).toContain('04/09, 50 un (15 Avelã)');
+    // Data e total em negrito, sabores na linha debaixo.
+    expect(texto).toContain('*04/09* · 50 un');
+    expect(texto).toContain('15 Avelã');
+    // Uma entrega só não vira "seus últimos 1 pedidos".
+    expect(texto).toContain('*Seu último pedido*');
+    // Sem cumprimento: a conversa já está em andamento.
+    expect(texto).not.toContain('tudo bem');
   });
 
   it('sem histórico, diz que não há', () => {

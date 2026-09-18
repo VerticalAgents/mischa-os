@@ -30,6 +30,7 @@ const ROTULO_CONFIRMACAO = {
   baixo: 'alto risco',
 } as const;
 import Mensagens from './Mensagens';
+import { resumoUltimosPedidos } from '@ext/templates/mensagens';
 import Icone from './Icone';
 import EditarAgendamento from './EditarAgendamento';
 import AcoesDoTitulo from './AcoesDoTitulo';
@@ -96,6 +97,7 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
   const [giro, setGiro] = useState<{ giro: number; medido: boolean } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
+  const [copiouEntregas, setCopiouEntregas] = useState(false);
   const [mexendo, setMexendo] = useState(false);
   const [recado, setRecado] = useState<string | null>(null);
   // Muda quando algo é salvo, para as consultas rodarem de novo.
@@ -404,19 +406,45 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
         financeiro={financeiro}
       />
 
-      <div className="cartao">
+      <div
+        className={`cartao ${entregas.length ? 'copiavel' : ''}`}
+        role={entregas.length ? 'button' : undefined}
+        title={entregas.length ? 'clique para copiar o resumo' : undefined}
+        onClick={async () => {
+          if (!entregas.length) return;
+          await navigator.clipboard.writeText(
+            resumoUltimosPedidos({
+              contato: cliente.contato_nome,
+              entregas: entregas.map((e) => ({
+                data: e.data,
+                quantidade: e.quantidade,
+                itens: e.itens,
+              })),
+            })
+          );
+          setCopiouEntregas(true);
+          setTimeout(() => setCopiouEntregas(false), 2500);
+        }}
+      >
         <div className="titulo-com-icone">
           <Icone nome="caminhao" />
           <h2>Últimas entregas</h2>
+          <span className="apagado dica">{copiouEntregas ? 'copiado' : 'copiar'}</span>
         </div>
         {entregas.length ? (
           entregas.map((e) => (
-            <div className="linha" key={e.data}>
+            // A divisão por sabor fica no title: quem precisa dela passa o
+            // mouse. Cinco linhas com cinco sabores cada viram um paredão de
+            // texto numa faixa de 400px.
+            <div
+              className="linha"
+              key={e.data}
+              title={e.itens
+                .map((i) => `${i.quantidade} ${i.produto.replace(/^brownies?\s+/i, '')}`)
+                .join(' · ')}
+            >
               <span>{dia(e.data)}</span>
-              <span>
-                {e.quantidade ?? 0} un
-                {e.itens.length ? ` · ${e.itens.map((i) => `${i.quantidade} ${i.produto}`).join(', ')}` : ''}
-              </span>
+              <span>{e.quantidade ?? 0} un</span>
             </div>
           ))
         ) : (

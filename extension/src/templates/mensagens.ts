@@ -166,7 +166,17 @@ export function lembreteDePagamento(
   return linhas.join('\n');
 }
 
-/** 3. Resumo dos últimos pedidos. */
+/**
+ * 3. Resumo dos últimos pedidos.
+ *
+ * Sem cumprimento: quem manda isso está no meio de uma conversa já em
+ * andamento, respondendo "quanto eu peguei da última vez?". Um "oi, tudo bem?"
+ * no meio do papo soa de robô.
+ *
+ * O formato é de lista, não de texto corrido: data e total em negrito, sabores
+ * na linha de baixo, ordenados do que mais saiu para o que menos. O negrito do
+ * WhatsApp é o asterisco.
+ */
 export function resumoUltimosPedidos(
   dados: {
     contato?: string | null;
@@ -174,24 +184,28 @@ export function resumoUltimosPedidos(
   },
   variante = 0
 ): string {
-  if (!dados.entregas.length) {
-    return [saudacao(dados.contato, variante), '', 'Não encontrei entregas registradas ainda'].join('\n');
-  }
+  if (!dados.entregas.length) return 'Não encontrei entregas registradas ainda';
 
-  const aberturas = [
-    'Seus últimos pedidos foram esses',
-    'Dei uma olhada aqui, seus últimos pedidos foram',
-    'Segue o histórico dos seus últimos pedidos',
+  const quantos = dados.entregas.length;
+
+  const titulos = [
+    quantos === 1 ? '*Seu último pedido*' : `*Seus últimos ${quantos} pedidos*`,
+    quantos === 1 ? '*O último pedido de vocês*' : `*Os últimos ${quantos} pedidos de vocês*`,
   ];
 
-  const linhas = [saudacao(dados.contato, variante), '', pegar(aberturas, variante), ''];
+  const blocos = dados.entregas.map((e) => {
+    const sabores = [...e.itens]
+      .filter((i) => i.quantidade > 0)
+      .sort((a, b) => b.quantidade - a.quantidade)
+      .map((i) => `${i.quantidade} ${sabor(i.produto)}`)
+      .join(', ');
 
-  for (const e of dados.entregas) {
-    const sabores = listaDeSabores(e.itens).split('\n').join(', ');
-    linhas.push(`${soData(e.data)}, ${e.quantidade ?? 0} un${sabores ? ` (${sabores})` : ''}`);
-  }
+    return `*${soData(e.data)}* · ${e.quantidade ?? 0} un${sabores ? `\n${sabores}` : ''}`;
+  });
 
-  return linhas.join('\n');
+  // Linha em branco entre um pedido e outro: é o que separa os blocos no
+  // WhatsApp e tira o ar de texto corrido.
+  return [pegar(titulos, variante), '', blocos.join('\n\n')].join('\n');
 }
 
 /** 4. Sugestão de reposição: repetir o pedido anterior. */
