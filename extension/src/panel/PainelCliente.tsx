@@ -23,11 +23,38 @@ import { EXPLICACAO, type ComoAchou } from '@ext/lib/resolverCliente';
 import { ROTULO_CLASSIFICACAO } from '@/utils/scoreFinanceiro';
 import type { ConfirmationScore } from '@/types/confirmationScore';
 
+/** Mesmos rótulos da tela de agendamentos do app. */
+const ROTULO_CONFIRMACAO = {
+  alto: 'confirmado provável',
+  medio: 'atenção',
+  baixo: 'alto risco',
+} as const;
+import Mensagens from './Mensagens';
+import Icone from './Icone';
+
 const dia = (iso?: string | null) =>
   iso ? new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR') : '—';
 
+/** Duas letras para o círculo: "Sabor Mágico" vira SM. */
+const iniciais = (nome: string) =>
+  nome
+    .split(/\s+/)
+    .filter((p) => p.length > 2)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join('') || nome.slice(0, 2).toUpperCase();
+
 const dinheiro = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** Selo colorido, igual à pílula do design do app: verde, âmbar ou vermelho. */
+function Selo({ valor, nivel, titulo }: { valor: string; nivel: 'bom' | 'atencao' | 'ruim'; titulo?: string }) {
+  return (
+    <span className={`selo selo-${nivel}`} title={titulo}>
+      {valor}
+    </span>
+  );
+}
 
 interface Props {
   clienteId: string;
@@ -107,17 +134,38 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
   return (
     <>
       <div className="identificacao">
-        <div>
-          <strong>{cliente.nome}</strong>
-          <div className="apagado">reconhecido {EXPLICACAO[comoAchou]}</div>
+        <div className="quem">
+          <span className="avatar">{iniciais(cliente.nome)}</span>
+          <div>
+            <strong>{cliente.nome}</strong>
+            <div className="apagado">reconhecido {EXPLICACAO[comoAchou]}</div>
+          </div>
         </div>
         <button className="secundario estreito" onClick={aoTrocarCliente}>
           não é esse
         </button>
       </div>
 
+      <div className="destaques">
+        <div className="destaque">
+          <span className="valor">{agendamento?.data_proxima_reposicao ? dia(agendamento.data_proxima_reposicao).slice(0, 5) : '—'}</span>
+          <span className="rotulo">próxima</span>
+        </div>
+        <div className="destaque">
+          <span className="valor">{agendamento?.quantidade_total ?? '—'}</span>
+          <span className="rotulo">unidades</span>
+        </div>
+        <div className="destaque">
+          <span className="valor">{giro ? giro.giro : '—'}</span>
+          <span className="rotulo">giro/semana</span>
+        </div>
+      </div>
+
       <div className="cartao">
-        <h2 className="titulo">Próxima reposição</h2>
+        <div className="titulo-com-icone">
+          <Icone nome="calendario" />
+          <h2>Próxima reposição</h2>
+        </div>
         {agendamento ? (
           <>
             <div className="linha"><span>Data</span><span>{dia(agendamento.data_proxima_reposicao)}</span></div>
@@ -127,8 +175,12 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
             {confirmacao && (
               <div className="linha">
                 <span>Confirmação</span>
-                <span title={confirmacao.motivo}>
-                  {confirmacao.score} · {confirmacao.nivel}
+                <span>
+                  <Selo
+                    valor={`${confirmacao.score} · ${ROTULO_CONFIRMACAO[confirmacao.nivel]}`}
+                    nivel={confirmacao.nivel === 'alto' ? 'bom' : confirmacao.nivel === 'medio' ? 'atencao' : 'ruim'}
+                    titulo={confirmacao.motivo}
+                  />
                 </span>
               </div>
             )}
@@ -153,7 +205,10 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
 
       {(trocas.length > 0 || bonificacoes.length > 0) && (
         <div className="cartao">
-          <h2 className="titulo">Pendente na próxima entrega</h2>
+          <div className="titulo-com-icone">
+            <Icone nome="troca" />
+            <h2>Pendente na próxima entrega</h2>
+          </div>
           {trocas.map((t, i) => (
             <div className="linha" key={`t${i}`}>
               <span>Troca</span><span>{t.quantidade} {t.produto_nome}</span>
@@ -168,7 +223,10 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
       )}
 
       <div className="cartao">
-        <h2 className="titulo">Financeiro</h2>
+        <div className="titulo-com-icone">
+          <Icone nome="carteira" />
+          <h2>Financeiro</h2>
+        </div>
         {!financeiro && !erroFinanceiro && (
           <button className="secundario" onClick={buscarFinanceiro} disabled={buscandoFinanceiro}>
             {buscandoFinanceiro ? 'consultando o Gestão Click…' : 'Ver situação financeira'}
@@ -179,9 +237,20 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
           <>
             <div className="linha">
               <span>Score de pagamento</span>
-              <span title={`${financeiro.score.titulosPagos} título(s) pago(s)`}>
-                {financeiro.score.score ?? '—'} ·{' '}
-                {ROTULO_CLASSIFICACAO[financeiro.score.classificacao]}
+              <span>
+                <Selo
+                  valor={`${financeiro.score.score ?? '—'} · ${ROTULO_CLASSIFICACAO[financeiro.score.classificacao]}`}
+                  nivel={
+                    financeiro.score.classificacao === 'excelente' || financeiro.score.classificacao === 'bom'
+                      ? 'bom'
+                      : financeiro.score.classificacao === 'atencao'
+                        ? 'atencao'
+                        : financeiro.score.classificacao === 'risco'
+                          ? 'ruim'
+                          : 'atencao'
+                  }
+                  titulo={`${financeiro.score.titulosPagos} título(s) pago(s)`}
+                />
               </span>
             </div>
             <div className="linha">
@@ -205,8 +274,19 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
         )}
       </div>
 
+      <Mensagens
+        cliente={cliente}
+        agendamento={agendamento}
+        entregas={entregas}
+        financeiro={financeiro}
+        giroSemanal={giro?.giro ?? null}
+      />
+
       <div className="cartao">
-        <h2 className="titulo">Últimas entregas</h2>
+        <div className="titulo-com-icone">
+          <Icone nome="caminhao" />
+          <h2>Últimas entregas</h2>
+        </div>
         {entregas.length ? (
           entregas.map((e) => (
             <div className="linha" key={e.data}>

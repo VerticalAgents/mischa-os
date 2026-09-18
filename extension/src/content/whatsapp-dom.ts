@@ -179,14 +179,12 @@ export function lerChatAberto(): ChatAberto | null {
   const { telefone, lid } = lerIdentificadores(conversa);
   const telefoneFinal = telefone || telefoneNoTitulo(titulo);
 
-  // A chave junta o que der: assim, trocar de conversa sempre muda a chave,
-  // mesmo quando o WhatsApp não mostra número nenhum. O identificador da
-  // primeira mensagem entra como desempate, porque dois clientes podem ter o
-  // mesmo nome salvo.
-  const chaveChat = [
-    titulo || '?',
-    telefoneFinal || lid || primeiroIdDeMensagem(conversa) || '?',
-  ].join('|');
+  // A chave serve para o painel saber que a conversa mudou. Ela precisa ser
+  // estável enquanto a conversa é a mesma: por isso o identificador da primeira
+  // mensagem só entra quando não há nome, telefone nem lid — ele muda sozinho a
+  // cada mensagem nova ou rolagem da tela, e faria o painel recarregar à toa.
+  const chaveChat =
+    telefoneFinal || lid || titulo || primeiroIdDeMensagem(conversa) || 'conversa';
 
   return { chaveChat, titulo, telefone: telefoneFinal, lid };
 }

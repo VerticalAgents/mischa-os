@@ -16,6 +16,7 @@ import {
 } from '@ext/lib/resolverCliente';
 import { listarClientesAtivos, listarVinculos, vincularConversa } from '@ext/lib/queries';
 import PainelCliente from './PainelCliente';
+import { useTema } from './useTema';
 import Vincular from './Vincular';
 
 function Login() {
@@ -192,6 +193,7 @@ function Conversa() {
 
 export default function App() {
   const [logado, setLogado] = useState<boolean | null>(null);
+  const { tema, trocar } = useTema();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setLogado(!!data.session));
@@ -203,6 +205,14 @@ export default function App() {
 
   return (
     <div className="painel">
+      <div className="cabecalho-painel">
+        <span className="ponto" />
+        Mischa OS
+        <button className="secundario estreito tema" onClick={trocar} title="trocar o tema do painel">
+          {tema === 'claro' ? 'escuro' : 'claro'}
+        </button>
+      </div>
+
       {logado ? <Conversa /> : <Login />}
       {logado && (
         <button className="secundario" onClick={() => supabase.auth.signOut()}>Sair</button>
