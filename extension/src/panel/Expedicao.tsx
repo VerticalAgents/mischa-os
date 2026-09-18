@@ -92,12 +92,26 @@ export default function Expedicao({ clienteId, aoMudar }: Props) {
   const etapa = pedido.substatus_pedido || 'Agendado';
   const confirmado = pedido.status_agendamento === 'Agendado';
 
-  const passos = [
-    { nome: 'Previsto', feito: true, em: null as string | null },
-    { nome: 'Confirmado', feito: confirmado, em: quando(pedido.confirmado_em) },
-    { nome: 'Separado', feito: etapa === 'Separado' || etapa === 'Despachado', em: quando(pedido.separado_em) },
-    { nome: 'Despachado', feito: etapa === 'Despachado', em: quando(pedido.despachado_em) },
+  // Verde é o que já passou; amarelo é onde o pedido está agora; apagado é o
+  // que ainda não aconteceu. Pedido só previsto não tem verde nenhum — ele
+  // ainda não andou.
+  const alcancados = [
+    { nome: 'Previsto', alcancado: true, em: null as string | null },
+    { nome: 'Confirmado', alcancado: confirmado, em: quando(pedido.confirmado_em) },
+    {
+      nome: 'Separado',
+      alcancado: etapa === 'Separado' || etapa === 'Despachado',
+      em: quando(pedido.separado_em),
+    },
+    { nome: 'Despachado', alcancado: etapa === 'Despachado', em: quando(pedido.despachado_em) },
   ];
+
+  const ultimoAlcancado = alcancados.reduce((ultimo, p, i) => (p.alcancado ? i : ultimo), 0);
+
+  const passos = alcancados.map((p, i) => ({
+    ...p,
+    estado: i < ultimoAlcancado ? 'passou' : i === ultimoAlcancado ? 'agora' : 'futuro',
+  }));
 
   const totalDaEntrega = itens.reduce((s, i) => s + i.quantidade, 0);
 
@@ -110,10 +124,10 @@ export default function Expedicao({ clienteId, aoMudar }: Props) {
 
       <ol className="etapas">
         {passos.map((p) => (
-          <li key={p.nome} className={p.feito ? 'feito' : ''}>
+          <li key={p.nome} className={p.estado}>
             <span className="bolinha" />
             <span className="nome">{p.nome}</span>
-            <span className="quando">{p.em || (p.feito ? '' : 'ainda não')}</span>
+            <span className="quando">{p.em || (p.estado === 'futuro' ? 'ainda não' : '')}</span>
           </li>
         ))}
       </ol>

@@ -28,6 +28,21 @@ export const SELETORES = {
   mensagemComId: '#main [data-id]',
   /** A caixa de digitação. É um editor, não um input comum. */
   caixaDeTexto: '#main footer [contenteditable="true"]',
+  /**
+   * A busca de conversas, na coluna da esquerda.
+   *
+   * Ela já foi campo editável e hoje costuma ser um input comum, então aqui vai
+   * uma lista de tentativas em vez de um endereço só. O diagnóstico mostra qual
+   * delas achou alguma coisa.
+   */
+  buscaDeConversas: [
+    '#side input[type="text"]',
+    '#side [contenteditable="true"]',
+    'input[aria-label*="esquis" i]',
+    'input[aria-label*="earch" i]',
+    '[aria-label*="esquis" i][contenteditable="true"]',
+    '[data-tab="3"]',
+  ],
 } as const;
 
 export interface ChatAberto {
@@ -333,11 +348,21 @@ export function diagnostico(): Record<string, unknown> {
       tituloDoCabecalho: conta(SELETORES.tituloDoCabecalho),
       mensagemComId: conta(SELETORES.mensagemComId),
       caixaDeTexto: conta(SELETORES.caixaDeTexto),
+      buscaDeConversas: SELETORES.buscaDeConversas.filter((sel) => conta(sel) > 0),
     },
     dataIdNaPaginaInteira: conta('[data-id]'),
     editaveisNaPagina: conta('[contenteditable="true"]'),
     achouRaizDaConversa: !!raizDaConversa(),
     achouCaixaDeTexto: !!acharCaixaDeTexto(),
+    buscaAchada: (() => {
+      const b = acharBuscaDeConversas();
+      return b ? `${b.tagName.toLowerCase()} ${b.getAttribute('aria-label') || ''}`.trim() : null;
+    })(),
+    camposNaColunaEsquerda: Array.from(
+      document.querySelectorAll<HTMLElement>('#side input, #side [contenteditable]')
+    )
+      .slice(0, 5)
+      .map((n) => `${n.tagName.toLowerCase()}[aria-label="${n.getAttribute('aria-label') || ''}"]`),
     primeirosIds,
     titulosNoCabecalho,
     // Sobrou algum atributo com "@" na tela? É onde o telefone costumava estar.
@@ -348,4 +373,60 @@ export function diagnostico(): Record<string, unknown> {
     textoDoCabecalho: cabecalho?.innerText?.slice(0, 120) ?? null,
     lidoAgora: lerChatAberto(),
   };
+}
+
+/**
+ * Escreve um nome na busca de conversas do WhatsApp.
+ *
+ * É o caminho para abrir a conversa de um cliente que não tem telefone
+ * cadastrado — e são a maioria. O painel escreve o nome, o WhatsApp filtra a
+ * lista, e quem clica no resultado é o Lucca: a extensão não escolhe conversa
+ * por ele.
+ */
+export function acharBuscaDeConversas(): HTMLElement | null {
+  for (const seletor of SELETORES.buscaDeConversas) {
+    const achado = document.querySelector<HTMLElement>(seletor);
+    if (achado) return achado;
+  }
+  return null;
+}
+
+export function buscarConversa(texto: string): boolean {
+  const busca = acharBuscaDeConversas();
+  if (!busca) return false;
+
+  busca.click();
+  busca.focus();
+
+  // Campo comum: o React só percebe a mudança se o valor for escrito pelo
+  // caminho nativo do elemento, e não pela propriedade do objeto.
+  if (busca instanceof HTMLInputElement) {
+    const escrever = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set;
+
+    escrever?.call(busca, texto);
+    busca.dispatchEvent(new Event('input', { bubbles: true }));
+    return busca.value === texto;
+  }
+
+  // Campo editável: mesma colagem da caixa de mensagem.
+  porCursorNoFim(busca);
+
+  try {
+    const dados = new DataTransfer();
+    dados.setData('text/plain', texto);
+    const evento = new ClipboardEvent('paste', {
+      clipboardData: dados,
+      bubbles: true,
+      cancelable: true,
+    });
+    if (!busca.dispatchEvent(evento)) return true;
+  } catch {
+    // cai no plano B
+  }
+
+  document.execCommand('insertText', false, texto);
+  return (busca.textContent || '').length > 0;
 }

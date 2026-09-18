@@ -19,6 +19,7 @@ import PainelCliente from './PainelCliente';
 import { useTema } from './useTema';
 import Vincular from './Vincular';
 import NovoCliente from './NovoCliente';
+import Filas from './Filas';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -141,6 +142,12 @@ function Conversa() {
   const telefone = normalizarTelefoneBR(chat?.telefone).e164;
 
   const vincular = async (clienteId: string) => {
+    // Sem título, telefone e lid não há o que guardar: o vínculo nasceria
+    // apontando para lugar nenhum e o painel nunca mais reconheceria a conversa.
+    if (!chat?.titulo && !telefone && !chat?.lid) {
+      throw new Error('não consegui ler nem o nome da conversa nem o telefone');
+    }
+
     await vincularConversa({
       clienteId,
       chatTitulo: chat?.titulo ?? null,
@@ -209,6 +216,7 @@ function Conversa() {
 
 export default function App() {
   const [logado, setLogado] = useState<boolean | null>(null);
+  const [vendo, setVendo] = useState<'conversa' | 'filas'>('conversa');
   const { tema, trocar } = useTema();
 
   useEffect(() => {
@@ -229,7 +237,27 @@ export default function App() {
         </button>
       </div>
 
-      {logado ? <Conversa /> : <Login />}
+      {logado && (
+        <div className="abas principal">
+          <button
+            className={`aba ${vendo === 'conversa' ? 'ativa' : ''}`}
+            onClick={() => setVendo('conversa')}
+          >
+            Esta conversa
+          </button>
+          <button
+            className={`aba ${vendo === 'filas' ? 'ativa' : ''}`}
+            onClick={() => setVendo('filas')}
+          >
+            Com quem falar
+          </button>
+        </div>
+      )}
+
+      {!logado && <Login />}
+      {logado && vendo === 'conversa' && <Conversa />}
+      {logado && vendo === 'filas' && <Filas />}
+
       {logado && (
         <button className="secundario" onClick={() => supabase.auth.signOut()}>Sair</button>
       )}

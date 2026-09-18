@@ -14,7 +14,8 @@ export type RecadoParaPainel = {
 export type RecadoParaAba =
   | { tipo: 'LER_CHAT' }
   | { tipo: 'DIAGNOSTICO' }
-  | { tipo: 'INSERIR_TEXTO'; texto: string };
+  | { tipo: 'INSERIR_TEXTO'; texto: string }
+  | { tipo: 'BUSCAR_CONVERSA'; texto: string };
 
 export type RespostaDaAba =
   | { ok: true; chat: ChatAberto | null }

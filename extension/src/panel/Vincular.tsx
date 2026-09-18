@@ -18,6 +18,9 @@ interface Props {
 export default function Vincular({ titulo, clientes, aoVincular, aoCancelar }: Props) {
   const [busca, setBusca] = useState(titulo || '');
   const [salvando, setSalvando] = useState<string | null>(null);
+  // Sem isto, um erro do banco fazia o vínculo simplesmente não acontecer, e a
+  // tela voltava como se tivesse dado certo.
+  const [erro, setErro] = useState<string | null>(null);
 
   const achados = useMemo(() => {
     const termo = simplificar(busca);
@@ -46,7 +49,12 @@ export default function Vincular({ titulo, clientes, aoVincular, aoCancelar }: P
               disabled={!!salvando}
               onClick={async () => {
                 setSalvando(c.id);
-                await aoVincular(c.id);
+                setErro(null);
+                try {
+                  await aoVincular(c.id);
+                } catch (e) {
+                  setErro(`Não consegui vincular: ${String((e as Error).message || e)}`);
+                }
                 setSalvando(null);
               }}
             >
@@ -56,6 +64,8 @@ export default function Vincular({ titulo, clientes, aoVincular, aoCancelar }: P
         ))}
         {!achados.length && <li className="apagado">Nenhum cliente com esse nome.</li>}
       </ul>
+
+      {erro && <p className="aviso">{erro}</p>}
 
       {aoCancelar && (
         <button className="secundario" onClick={aoCancelar}>

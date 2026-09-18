@@ -419,7 +419,9 @@ input.preco { width: 84px; text-align: right; }
   height: 14px;
   background: hsl(var(--border));
 }
-.etapas li.feito::before { background: hsl(var(--primary)); }
+.etapas li.passou::before { background: hsl(var(--primary)); }
+/* O fio que sai da etapa atual ainda não foi percorrido: amarelo. */
+.etapas li.agora::before { background: hsl(var(--alerta)); }
 .etapas .bolinha {
   width: 10px;
   height: 10px;
@@ -427,8 +429,13 @@ input.preco { width: 84px; text-align: right; }
   background: hsl(var(--border));
   flex-shrink: 0;
 }
-.etapas li.feito .bolinha { background: hsl(var(--primary)); }
-.etapas li.feito { color: hsl(var(--foreground)); font-weight: 500; }
+.etapas li.passou .bolinha { background: hsl(var(--primary)); }
+.etapas li.agora .bolinha {
+  background: hsl(var(--alerta));
+  box-shadow: 0 0 0 3px hsl(var(--alerta) / 0.22);
+}
+.etapas li.passou,
+.etapas li.agora { color: hsl(var(--foreground)); font-weight: 500; }
 .etapas .nome { flex: 1; }
 .etapas .quando { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 400; }
 
@@ -436,3 +443,43 @@ input.preco { width: 84px; text-align: right; }
 .itens-da-entrega .apagado { margin-bottom: 4px; }
 
 .titulo-aberto .abrir-gc { width: 100%; margin-top: 6px; }
+
+/* Abas: pílula do design, a ativa com a cor do sistema. */
+.abas { display: flex; flex-wrap: wrap; gap: 6px; }
+.abas.principal { margin-bottom: 2px; }
+button.aba {
+  width: auto;
+  min-height: 30px;
+  padding: 5px 12px;
+  border-radius: 22px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  font-weight: 500;
+}
+button.aba.ativa {
+  background: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary) / 0.4);
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+button.aba:hover:not(.ativa) { background: hsl(var(--accent)); }
+
+/* Cada cliente da fila é um bloco clicável que leva para a conversa. */
+button.cartao-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  font-weight: 400;
+}
+button.cartao-fila:hover { background: hsl(var(--accent)); }
+button.cartao-fila .topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+button.cartao-fila strong { font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif; font-size: 15px; font-weight: 600; }

@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import type { ChatAberto } from '@ext/content/whatsapp-dom';
 import type { RecadoParaAba, RecadoParaPainel } from '@ext/lib/mensagens-runtime';
+import { normalizarTelefoneBR } from '@/utils/telefone';
 
 const WHATSAPP = 'https://web.whatsapp.com';
 
@@ -103,4 +104,34 @@ export async function inserirNaCaixa(texto: string): Promise<boolean> {
 
   const resposta = await falarComAba<{ ok?: boolean }>(aba.id, { tipo: 'INSERIR_TEXTO', texto });
   return !!resposta?.ok;
+}
+
+/**
+ * Abre a conversa de um cliente.
+ *
+ * Com telefone, o WhatsApp abre a conversa direto. Sem telefone — que é o caso
+ * da maioria dos clientes — o painel escreve o nome na busca e quem escolhe o
+ * resultado é o Lucca.
+ */
+export async function abrirConversa(params: {
+  telefone: string | null;
+  nome: string;
+}): Promise<'abriu' | 'buscou' | 'nao-consegui'> {
+  const aba = await abaDoWhatsApp();
+  if (!aba?.id) return 'nao-consegui';
+
+  const digitos = normalizarTelefoneBR(params.telefone).digitos;
+
+  if (digitos) {
+    await chrome.tabs.update(aba.id, { url: `${WHATSAPP}/send?phone=${digitos}`, active: true });
+    return 'abriu';
+  }
+
+  await chrome.tabs.update(aba.id, { active: true });
+  const resposta = await falarComAba<{ ok?: boolean }>(aba.id, {
+    tipo: 'BUSCAR_CONVERSA',
+    texto: params.nome,
+  });
+
+  return resposta?.ok ? 'buscou' : 'nao-consegui';
 }

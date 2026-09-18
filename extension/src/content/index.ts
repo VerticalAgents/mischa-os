@@ -5,7 +5,13 @@
  * cliente, de Supabase ou de regra de negócio — e não pode saber: daqui, uma
  * chamada ao Supabase seria bloqueada pelo navegador.
  */
-import { lerChatAberto, observarTrocaDeChat, inserirTexto, diagnostico } from './whatsapp-dom';
+import {
+  lerChatAberto,
+  observarTrocaDeChat,
+  inserirTexto,
+  buscarConversa,
+  diagnostico,
+} from './whatsapp-dom';
 import type { RecadoParaAba, RecadoParaPainel } from '../lib/mensagens-runtime';
 
 function iniciar() {
@@ -23,6 +29,11 @@ function iniciar() {
 
     if (recado?.tipo === 'DIAGNOSTICO') {
       responder({ ok: true, dados: diagnostico() });
+      return true;
+    }
+
+    if (recado?.tipo === 'BUSCAR_CONVERSA') {
+      responder({ ok: buscarConversa(recado.texto) });
       return true;
     }
 
