@@ -662,50 +662,20 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
-          // Carregar dados do cliente para periodicidade
-          const { data: cliente } = await supabase
-            .from('clientes')
-            .select('periodicidade_padrao')
-            .eq('id', pedido.cliente_id)
-            .single();
-
-          // CORREÇÃO: Calcular próxima data baseada na data prevista original, não na data atual
-          const dataEntrega = pedido.data_prevista_entrega;
-          const proximaData = addDays(dataEntrega, cliente?.periodicidade_padrao || 7);
-          const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
-
-          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
-          const dadosAtualizacao: any = {
-            data_proxima_reposicao: proximaDataFormatada,
-            status_agendamento: 'Previsto',
-            substatus_pedido: 'Agendado'
-          };
-
-          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
-          if (pedido.tipo_pedido === 'Alterado') {
-            dadosAtualizacao.tipo_pedido = 'Alterado';
-            if (pedido.itens_personalizados) {
-              dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
-            }
-            console.log('✅ Preservando configuração alterada no reagendamento:', {
-              tipo_pedido: dadosAtualizacao.tipo_pedido,
-              itens_personalizados: !!dadosAtualizacao.itens_personalizados
-            });
-          } else {
-            dadosAtualizacao.tipo_pedido = 'Padrão';
-          }
-
-          await supabase
-            .from('agendamentos_clientes')
-            .update(dadosAtualizacao)
-            .eq('id', pedidoId);
+          // O reagendamento é do banco, não daqui.
+          //
+          // Até 18/09/2026 esta parte refazia a conta e sobrescrevia o que o
+          // process_entrega_safe já tinha gravado — só que a partir da data
+          // PREVISTA, não da data real da entrega, e ignorando quem tem
+          // reagendamento desligado. As duas discordavam sempre que a entrega
+          // saía fora do dia.
 
           // Recarregar histórico para obter o registro criado pelo backend
           const historicoStore = useHistoricoEntregasStore.getState();
           await historicoStore.carregarHistorico();
 
           console.log('✅ Entrega confirmada com baixa no estoque - registro criado pelo backend');
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')} com baixa automática no estoque. Reagendado como Previsto preservando configurações.`);
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}, com baixa no estoque. O cliente foi reagendado a partir da data da entrega.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");

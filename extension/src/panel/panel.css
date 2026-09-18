@@ -393,3 +393,46 @@ select {
   border-radius: var(--raio-controle);
   background: hsl(var(--muted));
 }
+
+.categoria { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.escolha { display: flex; align-items: center; gap: 8px; margin: 0; flex: 1; font-size: 14px; color: hsl(var(--foreground)); font-weight: 400; cursor: pointer; }
+.escolha input[type='checkbox'] { width: 16px; height: 16px; accent-color: hsl(var(--primary)); margin: 0; }
+input.preco { width: 84px; text-align: right; }
+
+/* Linha do tempo do pedido: bolinha acesa no que já aconteceu. */
+.etapas { list-style: none; margin: 0 0 12px; padding: 0; }
+.etapas li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  position: relative;
+  color: hsl(var(--muted-foreground));
+}
+/* O fio que liga uma etapa à seguinte. */
+.etapas li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 22px;
+  width: 2px;
+  height: 14px;
+  background: hsl(var(--border));
+}
+.etapas li.feito::before { background: hsl(var(--primary)); }
+.etapas .bolinha {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: hsl(var(--border));
+  flex-shrink: 0;
+}
+.etapas li.feito .bolinha { background: hsl(var(--primary)); }
+.etapas li.feito { color: hsl(var(--foreground)); font-weight: 500; }
+.etapas .nome { flex: 1; }
+.etapas .quando { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 400; }
+
+.itens-da-entrega { margin-bottom: 12px; }
+.itens-da-entrega .apagado { margin-bottom: 4px; }
+
+.titulo-aberto .abrir-gc { width: 100%; margin-top: 6px; }

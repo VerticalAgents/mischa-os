@@ -249,6 +249,7 @@ export interface FinanceiroDoPainel {
     dataVencimento: string;
     formaPagamento?: string;
     diasAtraso: number;
+    descricao?: string;
   }[];
 }
 
@@ -277,13 +278,14 @@ export async function carregarFinanceiro(
   const hoje = hojeISO();
   const score = calcularScoreFinanceiro(titulos as never, hoje);
 
-  const emAberto = (titulos as { id: string; valor: number; dataVencimento: string; pago: boolean; formaPagamento?: string }[])
+  const emAberto = (titulos as { id: string; valor: number; dataVencimento: string; pago: boolean; formaPagamento?: string; descricao?: string }[])
     .filter((t) => !t.pago)
     .map((t) => ({
       id: t.id,
       valor: t.valor,
       dataVencimento: t.dataVencimento,
       formaPagamento: t.formaPagamento,
+      descricao: t.descricao,
       diasAtraso: Math.max(
         0,
         Math.round(
@@ -439,4 +441,25 @@ export async function adiarUmaSemana(clienteId: string): Promise<string> {
   });
 
   return nova.toLocaleDateString('pt-BR');
+}
+
+export interface Categoria {
+  id: number;
+  nome: string;
+}
+
+/** As categorias de produto do Mischa OS, para habilitar no cadastro. */
+export async function listarCategoriasProduto(): Promise<Categoria[]> {
+  const { data, error } = await supabase
+    .from('categorias_produto')
+    .select('id, nome')
+    .order('id');
+
+  if (error) throw error;
+  return (data || []) as Categoria[];
+}
+
+export async function listarRepresentantes(): Promise<{ id: number; nome: string }[]> {
+  const { data } = await supabase.from('representantes').select('id, nome').order('nome');
+  return (data || []) as { id: number; nome: string }[];
 }

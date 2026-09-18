@@ -33,6 +33,7 @@ interface ClienteState {
 }
 
 import { sanitizeClienteData, createSafeClienteDefaults } from '@/utils/clienteDataSanitizer';
+import { sincronizarClienteComGestaoClick } from '@/services/clientes/criarCliente';
 
 // FUNÇÃO ENHANCED - Debug em tempo real + Proteção de último recurso
 export function transformClienteToDbRow(c: any) {
@@ -225,60 +226,26 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       let novoCliente = transformDbRowToCliente(data);
       console.log('✅ Cliente criado com sucesso:', novoCliente.id);
 
-      // NOVO: Tentar sincronizar com GestaoClick automaticamente
-      try {
-        // Verificar se GestaoClick está configurado
-        const { data: configData } = await supabase
-          .from('integracoes_config')
-          .select('config')
-          .eq('integracao', 'gestaoclick')
-          .maybeSingle();
+      // A criação do cliente no Gestão Click mora no serviço compartilhado, para
+      // a extensão do WhatsApp criar cliente do mesmo jeito que esta tela.
+      // Continua não bloqueante: ERP fora do ar não derruba o cadastro.
+      const sincronia = await sincronizarClienteComGestaoClick(novoCliente.id, {
+        nome: cliente.nome,
+        tipo_pessoa: cliente.tipoPessoa || 'PJ',
+        cnpj_cpf: cliente.cnpjCpf,
+        inscricao_estadual: cliente.inscricaoEstadual,
+        endereco: cliente.enderecoEntrega,
+        contato_nome: cliente.contatoNome,
+        contato_telefone: cliente.contatoTelefone,
+        contato_email: cliente.contatoEmail,
+        observacoes: cliente.observacoes,
+      });
 
-        const gcConfig = configData?.config as { access_token?: string } | null;
-        if (gcConfig?.access_token) {
-          console.log('🔄 GestaoClick configurado - iniciando sincronização...');
-          
-          const { data: gcResult, error: gcError } = await supabase.functions.invoke('gestaoclick-proxy', {
-            body: {
-              action: 'criar_cliente_gc',
-              nome: cliente.nome,
-              tipo_pessoa: cliente.tipoPessoa || 'PJ',
-              cnpj_cpf: cliente.cnpjCpf,
-              inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
-              endereco: cliente.enderecoEntrega,
-              contato_nome: cliente.contatoNome,
-              contato_telefone: cliente.contatoTelefone,
-              contato_email: cliente.contatoEmail,
-              observacoes: cliente.observacoes
-            }
-          });
-
-          if (gcError) {
-            console.warn('⚠️ Erro ao chamar edge function do GestaoClick:', gcError);
-            toast.warning('Cliente criado, mas não foi possível sincronizar com GestaoClick');
-          } else if (gcResult?.success && gcResult?.gestaoclick_cliente_id) {
-            // Atualizar cliente local com ID do GestaoClick
-            const gcClienteId = gcResult.gestaoclick_cliente_id;
-            console.log('✅ Cliente sincronizado com GestaoClick, ID:', gcClienteId);
-
-            await supabase
-              .from('clientes')
-              .update({ gestaoclick_cliente_id: gcClienteId })
-              .eq('id', novoCliente.id);
-
-            novoCliente.gestaoClickClienteId = gcClienteId;
-            
-            toast.success(`Cliente sincronizado com GestaoClick (ID: ${gcClienteId})`);
-          } else if (gcResult?.error) {
-            console.warn('⚠️ GestaoClick retornou erro:', gcResult.error);
-            toast.warning(`Cliente criado localmente. GestaoClick: ${gcResult.error}`);
-          }
-        } else {
-          console.log('ℹ️ GestaoClick não configurado - cliente criado apenas localmente');
-        }
-      } catch (gcSyncError: any) {
-        console.warn('⚠️ Falha na sincronização com GestaoClick (não bloqueante):', gcSyncError);
-        toast.warning('Cliente criado, mas houve erro na sincronização com GestaoClick');
+      if (sincronia.gestaoclickClienteId) {
+        novoCliente.gestaoClickClienteId = sincronia.gestaoclickClienteId;
+        toast.success(`Cliente sincronizado com GestaoClick (ID: ${sincronia.gestaoclickClienteId})`);
+      } else if (sincronia.motivo) {
+        toast.warning(`Cliente criado localmente. GestaoClick: ${sincronia.motivo}`);
       }
 
       set((state) => ({

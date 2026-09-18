@@ -11,6 +11,7 @@ import {
   alterarVencimento,
   marcarComoRecebido,
   listarFormasDePagamento,
+  urlDoTituloNoGestaoClick,
   type FormaDePagamento,
 } from '@ext/lib/recebimentos';
 
@@ -20,6 +21,8 @@ export interface TituloEmAberto {
   dataVencimento: string;
   formaPagamento?: string;
   diasAtraso: number;
+  /** "Venda de nº 3470" — é daqui que sai o link para o Gestão Click. */
+  descricao?: string;
 }
 
 const dinheiro = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -46,6 +49,7 @@ export default function AcoesDoTitulo({
   const [forma, setForma] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [abrindo, setAbrindo] = useState(false);
 
   // A lista de formas só é buscada quando a baixa vai mesmo acontecer.
   useEffect(() => {
@@ -89,14 +93,38 @@ export default function AcoesDoTitulo({
       </div>
 
       {!aberto && (
-        <div className="atalhos">
-          <button className="secundario estreito" onClick={() => setAberto('vencimento')}>
-            Mudar vencimento
+        <>
+          <div className="atalhos">
+            <button className="secundario estreito" onClick={() => setAberto('vencimento')}>
+              Mudar vencimento
+            </button>
+            <button className="secundario estreito" onClick={() => setAberto('recebido')}>
+              Marcar recebido
+            </button>
+          </div>
+          {/*
+            Recebimento parcial (receber 80 de 100) não existe na API: o Gestão
+            Click quebra o título em dois por dentro e não expõe isso. Então o
+            painel não inventa — manda para a tela onde a coisa existe.
+          */}
+          <button
+            className="secundario estreito abrir-gc"
+            disabled={abrindo}
+            onClick={async () => {
+              setAbrindo(true);
+              setErro(null);
+              try {
+                window.open(await urlDoTituloNoGestaoClick(titulo.descricao), '_blank');
+              } catch (e) {
+                setErro(String((e as Error).message || e));
+              }
+              setAbrindo(false);
+            }}
+          >
+            {abrindo ? 'abrindo…' : 'Abrir no Gestão Click'}
           </button>
-          <button className="secundario estreito" onClick={() => setAberto('recebido')}>
-            Marcar recebido
-          </button>
-        </div>
+          {erro && <p className="aviso">{erro}</p>}
+        </>
       )}
 
       {aberto === 'vencimento' && (

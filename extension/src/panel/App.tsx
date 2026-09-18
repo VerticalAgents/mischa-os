@@ -18,6 +18,7 @@ import { listarClientesAtivos, listarVinculos, vincularConversa } from '@ext/lib
 import PainelCliente from './PainelCliente';
 import { useTema } from './useTema';
 import Vincular from './Vincular';
+import NovoCliente from './NovoCliente';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -91,6 +92,7 @@ function Conversa() {
   const [vinculos, setVinculos] = useState<VinculoWhatsapp[]>([]);
   const [achado, setAchado] = useState<ClienteDaConversa | null>(null);
   const [trocando, setTrocando] = useState(false);
+  const [criandoCliente, setCriandoCliente] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
@@ -120,6 +122,7 @@ function Conversa() {
       return;
     }
     setTrocando(false);
+    setCriandoCliente(false);
     setAchado(resolverCliente(chat, vinculos, clientes));
   }, [chat, vinculos, clientes]);
 
@@ -160,7 +163,17 @@ function Conversa() {
 
   return (
     <>
-      {achado && !trocando ? (
+      {criandoCliente ? (
+        <NovoCliente
+          nomeSugerido={chat?.titulo ?? null}
+          telefone={telefone}
+          aoCriar={async (clienteId) => {
+            await vincular(clienteId);
+            setCriandoCliente(false);
+          }}
+          aoCancelar={() => setCriandoCliente(false)}
+        />
+      ) : achado && !trocando ? (
         <PainelCliente
           clienteId={achado.clienteId}
           comoAchou={achado.comoAchou}
@@ -180,6 +193,9 @@ function Conversa() {
             aoVincular={vincular}
             aoCancelar={trocando ? () => setTrocando(false) : undefined}
           />
+          <button className="secundario" onClick={() => setCriandoCliente(true)}>
+            É um cliente novo, cadastrar
+          </button>
         </>
       )}
 

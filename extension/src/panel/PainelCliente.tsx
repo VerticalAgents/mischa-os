@@ -33,6 +33,7 @@ import Mensagens from './Mensagens';
 import Icone from './Icone';
 import EditarAgendamento from './EditarAgendamento';
 import AcoesDoTitulo from './AcoesDoTitulo';
+import Expedicao from './Expedicao';
 import { confirmarAgendamento, adiarUmaSemana } from '@ext/lib/queries';
 
 const dia = (iso?: string | null) =>
@@ -298,6 +299,8 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
           ))}
         </div>
       )}
+
+      <Expedicao clienteId={clienteId} aoMudar={() => setRodada((n) => n + 1)} />
 
       <div className="cartao">
         <div className="titulo-com-icone">

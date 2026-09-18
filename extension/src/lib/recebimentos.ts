@@ -84,3 +84,56 @@ export async function marcarComoRecebido(
     ...(formaPagamentoId ? { forma_pagamento_id: formaPagamentoId } : {}),
   });
 }
+
+/**
+ * Abrir o título no Gestão Click.
+ *
+ * O id do recebimento que a API devolve **não** corresponde a nenhuma página do
+ * site. O caminho que a tela de inadimplência usa, e que copiamos aqui: tirar o
+ * número da venda da descrição do título ("Venda de nº 3470"), resolver o id
+ * interno dela pela API e montar a URL com esse id.
+ *
+ * É por aqui que se faz o que a API não permite — recebimento parcial, por
+ * exemplo, que no Gestão Click quebra o título em dois e não tem endpoint.
+ */
+const URL_RECEBIMENTOS_PADRAO =
+  'https://gestaoclick.com/financeiro/movimentacoes_financeiras/index_recebimento/?venda={vendaId}&loja={lojaId}';
+
+/** "Venda de nº 3470" → "3470". */
+export function codigoDaVenda(descricao?: string | null): string | null {
+  if (!descricao) return null;
+  const ancorado = descricao.match(/venda\s+de\s+n[ºo°.]?\s*(\d+)/i)?.[1];
+  if (ancorado) return ancorado;
+  return descricao.match(/(\d{3,})/)?.[1] ?? null;
+}
+
+export async function urlDoTituloNoGestaoClick(descricao?: string | null): Promise<string> {
+  const numero = codigoDaVenda(descricao);
+  if (!numero) throw new Error('Este título não tem venda vinculada.');
+
+  const { data: configData } = await supabase
+    .from('integracoes_config')
+    .select('config')
+    .eq('integracao', 'gestaoclick')
+    .maybeSingle();
+
+  const config = (configData?.config || {}) as {
+    loja_id?: string | number;
+    url_recebimentos_venda?: string;
+  };
+
+  const resposta = await chamar<{ venda?: { id: string; loja_id?: string; hash?: string } }>({
+    action: 'buscar_venda_por_codigo',
+    codigo: numero,
+  });
+
+  const venda = resposta.venda;
+  if (!venda?.id) throw new Error(`Venda nº ${numero} não encontrada no Gestão Click.`);
+
+  const template = config.url_recebimentos_venda || URL_RECEBIMENTOS_PADRAO;
+
+  return template
+    .replace(/\{vendaId\}/g, encodeURIComponent(String(venda.id)))
+    .replace(/\{lojaId\}/g, encodeURIComponent(String(venda.loja_id || config.loja_id || '')))
+    .replace(/\{hash\}/g, encodeURIComponent(String(venda.hash || '')));
+}
