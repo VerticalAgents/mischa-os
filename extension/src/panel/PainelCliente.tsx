@@ -39,6 +39,28 @@ import { confirmarAgendamento, adiarUmaSemana } from '@ext/lib/queries';
 const dia = (iso?: string | null) =>
   iso ? new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR') : '—';
 
+/** Domingo desta semana: é o limite do "é pra essa semana". */
+const fimDaSemana = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * A cor do bloco da próxima reposição.
+ *
+ * Verde é compromisso: o cliente confirmou. Amarelo é o que ainda precisa de
+ * uma ligação esta semana. Cinza é o que está marcado mas não é agora.
+ */
+const corDaProxima = (
+  status: string | null | undefined,
+  data: string | null | undefined
+): 'confirmado' | 'esta-semana' | 'depois' => {
+  if (status === 'Agendado') return 'confirmado';
+  if (!data) return 'depois';
+  return data.slice(0, 10) <= fimDaSemana() ? 'esta-semana' : 'depois';
+};
+
 /** Duas letras para o círculo: "Sabor Mágico" vira SM. */
 const iniciais = (nome: string) =>
   nome
@@ -172,15 +194,27 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
       </div>
 
       <div className="destaques">
-        <div className="destaque">
+        <div
+          className={`destaque ${corDaProxima(
+            agendamento?.status_agendamento,
+            agendamento?.data_proxima_reposicao
+          )}`}
+          title={
+            agendamento?.status_agendamento === 'Agendado'
+              ? 'o cliente confirmou'
+              : 'ainda não confirmado'
+          }
+        >
           <span className="valor">{agendamento?.data_proxima_reposicao ? dia(agendamento.data_proxima_reposicao).slice(0, 5) : '—'}</span>
           <span className="rotulo">próxima</span>
         </div>
-        <div className="destaque">
+        {/* Azul: número que é informação, não estado. Só o primeiro bloco
+            muda de cor para dizer alguma coisa. */}
+        <div className="destaque informacao">
           <span className="valor">{agendamento?.quantidade_total ?? '—'}</span>
           <span className="rotulo">unidades</span>
         </div>
-        <div className="destaque">
+        <div className="destaque informacao">
           <span className="valor">{giro ? giro.giro : '—'}</span>
           <span className="rotulo">giro/semana</span>
         </div>
@@ -210,13 +244,18 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
               </div>
             )}
             {agendamento.itens_personalizados?.length ? (
-              <div className="linha">
-                <span>Sabores</span>
-                <span>
-                  {agendamento.itens_personalizados
-                    .map((i) => `${i.quantidade} ${i.produto}`)
-                    .join(' · ')}
-                </span>
+              <div className="sabores">
+                {[...agendamento.itens_personalizados]
+                  .filter((i) => i.quantidade > 0)
+                  .sort((a, b) => b.quantidade - a.quantidade)
+                  .map((i) => (
+                    <span className="sabor" key={i.produto}>
+                      <strong>{i.quantidade}</strong>
+                      {/* "Brownie Avelã" vira "Avelã": brownie é o assunto
+                          inteiro, repetir cinco vezes só ocupa a faixa. */}
+                      {i.produto.replace(/^brownies?\s+/i, '')}
+                    </span>
+                  ))}
               </div>
             ) : null}
             {agendamento.observacoes_agendamento && (

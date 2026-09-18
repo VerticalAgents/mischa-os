@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { FILAS, type ItemDaFila, type NomeDaFila } from '@ext/lib/filas';
 import { listarVinculos } from '@ext/lib/queries';
+import { termoDeBusca } from '@ext/lib/termoDeBusca';
 import type { VinculoWhatsapp } from '@ext/lib/resolverCliente';
 import { abrirConversa } from './useChatAberto';
 
@@ -24,6 +25,14 @@ export default function Filas() {
   const [erro, setErro] = useState<string | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
   const [vinculos, setVinculos] = useState<VinculoWhatsapp[]>([]);
+  // Quando a busca por nome não acha, o telefone do cadastro é o plano B — mas
+  // é o Lucca quem decide usá-lo, porque esse número pode ser de outra pessoa.
+  const [planoB, setPlanoB] = useState<{ nome: string; telefone: string } | null>(null);
+  // Um cliente pode ter mais de uma conversa vinculada — o dono, a esposa, o
+  // gerente. Aí a extensão não escolhe: pergunta.
+  const [escolhendo, setEscolhendo] = useState<{ item: ItemDaFila; opcoes: VinculoWhatsapp[] } | null>(
+    null
+  );
 
   // O vínculo manda mais que o cadastro: é a conversa que o Lucca apontou.
   // O telefone do cadastro pode ser o do dono, e a conversa de trabalho ser
@@ -41,6 +50,7 @@ export default function Filas() {
     setCarregando(true);
     setErro(null);
     setRecado(null);
+    setPlanoB(null);
 
     const fila = FILAS.find((f) => f.nome === aberta);
     fila
@@ -54,17 +64,36 @@ export default function Filas() {
     };
   }, [aberta]);
 
-  const ir = async (item: ItemDaFila) => {
-    const vinculo = vinculos.find((v) => v.cliente_id === item.clienteId);
+  const ir = async (item: ItemDaFila, vinculoEscolhido?: VinculoWhatsapp) => {
+    const daquele = vinculos.filter((v) => v.cliente_id === item.clienteId);
+
+    if (!vinculoEscolhido && daquele.length > 1) {
+      setEscolhendo({ item, opcoes: daquele });
+      setRecado(null);
+      setPlanoB(null);
+      return;
+    }
+
+    setEscolhendo(null);
+    const vinculo = vinculoEscolhido || daquele[0];
 
     // Existindo vínculo, ele manda — inclusive quando não tem telefone, que é
     // o caso de todos hoje. Cair no telefone do cadastro aqui abriria a
     // conversa errada: o cadastro do Brownie da Mica tem o número pessoal da
     // Mica, e o trabalho acontece na conversa da loja.
     const telefone = vinculo ? vinculo.telefone_e164 : item.telefone;
-    const procurar = vinculo?.chat_titulo || item.nome;
+    // Com vínculo, o nome da conversa é exato e vai inteiro. Sem vínculo, o
+    // nome do cadastro quase nunca bate com o do contato, então vai só a
+    // palavra mais distintiva dele.
+    const procurar = vinculo?.chat_titulo || termoDeBusca(item.nome);
 
     const resultado = await abrirConversa({ telefone, nome: procurar });
+
+    setPlanoB(
+      resultado === 'buscou' && item.telefone
+        ? { nome: item.nome, telefone: item.telefone }
+        : null
+    );
 
     setRecado(
       resultado === 'buscou'
@@ -91,7 +120,39 @@ export default function Filas() {
         ))}
       </div>
 
+      {escolhendo && (
+        <div className="cartao campos">
+          <p className="apagado">
+            {escolhendo.item.nome} tem {escolhendo.opcoes.length} conversas. Qual delas?
+          </p>
+          {escolhendo.opcoes.map((v) => (
+            <button
+              key={v.id}
+              className="secundario"
+              onClick={() => ir(escolhendo.item, v)}
+            >
+              {v.chat_titulo || v.telefone_e164 || 'conversa sem nome'}
+            </button>
+          ))}
+          <button className="secundario" onClick={() => setEscolhendo(null)}>
+            Cancelar
+          </button>
+        </div>
+      )}
+
       {recado && <p className="apagado">{recado}</p>}
+      {planoB && (
+        <button
+          className="secundario"
+          onClick={async () => {
+            await abrirConversa({ telefone: planoB.telefone, nome: planoB.nome });
+            setPlanoB(null);
+            setRecado('Abri pelo telefone do cadastro. Se for a conversa certa, vincule ela.');
+          }}
+        >
+          Não achou? Abrir pelo telefone do cadastro
+        </button>
+      )}
       {erro && <p className="aviso">{erro}</p>}
 
       {carregando ? (
@@ -112,8 +173,13 @@ export default function Filas() {
                 </span>
                 <span className="apagado">{item.detalhe}</span>
                 {(() => {
-                  const v = vinculos.find((x) => x.cliente_id === item.clienteId);
-                  if (v?.chat_titulo) return <span className="apagado">conversa: {v.chat_titulo}</span>;
+                  const daquele = vinculos.filter((x) => x.cliente_id === item.clienteId);
+                  if (daquele.length > 1) {
+                    return <span className="apagado">{daquele.length} conversas vinculadas</span>;
+                  }
+                  if (daquele[0]?.chat_titulo) {
+                    return <span className="apagado">conversa: {daquele[0].chat_titulo}</span>;
+                  }
                   if (!item.telefone) return <span className="apagado">sem telefone · abre pela busca</span>;
                   return null;
                 })()}

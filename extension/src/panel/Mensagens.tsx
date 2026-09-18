@@ -1,9 +1,11 @@
 /**
  * Os textos prontos.
  *
- * O botão não escreve direto na conversa: ele abre o texto num campo editável.
- * O Lucca lê, ajusta o tom se quiser, e só então manda para a caixa — onde
- * ainda é ele quem aperta enviar. É o que separa ferramenta de robô.
+ * O botão escreve **direto na caixa de digitação do WhatsApp**. Ajustar o texto
+ * dentro do painel e depois mandar para a caixa era um passo a mais sem ganho:
+ * o lugar natural de reescrever é a própria caixa, onde ele já está.
+ *
+ * A extensão continua sem enviar nada — quem aperta enviar é o Lucca.
  */
 import { useState } from 'react';
 import { inserirNaCaixa } from './useChatAberto';
@@ -34,31 +36,14 @@ const diasDesde = (iso: string) =>
 const arredondarPedido = (quantidade: number) => Math.max(30, Math.round(quantidade / 5) * 5);
 
 export default function Mensagens({ cliente, agendamento, entregas, financeiro, giroSemanal }: Props) {
-  const [texto, setTexto] = useState<string | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
-  // Qual mensagem está aberta e em qual jeito de dizer. Clicar no mesmo botão
-  // de novo avança a variação, em vez de repetir o texto igualzinho.
-  const [aberta, setAberta] = useState<{ rotulo: string; variante: number } | null>(null);
+  // Qual mensagem foi escrita por último e em qual jeito de dizer. Clicar de
+  // novo troca a variação, substituindo o texto na caixa em vez de empilhar.
+  const [ultima, setUltima] = useState<{ rotulo: string; variante: number } | null>(null);
 
   const contato = cliente.contato_nome;
-  const ultima = entregas[0];
-
-  const abrir = (rotulo: string, montar: (variante: number) => string) => {
-    const variante = aberta?.rotulo === rotulo ? aberta.variante + 1 : 0;
-    setAberta({ rotulo, variante });
-    setTexto(montar(variante));
-    setRecado(null);
-  };
-
-  const outroJeito = () => {
-    if (!aberta) return;
-    const opcao = opcoes.find((o) => o.rotulo === aberta.rotulo);
-    if (!opcao) return;
-    const variante = aberta.variante + 1;
-    setAberta({ ...aberta, variante });
-    setTexto(opcao.montar(variante));
-    setRecado(null);
-  };
+  const ultimaEntrega = entregas[0];
+  const ultima_ = ultimaEntrega; // nome curto, usado abaixo
 
   const opcoes: { rotulo: string; disponivel: boolean; montar: (variante: number) => string }[] = [
     {
@@ -84,14 +69,14 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
     },
     {
       rotulo: 'Repetir o último pedido',
-      disponivel: !!ultima,
-      montar: (v) => sugestaoIgualUltimoPedido({ contato, ultimaEntrega: ultima }, v),
+      disponivel: !!ultima_,
+      montar: (v) => sugestaoIgualUltimoPedido({ contato, ultimaEntrega: ultima_ }, v),
     },
     {
       rotulo: 'Sugerir pelo giro',
-      disponivel: !!giroSemanal && !!ultima,
+      disponivel: !!giroSemanal && !!ultima_,
       montar: (v) => {
-        const dias = diasDesde(ultima.data);
+        const dias = diasDesde(ultima_.data);
         return sugestaoPeloGiro(
           {
             contato,
@@ -119,21 +104,23 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
     },
   ];
 
-  const inserir = async () => {
-    if (!texto) return;
-    const ok = await inserirNaCaixa(texto);
-    setRecado(
-      ok
-        ? 'Está na caixa de digitação. Confira e envie você.'
-        : 'Não consegui escrever na caixa — use o Copiar e cole com Ctrl+V.'
-    );
+  const escrever = async (rotulo: string, montar: (v: number) => string, trocandoJeito = false) => {
+    const variante = trocandoJeito && ultima?.rotulo === rotulo ? ultima.variante + 1 : 0;
+    const texto = montar(variante);
+
+    const ok = await inserirNaCaixa(texto, trocandoJeito);
+
+    if (!ok) {
+      await navigator.clipboard.writeText(texto);
+      setRecado('Não consegui escrever na caixa, então copiei. Cole com Ctrl+V.');
+      return;
+    }
+
+    setUltima({ rotulo, variante });
+    setRecado('Está na caixa. Confira, ajuste se quiser, e envie você.');
   };
 
-  const copiar = async () => {
-    if (!texto) return;
-    await navigator.clipboard.writeText(texto);
-    setRecado('Copiado.');
-  };
+  const opcaoAtual = opcoes.find((o) => o.rotulo === ultima?.rotulo);
 
   return (
     <div className="cartao">
@@ -146,35 +133,30 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
         {opcoes.map((o) => (
           <button
             key={o.rotulo}
-            className="secundario"
+            className={`secundario ${ultima?.rotulo === o.rotulo ? 'escrita' : ''}`}
             disabled={!o.disponivel}
             title={o.disponivel ? undefined : 'sem dado para montar esta mensagem'}
-            onClick={() => abrir(o.rotulo, o.montar)}
+            onClick={() => escrever(o.rotulo, o.montar)}
           >
             {o.rotulo}
           </button>
         ))}
       </div>
 
-      {texto !== null && (
+      {ultima && opcaoAtual && (
         <div className="campos rascunho">
-          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={10} />
-          <button onClick={inserir}>Inserir na conversa</button>
-          <button className="secundario" onClick={outroJeito}>Escrever de outro jeito</button>
-          <button className="secundario" onClick={copiar}>Copiar</button>
+          {recado && <p className="apagado">{recado}</p>}
           <button
             className="secundario"
-            onClick={() => {
-              setTexto(null);
-              setAberta(null);
-            }}
+            onClick={() => escrever(opcaoAtual.rotulo, opcaoAtual.montar, true)}
           >
-            Fechar
+            Escrever de outro jeito
           </button>
-          {recado && <p className="apagado">{recado}</p>}
           <p className="apagado">A extensão nunca envia. Quem aperta enviar é você.</p>
         </div>
       )}
+
+      {!ultima && recado && <p className="apagado">{recado}</p>}
     </div>
   );
 }

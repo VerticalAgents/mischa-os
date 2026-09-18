@@ -14,7 +14,7 @@ export type RecadoParaPainel = {
 export type RecadoParaAba =
   | { tipo: 'LER_CHAT' }
   | { tipo: 'DIAGNOSTICO' }
-  | { tipo: 'INSERIR_TEXTO'; texto: string }
+  | { tipo: 'INSERIR_TEXTO'; texto: string; substituir?: boolean }
   | { tipo: 'BUSCAR_CONVERSA'; texto: string };
 
 export type RespostaDaAba =

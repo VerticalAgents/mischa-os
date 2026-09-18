@@ -98,11 +98,15 @@ export async function pedirDiagnostico(): Promise<unknown> {
 }
 
 /** Escreve o texto na caixa de digitação da conversa aberta. Não envia. */
-export async function inserirNaCaixa(texto: string): Promise<boolean> {
+export async function inserirNaCaixa(texto: string, substituir = false): Promise<boolean> {
   const aba = await abaDoWhatsApp();
   if (!aba?.id) return false;
 
-  const resposta = await falarComAba<{ ok?: boolean }>(aba.id, { tipo: 'INSERIR_TEXTO', texto });
+  const resposta = await falarComAba<{ ok?: boolean }>(aba.id, {
+    tipo: 'INSERIR_TEXTO',
+    texto,
+    substituir,
+  });
   return !!resposta?.ok;
 }
 

@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@ext/lib/supabase';
-import { useChatAberto, inserirNaCaixa, pedirDiagnostico } from './useChatAberto';
+import { useChatAberto, pedirDiagnostico } from './useChatAberto';
 import { normalizarTelefoneBR } from '@/utils/telefone';
 import {
   resolverCliente,
@@ -55,6 +55,13 @@ function Login() {
   );
 }
 
+/**
+ * A fotografia da tela do WhatsApp.
+ *
+ * Fica só onde ainda serve: quando o painel não reconhece a conversa. É o
+ * sintoma de o WhatsApp ter mudado o site, e é aí que alguém precisa ver o que
+ * a extensão está enxergando.
+ */
 function Diagnostico() {
   const [dados, setDados] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
@@ -96,7 +103,6 @@ function Conversa() {
   const [criandoCliente, setCriandoCliente] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [recado, setRecado] = useState<string | null>(null);
 
   const recarregarCadastro = useCallback(async () => {
     try {
@@ -160,11 +166,6 @@ function Conversa() {
     if (chat) setAchado(resolverCliente(chat, vs, cs));
   };
 
-  const testarEscrita = async () => {
-    const ok = await inserirNaCaixa('Teste do painel do Mischa OS — nada foi enviado.');
-    setRecado(ok ? 'Escrevi na caixa. Confira e apague.' : 'Não consegui escrever na caixa.');
-  };
-
   if (erro) return <p className="aviso">{erro}</p>;
   if (carregando) return <p className="apagado">Carregando o cadastro…</p>;
 
@@ -206,10 +207,6 @@ function Conversa() {
         </>
       )}
 
-      <button className="secundario" onClick={testarEscrita}>Escrever um teste na caixa</button>
-      {recado && <p className="apagado">{recado}</p>}
-
-      <Diagnostico />
     </>
   );
 }

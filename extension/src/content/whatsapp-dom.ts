@@ -286,9 +286,18 @@ function acharCaixaDeTexto(): HTMLElement | null {
   return editaveis.length ? editaveis[editaveis.length - 1] : null;
 }
 
-export function inserirTexto(texto: string): boolean {
+export function inserirTexto(texto: string, substituir = false): boolean {
   const caixa = acharCaixaDeTexto();
   if (!caixa) return false;
+
+  caixa.focus();
+
+  // Trocar o jeito de dizer: limpa o que a extensão escreveu antes, em vez de
+  // empilhar duas versões da mesma mensagem na caixa.
+  if (substituir) {
+    document.execCommand('selectAll');
+    document.execCommand('delete');
+  }
 
   porCursorNoFim(caixa);
 

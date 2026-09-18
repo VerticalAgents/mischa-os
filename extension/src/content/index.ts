@@ -38,7 +38,7 @@ function iniciar() {
     }
 
     if (recado?.tipo === 'INSERIR_TEXTO') {
-      responder({ ok: inserirTexto(recado.texto) });
+      responder({ ok: inserirTexto(recado.texto, recado.substituir) });
       return true;
     }
 

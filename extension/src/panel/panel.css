@@ -483,3 +483,56 @@ button.cartao-fila {
 button.cartao-fila:hover { background: hsl(var(--accent)); }
 button.cartao-fila .topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
 button.cartao-fila strong { font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif; font-size: 15px; font-weight: 600; }
+
+/*
+ * O bloco da próxima reposição fala por cor: verde é confirmado, amarelo é o
+ * que precisa de ligação esta semana, cinza é o que está marcado para depois.
+ * A cor nunca vem sozinha — o valor é a data, e o título explica.
+ */
+.destaque.esta-semana {
+  background: hsl(var(--alerta) / 0.14);
+  border-color: hsl(var(--alerta) / 0.35);
+}
+.destaque.esta-semana .valor,
+:root[data-tema='escuro'] .destaque.esta-semana .valor { color: hsl(var(--alerta)); }
+
+.destaque.depois {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
+.destaque.depois .valor,
+:root[data-tema='escuro'] .destaque.depois .valor { color: hsl(var(--muted-foreground)); }
+
+/* Azul do sistema (o mesmo dos gráficos do Mischa OS, #3b82f6). */
+.destaque.informacao {
+  background: hsl(217 91% 60% / 0.13);
+  border-color: hsl(217 91% 60% / 0.3);
+}
+.destaque.informacao .valor { color: hsl(217 75% 42%); }
+:root[data-tema='escuro'] .destaque.informacao .valor { color: hsl(213 94% 72%); }
+
+/* Sabores do pedido: uma pastilha por sabor, do que mais sai para o que menos.
+   Em lista corrida com "·" ninguém acha a quantidade de um sabor específico. */
+.sabores { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; }
+.sabor {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 22px;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  font-size: 13px;
+}
+.sabor strong {
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* A mensagem que está na caixa agora. */
+button.secundario.escrita {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.1);
+  font-weight: 600;
+}
