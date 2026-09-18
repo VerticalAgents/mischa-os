@@ -31,6 +31,9 @@ const ROTULO_CONFIRMACAO = {
 } as const;
 import Mensagens from './Mensagens';
 import Icone from './Icone';
+import EditarAgendamento from './EditarAgendamento';
+import AcoesDoTitulo from './AcoesDoTitulo';
+import { confirmarAgendamento, adiarUmaSemana } from '@ext/lib/queries';
 
 const dia = (iso?: string | null) =>
   iso ? new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR') : '—';
@@ -69,6 +72,11 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
   const [confirmacao, setConfirmacao] = useState<ConfirmationScore | null>(null);
   const [giro, setGiro] = useState<{ giro: number; medido: boolean } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [mexendo, setMexendo] = useState(false);
+  const [recado, setRecado] = useState<string | null>(null);
+  // Muda quando algo é salvo, para as consultas rodarem de novo.
+  const [rodada, setRodada] = useState(0);
 
   const [financeiro, setFinanceiro] = useState<FinanceiroDoPainel | null>(null);
   const [erroFinanceiro, setErroFinanceiro] = useState<string | null>(null);
@@ -110,7 +118,7 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
     return () => {
       vivo = false;
     };
-  }, [clienteId]);
+  }, [clienteId, rodada]);
 
   // O financeiro bate no Gestão Click e demora, então só vai quando pedido.
   const buscarFinanceiro = async () => {
@@ -130,6 +138,22 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
 
   const trocas = agendamento?.trocas_pendentes || [];
   const bonificacoes = agendamento?.bonificacoes_pendentes || [];
+
+  if (editando) {
+    return (
+      <EditarAgendamento
+        clienteId={clienteId}
+        agendamento={agendamento}
+        ultimaEntrega={entregas[0]}
+        quantidadePadrao={cliente.quantidade_padrao}
+        aoSalvar={() => {
+          setEditando(false);
+          setRodada((n) => n + 1);
+        }}
+        aoCancelar={() => setEditando(false)}
+      />
+    );
+  }
 
   return (
     <>
@@ -197,9 +221,62 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
             {agendamento.observacoes_agendamento && (
               <div className="linha"><span>Observação</span><span>{agendamento.observacoes_agendamento}</span></div>
             )}
+            <div className="atalhos">
+              <button
+                className="secundario"
+                disabled={mexendo || agendamento.status_agendamento === 'Agendado'}
+                title={
+                  agendamento.status_agendamento === 'Agendado'
+                    ? 'já está confirmado'
+                    : 'passa de Previsto para Agendado'
+                }
+                onClick={async () => {
+                  setMexendo(true);
+                  setRecado(null);
+                  try {
+                    await confirmarAgendamento(clienteId);
+                    setRecado('Confirmado.');
+                    setRodada((n) => n + 1);
+                  } catch (e) {
+                    setRecado(String((e as Error).message || e));
+                  }
+                  setMexendo(false);
+                }}
+              >
+                Confirmar
+              </button>
+              <button
+                className="secundario"
+                disabled={mexendo || !agendamento.data_proxima_reposicao}
+                title="empurra a reposição em 7 dias"
+                onClick={async () => {
+                  setMexendo(true);
+                  setRecado(null);
+                  try {
+                    const nova = await adiarUmaSemana(clienteId);
+                    setRecado(`Adiado para ${nova}.`);
+                    setRodada((n) => n + 1);
+                  } catch (e) {
+                    setRecado(String((e as Error).message || e));
+                  }
+                  setMexendo(false);
+                }}
+              >
+                Adiar 1 semana
+              </button>
+            </div>
+            <button className="secundario" onClick={() => setEditando(true)}>
+              Editar agendamento
+            </button>
+            {recado && <p className="apagado">{recado}</p>}
           </>
         ) : (
-          <p className="apagado">Sem agendamento cadastrado.</p>
+          <>
+            <p className="apagado">Sem agendamento cadastrado.</p>
+            <button className="secundario" onClick={() => setEditando(true)}>
+              Criar agendamento
+            </button>
+          </>
         )}
       </div>
 
@@ -262,13 +339,17 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
                 <span className="aviso">{dinheiro(financeiro.score.valorVencido)}</span>
               </div>
             )}
-            {financeiro.emAberto.slice(0, 4).map((t) => (
-              <div className="linha" key={t.id}>
-                <span>{dia(t.dataVencimento)}{t.formaPagamento ? ` · ${t.formaPagamento}` : ''}</span>
-                <span className={t.diasAtraso > 2 ? 'aviso' : undefined}>
-                  {dinheiro(t.valor)}{t.diasAtraso > 2 ? ` · ${t.diasAtraso}d` : ''}
-                </span>
-              </div>
+            {financeiro.emAberto.slice(0, 5).map((t) => (
+              <AcoesDoTitulo
+                key={t.id}
+                titulo={t}
+                aoMudar={() => {
+                  // O que mudou está no Gestão Click: busca de novo em vez de
+                  // adivinhar o novo estado na tela.
+                  setFinanceiro(null);
+                  buscarFinanceiro();
+                }}
+              />
             ))}
           </>
         )}

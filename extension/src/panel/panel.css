@@ -360,3 +360,36 @@ details > summary {
   color: #fff;
 }
 .cabecalho-painel .tema:hover:not(:disabled) { background: hsl(0 0% 100% / 0.28); }
+
+select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--raio-controle);
+  background: hsl(var(--input));
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: inherit;
+}
+
+.atalhos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.item-sabor { display: grid; grid-template-columns: 1fr 72px 32px; gap: 6px; align-items: center; }
+.item-sabor input { text-align: center; }
+.item-sabor button.estreito { padding: 4px 0; min-height: 34px; }
+
+.titulo-aberto { border-bottom: 1px solid hsl(var(--border) / 0.5); padding-bottom: 8px; margin-bottom: 8px; }
+.titulo-aberto:last-child { border-bottom: 0; margin-bottom: 0; }
+.titulo-aberto .linha { border-bottom: 0; }
+.titulo-aberto .atalhos { margin-top: 4px; }
+.titulo-aberto .atalhos button { width: 100%; }
+
+/* Ação que escreve no Gestão Click: fundo próprio, para não passar despercebida. */
+.caixa-acao {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--raio-controle);
+  background: hsl(var(--muted));
+}

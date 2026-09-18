@@ -5,6 +5,7 @@
  * interface fica burra e o que dá errado aparece num lugar só.
  */
 import { supabase } from './supabase';
+import { atualizarAgendamento } from '@/services/agendamento/atualizarAgendamento';
 import type { ClienteResumido, VinculoWhatsapp } from './resolverCliente';
 import { calcularScoreFinanceiro, ScoreFinanceiro } from '@/utils/scoreFinanceiro';
 import { tituloDeGC } from '@/utils/titulosGC';
@@ -312,4 +313,130 @@ export async function carregarGiro(
 
   const { giroSemanal } = await calcularGiroSemanalHistorico(clienteId);
   return { giro: giroSemanal, medido: true };
+}
+
+export interface ProdutoDoCliente {
+  id: string;
+  nome: string;
+}
+
+/**
+ * Os sabores que este cliente pode receber.
+ *
+ * O Mischa OS filtra os produtos ativos pelas categorias habilitadas do cliente
+ * (ver `useSupabaseProdutos`): cliente sem categoria habilitada não recebe
+ * sugestão de sabor nenhum, e é assim de propósito.
+ */
+export async function listarProdutosDoCliente(clienteId: string): Promise<ProdutoDoCliente[]> {
+  const [{ data: cliente }, { data: produtos }] = await Promise.all([
+    supabase.from('clientes').select('categorias_habilitadas').eq('id', clienteId).maybeSingle(),
+    supabase.from('produtos_finais').select('id, nome, ativo, categoria_id').order('nome'),
+  ]);
+
+  const habilitadas = (cliente?.categorias_habilitadas as number[] | null) || [];
+
+  return ((produtos || []) as { id: string; nome: string; ativo: boolean; categoria_id: number | null }[])
+    .filter((p) => p.ativo)
+    .filter((p) => (habilitadas.length ? habilitadas.includes(p.categoria_id ?? -1) : false))
+    .map((p) => ({ id: p.id, nome: p.nome }));
+}
+
+/**
+ * A divisão por sabor de um pedido padrão, a partir das proporções cadastradas.
+ *
+ * Mesma conta do app: só vale se os percentuais somarem 100; o arredondamento
+ * sobra para o sabor de maior percentual, para o total bater exatamente.
+ */
+export async function proporcaoPadrao(
+  quantidadeTotal: number
+): Promise<{ produto: string; quantidade: number }[]> {
+  const { data } = await supabase
+    .from('proporcoes_padrao')
+    .select('percentual, produto_id, ativo')
+    .eq('ativo', true);
+
+  const linhas = ((data || []) as { percentual: number; produto_id: string }[]).filter(
+    (l) => l.percentual > 0
+  );
+  if (!linhas.length) return [];
+
+  const total = linhas.reduce((s, l) => s + Number(l.percentual), 0);
+  if (Math.abs(total - 100) > 0.01) return [];
+
+  const { data: produtos } = await supabase
+    .from('produtos_finais')
+    .select('id, nome, ativo')
+    .in('id', linhas.map((l) => l.produto_id));
+
+  const nomes = new Map(
+    ((produtos || []) as { id: string; nome: string; ativo: boolean }[])
+      .filter((p) => p.ativo)
+      .map((p) => [p.id, p.nome])
+  );
+
+  const itens = linhas
+    .filter((l) => nomes.has(l.produto_id))
+    .map((l) => ({
+      produto: nomes.get(l.produto_id)!,
+      quantidade: Math.floor((Number(l.percentual) / 100) * quantidadeTotal),
+      percentual: Number(l.percentual),
+    }))
+    .sort((a, b) => b.percentual - a.percentual);
+
+  if (!itens.length) return [];
+
+  const sobra = quantidadeTotal - itens.reduce((s, i) => s + i.quantidade, 0);
+  itens[0].quantidade += sobra;
+
+  return itens.filter((i) => i.quantidade > 0).map(({ produto, quantidade }) => ({ produto, quantidade }));
+}
+
+/**
+ * Confirmar a reposição: Previsto vira Agendado, e nada mais muda.
+ *
+ * É o mesmo botão do painel de agendamentos do Mischa OS. Como o pedido em si
+ * não muda, a nota já emitida continua valendo.
+ */
+export async function confirmarAgendamento(clienteId: string): Promise<void> {
+  const atual = await carregarAgendamento(clienteId);
+  if (!atual) throw new Error('esse cliente não tem agendamento para confirmar');
+
+  await atualizarAgendamento({
+    clienteId,
+    statusAgendamento: 'Agendado',
+    dataProximaReposicao: atual.data_proxima_reposicao
+      ? new Date(`${atual.data_proxima_reposicao}T00:00:00`)
+      : null,
+    tipoPedido: (atual.tipo_pedido as 'Padrão' | 'Alterado') || 'Padrão',
+    quantidadeTotal: atual.quantidade_total ?? 0,
+    itensPersonalizados: (atual.itens_personalizados as { produto: string; quantidade: number }[]) || null,
+    manterNotaFiscal: true,
+  });
+}
+
+/**
+ * Adiar uma semana, mantendo o pedido como está e voltando para Previsto.
+ *
+ * O pulo de semana é registrado pelo serviço compartilhado, que é de onde sai o
+ * score de confirmação — adiar duas vezes derruba a nota do cliente, e é para
+ * derrubar mesmo.
+ */
+export async function adiarUmaSemana(clienteId: string): Promise<string> {
+  const atual = await carregarAgendamento(clienteId);
+  if (!atual?.data_proxima_reposicao) throw new Error('esse agendamento não tem data para adiar');
+
+  const nova = new Date(`${atual.data_proxima_reposicao}T00:00:00`);
+  nova.setDate(nova.getDate() + 7);
+
+  await atualizarAgendamento({
+    clienteId,
+    statusAgendamento: 'Previsto',
+    dataProximaReposicao: nova,
+    tipoPedido: (atual.tipo_pedido as 'Padrão' | 'Alterado') || 'Padrão',
+    quantidadeTotal: atual.quantidade_total ?? 0,
+    itensPersonalizados: (atual.itens_personalizados as { produto: string; quantidade: number }[]) || null,
+    manterNotaFiscal: true,
+  });
+
+  return nova.toLocaleDateString('pt-BR');
 }

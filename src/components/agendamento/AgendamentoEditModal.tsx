@@ -22,6 +22,11 @@ import {
 } from "@/components/ui/dialog";
 import { AgendamentoItem } from "./types";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import {
+  atualizarAgendamento,
+  ErroDeValidacaoDoAgendamento,
+  type StatusAgendamento,
+} from "@/services/agendamento/atualizarAgendamento";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useToast } from "@/hooks/use-toast";
 import { TipoPedidoAgendamento } from "@/types";
@@ -32,7 +37,6 @@ import TrocasAccordion from "./TrocasAccordion";
 import { BonificacaoPendente } from "./BonificacoesPendentesEditor";
 import BonificacoesAccordion from "./BonificacoesAccordion";
 import { supabase } from "@/integrations/supabase/client";
-import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { format as formatDate } from "date-fns";
 
@@ -72,7 +76,7 @@ export default function AgendamentoEditModal({
   const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendente[]>([]);
   const [bonificacoesPendentes, setBonificacoesPendentes] = useState<BonificacaoPendente[]>([]);
   
-  const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
+  const { carregarTodosAgendamentos, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { atualizarCliente } = useClienteStore();
   const { toast } = useToast();
   const { isRepresentante } = useUserRoles();
@@ -265,51 +269,28 @@ export default function AgendamentoEditModal({
         return;
       }
 
-      // Registrar reagendamento entre semanas se a data mudou
-      if (
-        statusAgendamento !== "Agendar" &&
-        dataReposicao &&
-        agendamento.dataReposicao &&
-        dataReposicao.getTime() !== agendamento.dataReposicao.getTime()
-      ) {
-        registrarReagendamentoEntreSemanas(
-          agendamento.cliente.id,
-          agendamento.dataReposicao,
-          dataReposicao
-        );
-      }
+      // A regra de salvar (validação, pulo de semana, zerar a NF, trocas e
+      // bonificações) vive em um serviço só, compartilhado com a extensão do
+      // WhatsApp — ver src/services/agendamento/atualizarAgendamento.ts.
+      await atualizarAgendamento({
+        clienteId: agendamento.cliente.id,
+        statusAgendamento: statusAgendamento as StatusAgendamento,
+        dataProximaReposicao: dataReposicao ?? null,
+        tipoPedido,
+        quantidadeTotal,
+        itensPersonalizados: tipoPedido === "Alterado" ? itensPersonalizados : null,
+        observacoesAgendamento,
+        trocasPendentes,
+        bonificacoesPendentes,
+      });
 
-      // Salvar observações gerais no cliente (permanentes)
+      // Observações gerais são do cadastro do cliente, não do agendamento.
       await supabase
         .from('clientes')
         .update({ observacoes: observacoesGerais })
         .eq('id', agendamento.cliente.id);
 
-      // Salvar agendamento com observações temporárias e trocas
-      // IMPORTANTE: Ao editar agendamento, limpar gestaoclick_nf_id para permitir regenerar NF
-      await salvarAgendamento(agendamento.cliente.id, {
-        status_agendamento: statusAgendamento,
-        data_proxima_reposicao: statusAgendamento === "Agendar" ? null : dataReposicao,
-        tipo_pedido: tipoPedido,
-        quantidade_total: quantidadeTotal,
-        itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
-      });
-
-      // Limpar gestaoclick_nf_id para permitir regenerar NF após edição
-      await supabase
-        .from('agendamentos_clientes')
-        .update({ gestaoclick_nf_id: null })
-        .eq('cliente_id', agendamento.cliente.id);
-
-      // Salvar observações do agendamento e trocas pendentes separadamente
-      await supabase
-        .from('agendamentos_clientes')
-        .update({
-          observacoes_agendamento: observacoesAgendamento || null,
-          trocas_pendentes: trocasPendentes.length > 0 ? JSON.parse(JSON.stringify(trocasPendentes)) : [],
-          bonificacoes_pendentes: bonificacoesPendentes.length > 0 ? JSON.parse(JSON.stringify(bonificacoesPendentes)) : []
-        })
-        .eq('cliente_id', agendamento.cliente.id);
+      await carregarTodosAgendamentos();
 
       // Auto-update GestaoClick if sale exists
       if (gestaoclick_venda_id && onAtualizarVendaGC) {
@@ -371,7 +352,12 @@ export default function AgendamentoEditModal({
       console.error('Erro ao salvar agendamento:', error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar agendamento",
+        // A validação do serviço já explica o que está errado; o resto é erro de
+        // banco, e aí a mensagem genérica é o que se tem.
+        description:
+          error instanceof ErroDeValidacaoDoAgendamento
+            ? error.message
+            : "Erro ao salvar agendamento",
         variant: "destructive"
       });
     } finally {
