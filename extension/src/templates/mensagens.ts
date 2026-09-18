@@ -194,7 +194,7 @@ export function resumoUltimosPedidos(
   return linhas.join('\n');
 }
 
-/** 4a. Sugestão de reposição igual ao pedido anterior. */
+/** 4. Sugestão de reposição: repetir o pedido anterior. */
 export function sugestaoIgualUltimoPedido(
   dados: {
     contato?: string | null;
@@ -226,39 +226,6 @@ export function sugestaoIgualUltimoPedido(
 
   linhas.push('', pegar(fechos, variante));
   return linhas.join('\n');
-}
-
-/** 4b. Sugestão pelo giro, a partir do quanto sai por semana. */
-export function sugestaoPeloGiro(
-  dados: {
-    contato?: string | null;
-    giroSemanal: number;
-    diasDesdeUltimaEntrega: number;
-    quantidadeSugerida: number;
-  },
-  variante = 0
-): string {
-  const { diasDesdeUltimaEntrega: dias, giroSemanal: giro, quantidadeSugerida: qtd } = dados;
-
-  const aberturas = [
-    `Faz ${dias} dias desde a última entrega, e por aí saem uns ${giro} brownies por semana`,
-    `Já são ${dias} dias desde a última entrega, e a média de vocês é de uns ${giro} por semana`,
-    `Pelo que vejo aqui saem uns ${giro} brownies por semana aí, e a última entrega foi há ${dias} dias`,
-  ];
-
-  const fechos = [
-    `Quer que eu mande ${qtd} na próxima rota?`,
-    `Separo ${qtd} pra próxima rota?`,
-    `Posso deixar ${qtd} reservados pra vocês?`,
-  ];
-
-  return [
-    saudacao(dados.contato, variante),
-    '',
-    pegar(aberturas, variante),
-    '',
-    pegar(fechos, variante),
-  ].join('\n');
 }
 
 /** 5. Troca ou bonificação pendente. */

@@ -263,7 +263,7 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
             )}
             <div className="atalhos">
               <button
-                className="secundario"
+                className="secundario acao-boa"
                 disabled={mexendo || agendamento.status_agendamento === 'Agendado'}
                 title={
                   agendamento.status_agendamento === 'Agendado'
@@ -286,7 +286,7 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
                 Confirmar
               </button>
               <button
-                className="secundario"
+                className="secundario acao-atencao"
                 disabled={mexendo || !agendamento.data_proxima_reposicao}
                 title="empurra a reposição em 7 dias"
                 onClick={async () => {
@@ -402,7 +402,6 @@ export default function PainelCliente({ clienteId, comoAchou, aoTrocarCliente }:
         agendamento={agendamento}
         entregas={entregas}
         financeiro={financeiro}
-        giroSemanal={giro?.giro ?? null}
       />
 
       <div className="cartao">

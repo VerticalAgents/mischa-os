@@ -536,3 +536,26 @@ button.secundario.escrita {
   background: hsl(var(--primary) / 0.1);
   font-weight: 600;
 }
+
+/*
+ * Confirmar é o caminho bom; adiar empurra o compromisso para a frente. Cada um
+ * com a sua cor, para o dedo não errar num painel estreito. Continuam sendo
+ * botões secundários: a cor tinge a borda e o fundo, não vira botão cheio.
+ */
+button.secundario.acao-boa {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(155 75% 26%);
+  font-weight: 600;
+}
+button.secundario.acao-boa:hover:not(:disabled) { background: hsl(var(--primary) / 0.2); }
+
+button.secundario.acao-atencao {
+  border-color: hsl(var(--alerta) / 0.5);
+  background: hsl(var(--alerta) / 0.12);
+  color: hsl(var(--alerta));
+  font-weight: 600;
+}
+button.secundario.acao-atencao:hover:not(:disabled) { background: hsl(var(--alerta) / 0.2); }
+
+:root[data-tema='escuro'] button.secundario.acao-boa { color: hsl(155 60% 66%); }

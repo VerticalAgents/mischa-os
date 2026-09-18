@@ -10,7 +10,6 @@ import {
   lembreteDePagamento,
   resumoUltimosPedidos,
   sugestaoIgualUltimoPedido,
-  sugestaoPeloGiro,
   avisoTrocasBonificacoes,
   tabelaDePrecos,
 } from './mensagens';
@@ -115,16 +114,6 @@ describe('sugestão de reposição', () => {
     expect(texto).toContain('10 Stikadinho');
   });
 
-  it('pelo giro, cita o quanto sai por semana', () => {
-    const texto = sugestaoPeloGiro({
-      giroSemanal: 15,
-      diasDesdeUltimaEntrega: 21,
-      quantidadeSugerida: 45,
-    });
-    expect(texto).toContain('21 dias');
-    expect(texto).toContain('15 brownies por semana');
-    expect(texto).toContain('mande 45');
-  });
 });
 
 describe('trocas e bonificações', () => {

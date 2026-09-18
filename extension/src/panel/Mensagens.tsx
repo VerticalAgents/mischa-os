@@ -7,7 +7,7 @@
  *
  * A extensão continua sem enviar nada — quem aperta enviar é o Lucca.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { inserirNaCaixa } from './useChatAberto';
 import Icone from './Icone';
 import type { ClienteDoPainel, AgendamentoDoPainel, EntregaDoPainel, FinanceiroDoPainel } from '@ext/lib/queries';
@@ -16,7 +16,6 @@ import {
   lembreteDePagamento,
   resumoUltimosPedidos,
   sugestaoIgualUltimoPedido,
-  sugestaoPeloGiro,
   avisoTrocasBonificacoes,
   type ItemDeSabor,
 } from '@ext/templates/mensagens';
@@ -26,20 +25,28 @@ interface Props {
   agendamento: AgendamentoDoPainel | null;
   entregas: EntregaDoPainel[];
   financeiro: FinanceiroDoPainel | null;
-  giroSemanal: number | null;
 }
 
-const diasDesde = (iso: string) =>
-  Math.round((Date.now() - new Date(`${iso.slice(0, 10)}T00:00:00`).getTime()) / 86400000);
-
-/** Múltiplo de 5, respeitando o pedido mínimo — do jeito que a fábrica embala. */
-const arredondarPedido = (quantidade: number) => Math.max(30, Math.round(quantidade / 5) * 5);
-
-export default function Mensagens({ cliente, agendamento, entregas, financeiro, giroSemanal }: Props) {
+export default function Mensagens({ cliente, agendamento, entregas, financeiro }: Props) {
   const [recado, setRecado] = useState<string | null>(null);
-  // Qual mensagem foi escrita por último e em qual jeito de dizer. Clicar de
-  // novo troca a variação, substituindo o texto na caixa em vez de empilhar.
+  // Qual mensagem foi escrita por último, para o próximo clique substituir o
+  // texto na caixa em vez de empilhar outro embaixo.
   const [ultima, setUltima] = useState<{ rotulo: string; variante: number } | null>(null);
+
+  /**
+   * Quantas vezes cada mensagem já foi usada.
+   *
+   * É o que faz o texto mudar a cada clique em vez de sair sempre igual. Fica
+   * guardado no navegador: se zerasse ao fechar o painel, o cliente receberia a
+   * primeira variação toda semana — que é exatamente o que soa de robô.
+   */
+  const [usos, setUsos] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    chrome.storage.local.get('variacoes-usadas').then((guardado) => {
+      setUsos((guardado?.['variacoes-usadas'] as Record<string, number>) || {});
+    });
+  }, []);
 
   const contato = cliente.contato_nome;
   const ultimaEntrega = entregas[0];
@@ -73,22 +80,6 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
       montar: (v) => sugestaoIgualUltimoPedido({ contato, ultimaEntrega: ultima_ }, v),
     },
     {
-      rotulo: 'Sugerir pelo giro',
-      disponivel: !!giroSemanal && !!ultima_,
-      montar: (v) => {
-        const dias = diasDesde(ultima_.data);
-        return sugestaoPeloGiro(
-          {
-            contato,
-            giroSemanal: giroSemanal!,
-            diasDesdeUltimaEntrega: dias,
-            quantidadeSugerida: arredondarPedido((giroSemanal! * dias) / 7),
-          },
-          v
-        );
-      },
-    },
-    {
       rotulo: 'Avisar troca ou bonificação',
       disponivel: !!(agendamento?.trocas_pendentes?.length || agendamento?.bonificacoes_pendentes?.length),
       montar: (v) =>
@@ -104,11 +95,13 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
     },
   ];
 
-  const escrever = async (rotulo: string, montar: (v: number) => string, trocandoJeito = false) => {
-    const variante = trocandoJeito && ultima?.rotulo === rotulo ? ultima.variante + 1 : 0;
+  const escrever = async (rotulo: string, montar: (v: number) => string) => {
+    const variante = usos[rotulo] ?? 0;
     const texto = montar(variante);
 
-    const ok = await inserirNaCaixa(texto, trocandoJeito);
+    // Substitui quando o texto na caixa é desta mesma mensagem — trocar o jeito
+    // de dizer não pode empilhar duas versões da mesma coisa.
+    const ok = await inserirNaCaixa(texto, ultima?.rotulo === rotulo);
 
     if (!ok) {
       await navigator.clipboard.writeText(texto);
@@ -117,10 +110,13 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
     }
 
     setUltima({ rotulo, variante });
+
+    const proximos = { ...usos, [rotulo]: variante + 1 };
+    setUsos(proximos);
+    chrome.storage.local.set({ 'variacoes-usadas': proximos });
+
     setRecado('Está na caixa. Confira, ajuste se quiser, e envie você.');
   };
-
-  const opcaoAtual = opcoes.find((o) => o.rotulo === ultima?.rotulo);
 
   return (
     <div className="cartao">
@@ -143,20 +139,11 @@ export default function Mensagens({ cliente, agendamento, entregas, financeiro, 
         ))}
       </div>
 
-      {ultima && opcaoAtual && (
-        <div className="campos rascunho">
-          {recado && <p className="apagado">{recado}</p>}
-          <button
-            className="secundario"
-            onClick={() => escrever(opcaoAtual.rotulo, opcaoAtual.montar, true)}
-          >
-            Escrever de outro jeito
-          </button>
-          <p className="apagado">A extensão nunca envia. Quem aperta enviar é você.</p>
-        </div>
+      {recado && <p className="apagado">{recado}</p>}
+      {ultima && (
+        <p className="apagado">Clique de novo no mesmo botão para escrever de outro jeito.</p>
       )}
 
-      {!ultima && recado && <p className="apagado">{recado}</p>}
     </div>
   );
 }
