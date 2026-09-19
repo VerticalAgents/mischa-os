@@ -30,6 +30,7 @@ export interface ContatoExterno {
   tipo: 'entregador' | 'fornecedor' | 'parceiro' | 'representante';
   telefone: string | null;
   valor_por_entrega: number | null;
+  valor_coleta: number | null;
 }
 
 export interface ParadaDaRota {
@@ -42,6 +43,8 @@ export interface ParadaDaRota {
   quantidade: number;
   etapa: 'Agendado' | 'Separado' | 'Despachado';
   entregue: boolean;
+  /** Null quando é cliente da Mischa's, sem representante. */
+  representanteId: number | null;
 }
 
 const iso = (d: Date) =>
@@ -50,7 +53,7 @@ const iso = (d: Date) =>
 export async function listarContatos(tipo?: ContatoExterno['tipo']): Promise<ContatoExterno[]> {
   let consulta = semTipos
     .from('contatos_externos')
-    .select('id, nome, tipo, telefone, valor_por_entrega')
+    .select('id, nome, tipo, telefone, valor_por_entrega, valor_coleta')
     .eq('ativo', true)
     .order('nome');
 
@@ -86,7 +89,7 @@ export async function rotaDoDia(dia = iso(new Date())): Promise<ParadaDaRota[]> 
   const { data, error } = await supabase
     .from('agendamentos_clientes')
     .select(
-      'id, cliente_id, quantidade_total, substatus_pedido, clientes!inner(nome, endereco_entrega, instrucoes_entrega, link_google_maps, ativo)'
+      'id, cliente_id, quantidade_total, substatus_pedido, clientes!inner(nome, endereco_entrega, instrucoes_entrega, link_google_maps, representante_id, ativo)'
     )
     .eq('status_agendamento', 'Agendado')
     .eq('data_proxima_reposicao', dia)
@@ -104,6 +107,7 @@ export async function rotaDoDia(dia = iso(new Date())): Promise<ParadaDaRota[]> 
       endereco_entrega: string | null;
       instrucoes_entrega: string | null;
       link_google_maps: string | null;
+      representante_id: number | null;
     };
   }[];
 
@@ -132,6 +136,7 @@ export async function rotaDoDia(dia = iso(new Date())): Promise<ParadaDaRota[]> 
       quantidade: l.quantidade_total ?? 0,
       etapa: l.substatus_pedido || 'Agendado',
       entregue: jaEntregues.has(l.cliente_id),
+      representanteId: l.clientes.representante_id ?? null,
     }))
     .sort((a, b) => a.cliente.localeCompare(b.cliente));
 }
@@ -165,33 +170,150 @@ export async function confirmarParada(agendamentoId: string, observacao?: string
 
 export interface ContaDoEntregador {
   entregas: number;
-  valor: number | null;
+  /** Dias com entrega: cada um tem uma coleta na fábrica, paga à parte. */
+  diasComColeta: number;
+  valorEntregas: number | null;
+  valorColetas: number | null;
+  total: number | null;
   desde: string;
 }
 
 /**
  * Quanto se deve ao entregador na semana.
  *
- * Conta as entregas confirmadas desde segunda. O valor por entrega vem do
- * cadastro do contato — se estiver em branco, o painel mostra só a contagem, em
- * vez de inventar um preço.
+ * A conta tem duas partes, combinadas com o Lucca em 18/09/2026:
+ *   - cada entrega vale o valor do cliente, ou o padrão do entregador;
+ *   - cada DIA em que houve entrega soma uma coleta na fábrica.
+ *
+ * Valor em branco no cadastro vira `null` em vez de zero: dizer "R$ 0,00" a
+ * pagar seria pior do que dizer que falta cadastrar.
  */
 export async function contaDaSemana(contato: ContatoExterno): Promise<ContaDoEntregador> {
   const segunda = new Date();
   segunda.setDate(segunda.getDate() - ((segunda.getDay() + 6) % 7));
   const desde = iso(segunda);
 
-  const { count } = await supabase
-    .from('historico_entregas')
-    .select('id', { count: 'exact', head: true })
-    .eq('tipo', 'entrega')
-    .gte('data', `${desde}T00:00:00`);
+  const feitas = await entregasDaSemana(contato.valor_por_entrega);
 
-  const entregas = count ?? 0;
+  const dias = new Set(feitas.map((e) => e.data.slice(0, 10)));
+  const valorColeta = contato.valor_coleta ?? contato.valor_por_entrega;
+
+  const temTodosOsValores = feitas.every((e) => e.valor != null);
+  const valorEntregas = temTodosOsValores
+    ? feitas.reduce((s, e) => s + (e.valor || 0), 0)
+    : null;
+  const valorColetas = valorColeta != null ? dias.size * Number(valorColeta) : null;
 
   return {
-    entregas,
-    valor: contato.valor_por_entrega ? entregas * Number(contato.valor_por_entrega) : null,
+    entregas: feitas.length,
+    diasComColeta: dias.size,
+    valorEntregas,
+    valorColetas,
+    total: valorEntregas != null && valorColetas != null ? valorEntregas + valorColetas : null,
     desde,
   };
+}
+
+export interface EntregaFeita {
+  id: string;
+  clienteId: string;
+  cliente: string;
+  data: string;
+  /** O que essa entrega vale para o entregador. */
+  valor: number | null;
+}
+
+/**
+ * O que já foi entregue desde segunda.
+ *
+ * É a lista que sustenta o pagamento da semana — e é ela que o Lucca confere
+ * quando vai acertar com o entregador.
+ */
+export async function entregasDaSemana(padrao?: number | null): Promise<EntregaFeita[]> {
+  const segunda = new Date();
+  segunda.setDate(segunda.getDate() - ((segunda.getDay() + 6) % 7));
+
+  // `historico_entregas` não tem chave estrangeira para `clientes`, então o
+  // nome do cliente não vem junto: são duas consultas mesmo.
+  const { data, error } = await supabase
+    .from('historico_entregas')
+    .select('id, cliente_id, data')
+    .eq('tipo', 'entrega')
+    .gte('data', `${iso(segunda)}T00:00:00`)
+    .order('data', { ascending: false });
+
+  if (error) throw error;
+
+  const linhas = (data || []) as { id: string; cliente_id: string; data: string }[];
+  if (!linhas.length) return [];
+
+  const { data: clientes } = await supabase
+    .from('clientes')
+    .select('id, nome, valor_entrega_personalizado')
+    .in('id', [...new Set(linhas.map((l) => l.cliente_id))]);
+
+  // `valor_entrega_personalizado` é coluna nova; o types.ts gerado ainda não a
+  // conhece até o Lovable regerar.
+  const porId = new Map(
+    ((clientes || []) as unknown as {
+      id: string;
+      nome: string;
+      valor_entrega_personalizado: number | null;
+    }[]).map((c) => [c.id, c])
+  );
+
+  return linhas.map((l) => {
+    const cliente = porId.get(l.cliente_id);
+    // O cliente manda quando tem valor próprio: Griffe da Beleza é mais barato,
+    // The Brothers é bem mais caro por ser longe.
+    const personalizado = cliente?.valor_entrega_personalizado;
+
+    return {
+      id: l.id,
+      clienteId: l.cliente_id,
+      cliente: cliente?.nome || 'cliente',
+      data: l.data,
+      valor:
+        personalizado != null
+          ? Number(personalizado)
+          : padrao != null
+            ? Number(padrao)
+            : null,
+    };
+  });
+}
+
+/**
+ * Quem entrega o quê.
+ *
+ * A rota do entregador não é necessariamente a base inteira: o Lucca escolhe de
+ * quais carteiras ele leva — a da Mischa's (cliente sem representante) e as dos
+ * representantes marcados. A escolha fica guardada por entregador no navegador,
+ * porque é preferência de uso, não regra de negócio.
+ */
+export const MISCHAS = 'mischas';
+
+export async function listarCarteiras(): Promise<{ chave: string; nome: string }[]> {
+  const { data } = await supabase.from('representantes').select('id, nome').order('nome');
+
+  return [
+    { chave: MISCHAS, nome: "Mischa's (direto)" },
+    ...((data || []) as { id: number; nome: string }[]).map((r) => ({
+      chave: String(r.id),
+      nome: r.nome,
+    })),
+  ];
+}
+
+export const carteiraDaParada = (p: ParadaDaRota) =>
+  p.representanteId === null ? MISCHAS : String(p.representanteId);
+
+export async function lerCarteirasEscolhidas(contatoId: string): Promise<string[] | null> {
+  const chave = `carteiras-${contatoId}`;
+  const guardado = await chrome.storage.local.get(chave);
+  return (guardado?.[chave] as string[]) ?? null;
+}
+
+export async function guardarCarteirasEscolhidas(contatoId: string, carteiras: string[]) {
+  await chrome.storage.local.set({ [`carteiras-${contatoId}`]: carteiras });
 }

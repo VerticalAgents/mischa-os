@@ -614,3 +614,6 @@ button.secundario.acao-atencao:hover:not(:disabled) { background: hsl(var(--aler
 .parada:last-of-type { border-bottom: 0; }
 .parada .linha { border-bottom: 0; padding: 2px 0; }
 .parada button.estreito { width: 100%; margin-top: 6px; }
+
+.parada .entregue { color: hsl(155 75% 30%); font-weight: 600; }
+:root[data-tema='escuro'] .parada .entregue { color: hsl(var(--menta)); }
