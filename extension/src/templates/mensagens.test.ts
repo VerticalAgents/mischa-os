@@ -134,10 +134,10 @@ describe('trocas e bonificações', () => {
 });
 
 describe('tabela de preço', () => {
-  it('ponto de venda: R$ 4,80, mínimo 30 e troca', () => {
+  it('ponto de venda: R$ 4,80, mínimo 36 e troca', () => {
     const texto = tabelaDePrecos();
     expect(texto).toContain('R$ 4,80');
-    expect(texto).toContain('30 unidades, em múltiplos de 5');
+    expect(texto).toContain('Pedido mínimo: 36 unidades');
     expect(texto).toContain('quarta e sexta');
     expect(texto).toContain('frete grátis');
     expect(texto).toContain('4 primeiros pedidos são à vista');
@@ -189,7 +189,7 @@ describe('variações', () => {
     for (const v of [0, 1, 2, 3]) {
       const texto = tabelaDePrecos({}, v);
       expect(texto).toContain('R$ 4,80');
-      expect(texto).toContain('30 unidades, em múltiplos de 5');
+      expect(texto).toContain('Pedido mínimo: 36 unidades');
     }
     expect(tabelaDePrecos({}, 0)).not.toBe(tabelaDePrecos({}, 1));
   });

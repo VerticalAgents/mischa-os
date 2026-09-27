@@ -297,7 +297,7 @@ export function tabelaDePrecos(dados: { ambulante?: boolean } = {}, variante = 0
     `Sabores: ${SABORES.join(', ')}`,
     '',
     `Valor: ${dinheiro(faixa.valorUnitario)} a unidade`,
-    `Pedido mínimo: ${PEDIDO_MINIMO.unidades} unidades, em múltiplos de ${PEDIDO_MINIMO.multiploDe}`,
+    `Pedido mínimo: ${PEDIDO_MINIMO.unidades} unidades`,
     `Entregas em ${ENTREGA.cidade}, ${ENTREGA.dias.join(' e ')}${ENTREGA.freteGratis ? ', com frete grátis' : ''}`,
   ];
 

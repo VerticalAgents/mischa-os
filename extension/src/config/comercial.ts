@@ -27,7 +27,7 @@ export const PRECOS = {
   },
 } as const;
 
-export const PEDIDO_MINIMO = { unidades: 30, multiploDe: 5 } as const;
+export const PEDIDO_MINIMO = { unidades: 36 } as const; // sem regra de múltiplo desde 27/09/2026
 
 export const SABORES = [
   'Tradicional',
