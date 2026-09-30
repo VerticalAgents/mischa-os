@@ -115,24 +115,53 @@ async function resolveTokensDoDono(
   return { access_token: cfg.access_token, secret_token: cfg.secret_token };
 }
 
-// Helper: Calculate data_vencimento based on payment method
-function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: number | null): string {
-  const dataVenda = new Date();
-  
-  switch (formaPagamento) {
-    case 'DINHEIRO':
-      // Same day
-      return formatDate(dataVenda);
-    case 'PIX':
-      // +1 day
-      return formatDate(addDays(dataVenda, 1));
-    case 'BOLETO':
-    default:
-      // Use prazo_pagamento_dias (default 7)
-      const prazo = prazoPagamentoDias || 7;
-      return formatDate(addDays(dataVenda, prazo));
-  }
+interface PrazoCliente {
+  forma_pagamento?: string | null;
+  prazo_pagamento_tipo?: string | null;
+  prazo_pagamento_dias?: number | null;
+  prazo_pagamento_dia_semana?: number | null;
+  prazo_pagamento_dias_minimos?: number | null;
 }
+
+// Helper: data da venda = data em que o pedido está agendado (hoje, se não houver)
+function dataDoAgendamento(dataProximaReposicao: string | null | undefined): string {
+  const data = String(dataProximaReposicao || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(data) ? data : formatDate(new Date());
+}
+
+// Helper: Calculate data_vencimento a partir da data da venda (YYYY-MM-DD)
+// Mesmas regras de src/utils/prazoPagamento.ts, para o boleto bater com o PDF do pedido.
+// Vale o prazo do cadastro para qualquer forma de pagamento (tem cliente de PIX com prazo).
+function calcularDataVencimento(dataBase: string, cliente: PrazoCliente): string {
+  const base = new Date(`${dataBase}T00:00:00Z`);
+  const somar = (d: Date, dias: number) => new Date(d.getTime() + dias * 86400000);
+  const tipo = cliente.prazo_pagamento_tipo || 'dias';
+
+  if (tipo === 'proximo_dia_semana') {
+    const minimos = Math.max(0, Number(cliente.prazo_pagamento_dias_minimos ?? 0));
+    const alvo = Math.min(6, Math.max(0, Number(cliente.prazo_pagamento_dia_semana ?? 1)));
+    let d = somar(base, minimos);
+    let guard = 0;
+    while (d.getUTCDay() !== alvo && guard < 8) {
+      d = somar(d, 1);
+      guard++;
+    }
+    return formatDate(d);
+  }
+
+  if (tipo === 'ultimo_dia_util_mes') {
+    let d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0));
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) {
+      d = somar(d, -1);
+    }
+    return formatDate(d);
+  }
+
+  const dias = cliente.prazo_pagamento_dias ?? (cliente.forma_pagamento === 'PIX' ? 1 : 7);
+  return formatDate(somar(base, Math.max(0, Number(dias))));
+}
+
+const CAMPOS_PRAZO_CLIENTE = 'forma_pagamento, prazo_pagamento_tipo, prazo_pagamento_dias, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos';
 
 // Helper: Detect GestaoClick error in response (even with 200 status)
 function hasGCError(responseText: string, status: number): boolean {
@@ -607,7 +636,7 @@ Deno.serve(async (req) => {
         // Check if agendamento already has a venda
         const { data: agendamentoExistente } = await supabase
           .from('agendamentos_clientes')
-          .select('gestaoclick_venda_id')
+          .select('gestaoclick_venda_id, data_proxima_reposicao')
           .eq('id', agendamento_id)
           .single();
 
@@ -656,7 +685,7 @@ Deno.serve(async (req) => {
         // 2. Get client data
         const { data: cliente, error: clienteError } = await supabase
           .from('clientes')
-          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome')
+          .select(`gestaoclick_cliente_id, nome, ${CAMPOS_PRAZO_CLIENTE}`)
           .eq('id', cliente_id)
           .single();
 
@@ -779,11 +808,11 @@ Deno.serve(async (req) => {
         // 9. Get next sequential code from GestaoClick
         const codigo = await getProximoCodigoVenda(config.access_token, config.secret_token);
         console.log(`[gestaoclick-proxy] Código da nova venda: ${codigo}`);
-        const dataVenda = formatDate(new Date());
-        
+        const dataVenda = dataDoAgendamento(agendamentoExistente?.data_proxima_reposicao);
+
         // 10. Calculate data_vencimento based on payment method
-        const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
-        console.log(`[gestaoclick-proxy] Payment: ${formaPagamento}, Prazo: ${cliente.prazo_pagamento_dias}, Data Vencimento: ${dataVencimento}`);
+        const dataVencimento = calcularDataVencimento(dataVenda, cliente);
+        console.log(`[gestaoclick-proxy] Data venda: ${dataVenda}, Payment: ${formaPagamento}, Prazo: ${cliente.prazo_pagamento_tipo || 'dias'}/${cliente.prazo_pagamento_dias}, Data Vencimento: ${dataVencimento}`);
 
         // 11. Build sale payload according to GestaoClick API docs
         const vendaPayload: Record<string, any> = {
@@ -1002,7 +1031,7 @@ Deno.serve(async (req) => {
         // 3. Get client data
         const { data: cliente } = await supabase
           .from('clientes')
-          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome, representante_id')
+          .select(`gestaoclick_cliente_id, nome, representante_id, ${CAMPOS_PRAZO_CLIENTE}`)
           .eq('id', cliente_id)
           .single();
 
@@ -1108,8 +1137,13 @@ Deno.serve(async (req) => {
 
         // 10. Get next sequential code
         const novoCodigo = await getProximoCodigoVenda(config.access_token, config.secret_token);
-        const dataVenda = formatDate(new Date());
-        const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
+        const { data: agendamentoAtual } = await supabase
+          .from('agendamentos_clientes')
+          .select('data_proxima_reposicao')
+          .eq('id', agendamento_id)
+          .single();
+        const dataVenda = dataDoAgendamento(agendamentoAtual?.data_proxima_reposicao);
+        const dataVencimento = calcularDataVencimento(dataVenda, cliente);
 
         // 11. Build new sale payload
         const vendaPayload: Record<string, any> = {
@@ -1224,7 +1258,7 @@ Deno.serve(async (req) => {
         // Check if agendamento already has an NF
         const { data: agendamentoCheck } = await supabase
           .from('agendamentos_clientes')
-          .select('gestaoclick_nf_id, gestaoclick_venda_id')
+          .select('gestaoclick_nf_id, gestaoclick_venda_id, data_proxima_reposicao')
           .eq('id', agendamento_id)
           .single();
 
@@ -1272,7 +1306,7 @@ Deno.serve(async (req) => {
         // Get client data
         const { data: cliente, error: clienteError } = await supabase
           .from('clientes')
-          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome')
+          .select(`gestaoclick_cliente_id, nome, ${CAMPOS_PRAZO_CLIENTE}`)
           .eq('id', cliente_id)
           .single();
 
@@ -1418,8 +1452,9 @@ Deno.serve(async (req) => {
           );
         }
 
-        const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
-        
+        // Emissão da NF é hoje (SEFAZ não aceita data futura); o vencimento segue o agendamento, igual à venda
+        const dataVencimento = calcularDataVencimento(dataDoAgendamento(agendamentoCheck?.data_proxima_reposicao), cliente);
+
         // Helper to format date as DD/MM/YYYY for GestaoClick
         const formatDateBR = (dateStr: string): string => {
           const [year, month, day] = dateStr.split('-');
