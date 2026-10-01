@@ -1,0 +1,13 @@
+{
+  // Hospedagem do Mischa OS na Cloudflare (Workers com arquivos estáticos, plano grátis).
+  // Só serve o que o `npm run build` gera em dist/; banco e funções continuam no Supabase.
+  "name": "mischa-os",
+  "compatibility_date": "2026-09-30",
+  "routes": [
+    { "pattern": "sistema.mischasbakery.com.br", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
