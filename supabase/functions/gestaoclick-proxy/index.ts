@@ -161,7 +161,20 @@ function calcularDataVencimento(dataBase: string, cliente: PrazoCliente): string
   return formatDate(somar(base, Math.max(0, Number(dias))));
 }
 
-const CAMPOS_PRAZO_CLIENTE = 'forma_pagamento, prazo_pagamento_tipo, prazo_pagamento_dias, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos';
+// Helper: da resposta de GET /vendas?codigo=, a venda com aquele código — conferido aqui,
+// sem confiar no filtro da API (o de /clientes e /produtos devolve a base inteira).
+function vendaComCodigo(lista: unknown, codigo: unknown): any | null {
+  if (!Array.isArray(lista)) return null;
+  const alvo = String(codigo ?? '').trim();
+  if (!alvo) return null;
+  for (const item of lista) {
+    const venda = (item as any)?.Venda || item;
+    if (String(venda?.codigo ?? '').trim() === alvo) return venda;
+  }
+  return null;
+}
+
+const CAMPOS_PRAZO_CLIENTE ='forma_pagamento, prazo_pagamento_tipo, prazo_pagamento_dias, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos';
 
 // Helper: Detect GestaoClick error in response (even with 200 status)
 function hasGCError(responseText: string, status: number): boolean {
@@ -1346,8 +1359,9 @@ Deno.serve(async (req) => {
             console.log(`[gestaoclick-proxy] Venda search response: ${vendaSearchResponse.status} ${vendaSearchText.substring(0, 300)}`);
             
             const vendaSearchData = JSON.parse(vendaSearchText);
-            if (vendaSearchData.code === 200 && vendaSearchData.data && Array.isArray(vendaSearchData.data) && vendaSearchData.data.length > 0) {
-              vendaInternalId = parseInt(vendaSearchData.data[0].id, 10);
+            const vendaEncontrada = vendaSearchData.code === 200 ? vendaComCodigo(vendaSearchData.data, vendaCodigo) : null;
+            if (vendaEncontrada) {
+              vendaInternalId = parseInt(vendaEncontrada.id, 10);
               console.log(`[gestaoclick-proxy] Venda codigo=${vendaCodigo} → ID interno=${vendaInternalId}`);
             } else {
               console.warn(`[gestaoclick-proxy] Venda com codigo=${vendaCodigo} não encontrada no GC`);
@@ -1890,8 +1904,7 @@ Deno.serve(async (req) => {
               
               try {
                 const vendaData = JSON.parse(vendaText);
-                // Check if the response has valid data array with at least one result
-                if (vendaData.code === 200 && vendaData.data && Array.isArray(vendaData.data) && vendaData.data.length > 0) {
+                if (vendaData.code === 200 && vendaComCodigo(vendaData.data, ag.gestaoclick_venda_id)) {
                   vendaExists = true;
                 }
               } catch {
@@ -2478,8 +2491,7 @@ Deno.serve(async (req) => {
         }
 
         const vendaJson = await vendaResp.json();
-        const lista = vendaJson?.data || [];
-        const venda = (lista[0]?.Venda || lista[0]) ?? null;
+        const venda = vendaComCodigo(vendaJson?.data, codigo);
 
         if (!venda?.id) {
           return new Response(
