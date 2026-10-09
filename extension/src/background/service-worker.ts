@@ -80,9 +80,12 @@ chrome.action.onClicked.addListener(async (aba) => {
     return;
   }
 
-  await ajustarPainel(aba.id, aba.url);
+  // O navegador só deixa abrir o painel logo em seguida ao clique. Qualquer
+  // `await` antes disso pode fazer ele perder o clique e não abrir nada — por
+  // isso liga e abre de imediato, e só depois garante o código na aba.
+  chrome.sidePanel.setOptions({ tabId: aba.id, path: CAMINHO_DO_PAINEL, enabled: true }).catch(() => {});
+  chrome.sidePanel.open({ tabId: aba.id }).catch(() => {});
   await garantirCodigoNaAba(aba.id);
-  await chrome.sidePanel.open({ tabId: aba.id }).catch(() => {});
 });
 
 /** O painel pede isto quando não consegue falar com a aba. */
