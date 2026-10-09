@@ -63,3 +63,104 @@ export function dividirEmPacotes(quantidadeTotal: number): PacoteEtiqueta[] {
     };
   });
 }
+
+/**
+ * Validade impressa na etiqueta do nano e do mini: 120 dias a partir do dia em
+ * que a etiqueta sai da impressora (Lucca, 09/10/2026). Não é a data de
+ * produção: a etiqueta é impressa no dia de separar.
+ */
+export const VALIDADE_AVULSO_DIAS = 120;
+
+/**
+ * Nano (1 kg) e mini (2 kg) são vendidos por PACOTE, e cada pacote já sai
+ * fechado da fábrica. Não entram no saco de 40 brownies: cada um ganha a sua
+ * etiqueta, com validade.
+ */
+const PREFIXOS_AVULSO = ["nano brownie", "mini brownie"];
+
+/**
+ * The Brothers recebe o mini em pacote de 2 kg com o rótulo dela, e não usa a
+ * nossa etiqueta (Lucca, 09/10/2026).
+ */
+const CLIENTES_SEM_ETIQUETA = ["the brothers distribuidora"];
+
+const normalizar = (s: unknown): string =>
+  String(s ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase();
+
+export interface ItemEtiqueta {
+  nome: string;
+  quantidade: number;
+}
+
+export type EtiquetaPedido =
+  | {
+      tipo: "pacote";
+      pacote: PacoteEtiqueta;
+      /**
+       * Sabores do PEDIDO inteiro, em toda etiqueta (Lucca, 09/10/2026). Com
+       * mais de um pacote, quanto de cada sabor vai em cada um não é controlado.
+       */
+      sabores: ItemEtiqueta[];
+    }
+  | {
+      tipo: "avulso";
+      produto: string;
+      /** "1 de 4", contando só os pacotes de nano e mini do pedido. */
+      rotulo: string;
+      validade: Date;
+    };
+
+export function somarDias(data: Date, dias: number): Date {
+  const d = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+  d.setDate(d.getDate() + dias);
+  return d;
+}
+
+/**
+ * Todas as etiquetas de um pedido, na ordem em que saem: primeiro os pacotes
+ * de brownie, depois um por pacote de nano/mini.
+ *
+ * `itens` é o que vai no pedido, já resolvido (pedido Padrão chega com a
+ * proporção padrão calculada).
+ */
+export function montarEtiquetasPedido(
+  clienteNome: string,
+  itens: ItemEtiqueta[],
+  hoje: Date
+): EtiquetaPedido[] {
+  if (CLIENTES_SEM_ETIQUETA.includes(normalizar(clienteNome))) return [];
+
+  const validos = itens
+    .map((i) => ({ nome: String(i.nome ?? ""), quantidade: Math.floor(Number(i.quantidade) || 0) }))
+    .filter((i) => i.quantidade > 0);
+  const ehAvulso = (i: ItemEtiqueta) => PREFIXOS_AVULSO.some((p) => normalizar(i.nome).startsWith(p));
+  const brownies = validos.filter((i) => !ehAvulso(i));
+  const avulsos = validos.filter(ehAvulso);
+
+  const etiquetas: EtiquetaPedido[] = [];
+
+  const unidadesBrownie = brownies.reduce((s, i) => s + i.quantidade, 0);
+  // Pedido só de nano/mini não tem saco de brownie. Pedido sem item nenhum
+  // ainda rende uma etiqueta: o volume existe e precisa ser identificado.
+  if (unidadesBrownie > 0 || avulsos.length === 0) {
+    const pacotes = dividirEmPacotes(unidadesBrownie);
+    for (const pacote of pacotes) {
+      etiquetas.push({ tipo: "pacote", pacote, sabores: brownies });
+    }
+  }
+
+  const totalAvulsos = avulsos.reduce((s, i) => s + i.quantidade, 0);
+  const validade = somarDias(hoje, VALIDADE_AVULSO_DIAS);
+  let n = 0;
+  for (const item of avulsos) {
+    for (let i = 0; i < item.quantidade; i++) {
+      n++;
+      etiquetas.push({ tipo: "avulso", produto: item.nome, rotulo: `${n} de ${totalAvulsos}`, validade });
+    }
+  }
+  return etiquetas;
+}

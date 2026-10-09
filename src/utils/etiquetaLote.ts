@@ -40,19 +40,26 @@ export const ALTURA_LINHA = ROLO.altura + ROLO.espacoLinha;
 /**
  * O rolo tem uma picotada a 18,5 mm do topo.
  *
- * No sistema de rastreabilidade, tudo o que precisa sobreviver ao destaque cabe
- * acima dela. Aqui o bloco do topo passa disso de propósito: com o nome em 10pt
- * (pedido do dono, porque em 8,5pt estava pequeno demais para ler de longe) e a
- * pílula maior, os dois não cabem em 15,5 mm.
- *
- * O que se perde: se alguém destacar a etiqueta na picotada, a pílula do volume
- * pode ser cortada ao meio em nomes de três linhas. O NOME continua inteiro
- * acima dela, que é o dado que não pode se perder.
+ * O nome do cliente cabe acima dela. A tarja Padrão/Alterado fica abaixo, de
+ * propósito: o Lucca pediu 3 mm a mais de folga para nome comprido (09/10/2026).
+ * Se alguém destacar na picotada, a tarja vai embora e o nome fica.
  */
 export const PICOTADA_MM = 18.5;
 
-/** Altura do bloco do topo: nome (até 3 linhas de 10pt) + pílula. */
-export const ALTURA_TOPO = 21;
+/** Altura do bloco do topo: linha da pílula + nome (até 3 linhas) + tarja. */
+export const ALTURA_TOPO = 23;
+
+/**
+ * Tamanho da letra do nome conforme o comprimento. A etiqueta tem 29,6 mm úteis:
+ * em 10,5pt cabem uns 14 caracteres por linha, e nome como "Severo Garage
+ * (Boulevard ...)" passava de três linhas e saía cortado.
+ */
+export const classeTamanhoNome = (nome: unknown): string => {
+  const n = String(nome ?? "").trim().length;
+  if (n > 40) return "nome-pp";
+  if (n > 28) return "nome-p";
+  return "";
+};
 
 /** Escapa texto vindo do banco antes de entrar no HTML de impressão. */
 export const escapar = (valor: unknown): string =>
@@ -111,6 +118,7 @@ export const estilosEtiquetaLote = (): string => `
   }
 
   .etiqueta {
+    position: relative;
     width: ${ROLO.largura}mm;
     height: ${ROLO.altura}mm;
     padding: 2mm 2.2mm;
@@ -136,9 +144,9 @@ export const estilosEtiquetaLote = (): string => `
   }
 
   /*
-    Bloco que precisa sobreviver ao destaque da picotada: nome e volume.
+    Bloco que precisa sobreviver ao destaque da picotada: nome e tarja.
 
-    Altura fixa de propósito. A pílula é empurrada para o pé do bloco
+    Altura fixa de propósito. A tarja é empurrada para o pé do bloco
     (margin-top auto), então ela cai sempre na mesma linha, tenha o nome uma
     ou três linhas — e nada abaixo dela se mexe.
   */
@@ -154,9 +162,8 @@ export const estilosEtiquetaLote = (): string => `
     O único negrito pesado da etiqueta: é o que se lê primeiro.
 
     Teto de três linhas. Sem ele, um nome comprido em 10pt ocupava cinco linhas
-    e empurrava a pílula para fora do bloco — ela sumia justamente nas etiquetas
-    em que mais importa. Nome maior que isso sai cortado com reticências: o
-    começo do nome identifica o cliente, a pílula não tem substituto.
+    e empurrava a tarja para fora do bloco. Nome maior que isso sai cortado com
+    reticências: o começo do nome identifica o cliente.
   */
   .cliente {
     /* Arial Narrow cabe ~30% mais caractere na mesma altura de letra, e existe
@@ -168,7 +175,8 @@ export const estilosEtiquetaLote = (): string => `
     line-height: 1.1;
     text-transform: uppercase;
     letter-spacing: -0.02em;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: anywhere;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -181,18 +189,40 @@ export const estilosEtiquetaLote = (): string => `
     margin: 1.4mm 0;
   }
 
-  .entrega {
+  .cliente.nome-p { font-size: 8.5pt; }
+  .cliente.nome-pp { font-size: 7.5pt; }
+
+  /*
+    Linha própria para a pílula, acima do nome. Quando ela ficava em cima do
+    nome, roubava largura e o nome quebrava no meio da palavra (REDEVIP24 / H).
+  */
+  .linha-pilula {
+    height: 3.2mm;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1mm;
+    justify-content: flex-end;
+    align-items: flex-start;
+    flex: none;
   }
 
-  /* Peso normal de propósito: com tudo em negrito, nada se destacava e o nome
-     do cliente sumia no meio. */
-  .data {
-    font-size: 8.5pt;
-    letter-spacing: -0.02em;
+  /* Padrão ou Alterado. A térmica não tem cor: o que diferencia é preto cheio ou contorno. */
+  .tarja {
+    margin-top: auto;
+    background: #000;
+    color: #fff;
+    text-align: center;
+    font-size: 7pt;
+    font-weight: bold;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.6mm 0;
+    border: 0.3mm solid #000;
+  }
+
+  /* Padrão só com contorno: o preto cheio fica para o Alterado, que é o que
+     pede atenção na separação (Lucca, 09/10/2026). */
+  .tarja.contorno {
+    background: #fff;
+    color: #000;
   }
 
   .meio {
@@ -203,30 +233,61 @@ export const estilosEtiquetaLote = (): string => `
     justify-content: center;
   }
 
-  /*
-    A pílula fica no pé do bloco do nome, acima da régua.
-
-    Como o bloco tem altura fixa, ela cai sempre na mesma linha e não empurra
-    nada — que era o problema de quando ela morava no meio da etiqueta.
-  */
-  .slot-pilula {
-    margin-top: auto;
-    display: flex;
-    justify-content: center;
-  }
-
-  /* "1 de 3" é o que a pessoa procura com a caixa na mão. */
+  /* "1 de 3": pequena, no canto de cima (pedido do Lucca, 09/10/2026). */
   .pilula {
-    display: inline-block;
     background: #000;
     color: #fff;
     border-radius: 99mm;
-    padding: 1.3mm 3.6mm;
-    font-size: 13pt;
+    padding: 0.4mm 1.4mm;
+    font-size: 6.5pt;
     font-weight: bold;
-    line-height: 1.05;
-    letter-spacing: -0.01em;
+    line-height: 1.1;
     white-space: nowrap;
+  }
+
+  /* Sabores do pedido inteiro. Com mais de um pacote, o número grande é aproximado. */
+  .sabores {
+    width: 100%;
+    font-size: 7.5pt;
+    line-height: 1.25;
+    margin-bottom: 1mm;
+  }
+
+  .sabor {
+    display: flex;
+    justify-content: space-between;
+    gap: 1mm;
+  }
+
+  .sabor b {
+    font-weight: bold;
+  }
+
+  /* Unidades do pacote: acima dos sabores, alinhadas à esquerda (Lucca, 09/10/2026). */
+  .bloco-un {
+    align-self: stretch;
+    text-align: left;
+    margin-bottom: 3mm;
+  }
+
+  .com-sabores .unidades {
+    font-size: 15pt;
+  }
+
+  /* Etiqueta de nano/mini: o nome do produto é o que se lê. */
+  .produto {
+    font-family: "Arial Narrow", "Liberation Sans Narrow", Arial, sans-serif;
+    font-size: 11pt;
+    font-weight: bold;
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .validade {
+    font-size: 10pt;
+    font-weight: bold;
+    letter-spacing: -0.02em;
   }
 
   .unidades {

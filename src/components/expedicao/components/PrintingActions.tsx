@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
-import { dividirEmPacotes } from "@/utils/pacotesEtiqueta";
-import { ROLO, escapar, estilosEtiquetaLote } from "@/utils/etiquetaLote";
+import { montarEtiquetasPedido, type EtiquetaPedido } from "@/utils/pacotesEtiqueta";
+import { ROLO, classeTamanhoNome, escapar, estilosEtiquetaLote } from "@/utils/etiquetaLote";
 import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
 import { SelecaoPedidosImpressaoDialog } from "./SelecaoPedidosImpressaoDialog";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
@@ -620,11 +620,24 @@ export const PrintingActions = ({
       return;
     }
 
-    // A etiqueta é do PACOTE, não do pedido: cabem 40 unidades por volume,
-    // então um pedido de 120 rende três etiquetas ("1 de 3", "2 de 3"...).
-    const etiquetas = listaAtual.flatMap((pedido) =>
-      dividirEmPacotes(pedido.quantidade_total).map((pacote) => ({ pedido, pacote }))
+    // A etiqueta é do PACOTE, não do pedido: cabem 40 brownies por volume, e
+    // cada pacote de nano/mini ganha a sua (ver pacotesEtiqueta.ts).
+    const hoje = new Date();
+    const etiquetas: { pedido: any; etiqueta: EtiquetaPedido }[] = listaAtual.flatMap((pedido) =>
+      montarEtiquetasPedido(
+        pedido.cliente_nome,
+        buildProdutosParaExibir(pedido).map((item: any) => ({
+          nome: item.nome || item.produto || item.sabor || "Produto",
+          quantidade: item.quantidade || item.quantidade_sabor || 0,
+        })),
+        hoje
+      ).map((etiqueta) => ({ pedido, etiqueta }))
     );
+
+    if (etiquetas.length === 0) {
+      toast.error("Nenhum desses pedidos leva etiqueta.");
+      return;
+    }
 
     // O rolo tem três colunas e a impressora avança a linha inteira, então cada
     // PÁGINA é uma linha com até três etiquetas — não uma etiqueta.
@@ -633,31 +646,59 @@ export const PrintingActions = ({
       linhas.push(etiquetas.slice(i, i + ROLO.colunas));
     }
 
-    const desenharEtiqueta = ({ pedido, pacote }: (typeof etiquetas)[number]) => `
-      <div class="etiqueta">
-        <div class="topo">
-          <div class="cliente">${escapar(pedido.cliente_nome)}</div>
-          <div class="slot-pilula">${pacote.rotulo ? `<span class="pilula">${pacote.rotulo}</span>` : ""}</div>
-        </div>
-        <div class="regua"></div>
-        <div class="entrega">
-          <span class="rotulo">Entrega</span>
-          <span class="data">${formatDate(new Date(pedido.data_prevista_entrega))}</span>
-        </div>
-        <div class="meio">
-          <div class="unidades">${pacote.unidades}<span> un.</span></div>
-        </div>
-        <div class="rodape">
-          <span class="rotulo">Pedido</span>
-          <span class="total">${pacote.unidadesDoPedido} un.</span>
-        </div>
+    const topo = (pedido: any, rotulo: string) => `
+      <div class="topo">
+        <div class="linha-pilula">${rotulo ? `<span class="pilula">${escapar(rotulo)}</span>` : ""}</div>
+        <div class="cliente ${classeTamanhoNome(pedido.cliente_nome)}">${escapar(pedido.cliente_nome)}</div>
+        ${pedido.tipo_pedido ? `<div class="tarja${pedido.tipo_pedido === "Alterado" ? "" : " contorno"}">${escapar(pedido.tipo_pedido)}</div>` : ""}
       </div>
+      <div class="regua"></div>
     `;
+
+    const desenharEtiqueta = ({ pedido, etiqueta }: (typeof etiquetas)[number]) => {
+      if (etiqueta.tipo === "avulso") {
+        return `
+          <div class="etiqueta">
+            ${topo(pedido, etiqueta.rotulo)}
+            <div class="meio">
+              <div class="produto">${escapar(etiqueta.produto)}</div>
+            </div>
+            <div class="rodape">
+              <span class="rotulo">Validade</span>
+              <span class="validade">${formatDate(etiqueta.validade)}</span>
+            </div>
+          </div>
+        `;
+      }
+      const { pacote, sabores } = etiqueta;
+      const classes = ["etiqueta", sabores.length ? "com-sabores" : ""]
+        .filter(Boolean)
+        .join(" ");
+      const varios = pacote.total > 1;
+      const listaSabores = sabores.length
+        ? `<div class="sabores">${varios ? `<div class="rotulo">No pedido</div>` : ""}${sabores
+            .map((s) => `<div class="sabor"><span>${escapar(s.nome.replace(/^Brownie\s+/i, ""))}</span><b>${s.quantidade}</b></div>`)
+            .join("")}</div>`
+        : "";
+      return `
+        <div class="${classes}">
+          ${topo(pedido, pacote.rotulo)}
+          <div class="meio">
+            ${varios
+              ? `<div class="bloco-un"><div class="unidades">≈ ${pacote.unidades}<span> un.</span></div><div class="rotulo">aprox. neste pacote</div></div>`
+              : ""}
+            ${listaSabores}
+          </div>
+          <div class="rodape">
+            <span class="rotulo">Total do pedido</span>
+            <span class="total">${pacote.unidadesDoPedido} un.</span>
+          </div>
+        </div>
+      `;
+    };
 
     const corpo = linhas
       .map((linha) => {
-        // Última linha incompleta ganha etiquetas invisíveis para que as reais
-        // continuem nas colunas certas do rolo.
         // Última linha incompleta ganha etiquetas invisíveis para que as reais
         // continuem nas colunas certas do rolo.
         const vazias = Array.from(
