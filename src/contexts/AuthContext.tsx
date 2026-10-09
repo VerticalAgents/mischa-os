@@ -455,7 +455,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       secureLogger.info('Logging out user');
-      const { error } = await supabase.auth.signOut();
+      // Só este navegador: sem o scope, o Supabase derruba todos os logins do
+      // usuário — inclusive o da extensão do WhatsApp.
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) {
         secureLogger.error('Error during logout', { error });
         toast.error("Erro ao fazer logout: " + error.message);
