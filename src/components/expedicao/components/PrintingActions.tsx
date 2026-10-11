@@ -662,6 +662,7 @@ export const PrintingActions = ({
             ${topo(pedido, etiqueta.rotulo)}
             <div class="meio">
               <div class="produto">${escapar(etiqueta.produto)}</div>
+              ${etiqueta.legenda ? `<div class="legenda">${escapar(etiqueta.legenda)}</div>` : ""}
             </div>
             <div class="rodape">
               <span class="rotulo">Validade</span>

@@ -284,6 +284,13 @@ export const estilosEtiquetaLote = (): string => `
     text-transform: uppercase;
   }
 
+  .legenda {
+    margin-top: 1.5mm;
+    font-size: 8.5pt;
+    font-weight: bold;
+    text-align: center;
+  }
+
   .validade {
     font-size: 10pt;
     font-weight: bold;

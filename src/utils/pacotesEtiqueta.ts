@@ -109,6 +109,8 @@ export type EtiquetaPedido =
   | {
       tipo: "avulso";
       produto: string;
+      /** "Pacote de 1 kg", só no nano (Lucca, 11/10/2026). Vazio nos outros. */
+      legenda: string;
       /** "1 de 4", contando só os pacotes de nano e mini do pedido. */
       rotulo: string;
       validade: Date;
@@ -159,7 +161,13 @@ export function montarEtiquetasPedido(
   for (const item of avulsos) {
     for (let i = 0; i < item.quantidade; i++) {
       n++;
-      etiquetas.push({ tipo: "avulso", produto: item.nome, rotulo: `${n} de ${totalAvulsos}`, validade });
+      etiquetas.push({
+        tipo: "avulso",
+        produto: item.nome,
+        legenda: normalizar(item.nome).startsWith("nano brownie") ? "Pacote de 1 kg" : "",
+        rotulo: `${n} de ${totalAvulsos}`,
+        validade,
+      });
     }
   }
   return etiquetas;

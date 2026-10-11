@@ -52,11 +52,13 @@ describe("montarEtiquetasPedido", () => {
     const etiquetas = montarEtiquetasPedido("REDEVIP24H (Menino Deus)", [{ nome: "Nano Brownie Tradicional", quantidade: 1 }], HOJE);
     expect(etiquetas).toHaveLength(1);
     expect(etiquetas[0].tipo).toBe("avulso");
+    expect(etiquetas[0].tipo === "avulso" && etiquetas[0].legenda).toBe("Pacote de 1 kg");
   });
 
   it("mini também sai um por pacote", () => {
     const etiquetas = montarEtiquetasPedido("Karen Kunzler", [{ nome: "Mini Brownie Tradicional", quantidade: 3 }], HOJE);
     expect(etiquetas.map((e) => e.tipo)).toEqual(["avulso", "avulso", "avulso"]);
+    expect(etiquetas.map((e) => e.tipo === "avulso" && e.legenda)).toEqual(["", "", ""]);
   });
 
   it("validade é a data da impressão mais 120 dias", () => {
