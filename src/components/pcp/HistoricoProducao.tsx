@@ -2,33 +2,24 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Calendar, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Plus, Calendar, Check, DownloadCloud, Eye, EyeOff, ListPlus, Loader2 } from 'lucide-react';
 import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
+import { useConfirmacaoProducao } from '@/hooks/useConfirmacaoProducao';
 import { HistoricoProducaoModal } from './HistoricoProducaoModal';
+import { LancarDiaDialog } from './LancarDiaDialog';
+import { PuxarUnnoEstoqueDialog } from './PuxarUnnoEstoqueDialog';
+import { DiaProducaoCard, type DiaProducao } from './DiaProducaoCard';
 import ProducoesAtrasadasCard from './ProducoesAtrasadasCard';
-import { ConfirmacaoProducaoButton } from './ConfirmacaoProducaoButton';
 import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
-interface DiaProducao {
-  data: string;
-  dataFormatada: string;
-  registros: any[];
-  totalFormas: number;
-  totalUnidades: number;
-}
-
-interface SemanaProducao {
-  tipo: 'atual' | 'passada';
-  titulo: string;
-  dias: DiaProducao[];
-}
+import { dataLocal } from '@/utils/periodoProducao';
 
 export default function HistoricoProducao() {
   const { historico, loading, adicionarRegistro, editarRegistro, removerRegistro, carregarHistorico } = useSupabaseHistoricoProducao();
+  const { confirmarLote, loading: confirmando } = useConfirmacaoProducao();
   const [modalAberto, setModalAberto] = useState(false);
+  const [lancarDiaAberto, setLancarDiaAberto] = useState(false);
+  const [puxarAberto, setPuxarAberto] = useState(false);
   const [registroEditando, setRegistroEditando] = useState<any>(null);
   const [diasExpandidos, setDiasExpandidos] = useState<Set<string>>(new Set());
   const [semanasPassadasVisiveis, setSemanasPassadasVisiveis] = useState(false);
@@ -41,7 +32,9 @@ export default function HistoricoProducao() {
   const handleEditarRegistro = (registro: any) => {
     setRegistroEditando({
       ...registro,
-      dataProducao: new Date(registro.data_producao)
+      // dataLocal e nao new Date(): a data vem sem hora, e new Date() a le em UTC,
+      // o que no Brasil cai no dia anterior.
+      dataProducao: dataLocal(registro.data_producao)
     });
     setModalAberto(true);
   };
@@ -56,7 +49,7 @@ export default function HistoricoProducao() {
       turno: dados.turno || 'Matutino',
       observacoes: dados.observacoes,
       origem: dados.origem,
-      
+
       rendimento_usado: dados.rendimentoUsado,
       unidades_previstas: dados.unidadesPrevistas,
       status: dados.status
@@ -75,15 +68,9 @@ export default function HistoricoProducao() {
     }
   };
 
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case 'Confirmado':
-        return <Badge className="bg-green-500 hover:bg-green-600">Confirmado</Badge>;
-      case 'Registrado':
-        return <Badge variant="outline" className="border-blue-500 text-blue-700">Registrado</Badge>;
-      default:
-        return <Badge variant="secondary">Indefinido</Badge>;
-    }
+  const handleConfirmarLote = async (ids: string[]) => {
+    const resultado = await confirmarLote(ids);
+    if (resultado.ok) await carregarHistorico();
   };
 
   const toggleDiaExpandido = (data: string) => {
@@ -101,9 +88,9 @@ export default function HistoricoProducao() {
     const data = registro.data_producao;
     const dataObj = new Date(data + 'T12:00:00');
     const dataFormatada = format(dataObj, "EEEE, dd/MM/yyyy", { locale: ptBR });
-    
+
     let dia = acc.find(d => d.data === data);
-    
+
     if (!dia) {
       dia = {
         data,
@@ -114,11 +101,11 @@ export default function HistoricoProducao() {
       };
       acc.push(dia);
     }
-    
+
     dia.registros.push(registro);
     dia.totalFormas += registro.formas_producidas || 0;
     dia.totalUnidades += registro.unidades_previstas || registro.unidades_calculadas || 0;
-    
+
     return acc;
   }, []).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
@@ -127,35 +114,34 @@ export default function HistoricoProducao() {
   const inicioSemanaAtual = startOfWeek(agora, { weekStartsOn: 1 }); // Segunda-feira
   const fimSemanaAtual = endOfWeek(agora, { weekStartsOn: 1 }); // Domingo
 
-  const semanasProducao: SemanaProducao[] = [];
-  
-  // Dias da semana atual
-  const diasSemanaAtual = diasProducao.filter(dia => {
-    const dataObj = new Date(dia.data + 'T12:00:00');
-    return isWithinInterval(dataObj, { start: inicioSemanaAtual, end: fimSemanaAtual });
-  });
+  const naSemanaAtual = (dia: DiaProducao) =>
+    isWithinInterval(new Date(dia.data + 'T12:00:00'), { start: inicioSemanaAtual, end: fimSemanaAtual });
 
-  if (diasSemanaAtual.length > 0) {
-    semanasProducao.push({
-      tipo: 'atual',
-      titulo: 'Semana Atual',
-      dias: diasSemanaAtual
-    });
-  }
+  const diasSemanaAtual = diasProducao.filter(naSemanaAtual);
+  const diasSemanasPassadas = diasProducao.filter(dia => !naSemanaAtual(dia));
 
-  // Dias de semanas passadas
-  const diasSemanasPassadas = diasProducao.filter(dia => {
-    const dataObj = new Date(dia.data + 'T12:00:00');
-    return !isWithinInterval(dataObj, { start: inicioSemanaAtual, end: fimSemanaAtual });
-  });
+  // Producao agendada para um dia que ainda nao chegou nao se confirma em lote:
+  // confirmar da entrada no estoque, e ela ainda nao foi feita.
+  const hojeIso = format(agora, 'yyyy-MM-dd');
+  const idsPendentes = historico
+    .filter(r => (r.status || 'Registrado') === 'Registrado' && r.data_producao <= hojeIso)
+    .map(r => r.id);
 
-  if (diasSemanasPassadas.length > 0) {
-    semanasProducao.push({
-      tipo: 'passada',
-      titulo: 'Semanas Anteriores',
-      dias: diasSemanasPassadas
-    });
-  }
+  const renderDia = (dia: DiaProducao, destaque: boolean) => (
+    <DiaProducaoCard
+      key={dia.data}
+      dia={dia}
+      destaque={destaque}
+      futuro={dia.data > hojeIso}
+      aberto={diasExpandidos.has(dia.data)}
+      onAlternar={() => toggleDiaExpandido(dia.data)}
+      confirmando={confirmando}
+      onConfirmarDia={handleConfirmarLote}
+      onEditar={handleEditarRegistro}
+      onRemover={handleRemoverRegistro}
+      onMudou={carregarHistorico}
+    />
+  );
 
   if (loading) {
     return (
@@ -171,17 +157,38 @@ export default function HistoricoProducao() {
     <div className="space-y-6">
       <ProducoesAtrasadasCard onChange={carregarHistorico} />
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Registros de Produção
             </CardTitle>
           </div>
-          <Button onClick={handleNovoRegistro} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Registro
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {idsPendentes.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => handleConfirmarLote(idsPendentes)}
+                disabled={confirmando}
+                className="flex items-center gap-2 border-green-500/50 text-green-700 hover:bg-green-500/10 hover:text-green-800"
+              >
+                {confirmando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                Confirmar todos os pendentes ({idsPendentes.length})
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setPuxarAberto(true)} className="flex items-center gap-2">
+              <DownloadCloud className="h-4 w-4" />
+              Puxar do unno-estoque
+            </Button>
+            <Button variant="outline" onClick={handleNovoRegistro} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Um produto só
+            </Button>
+            <Button onClick={() => setLancarDiaAberto(true)} className="flex items-center gap-2">
+              <ListPlus className="h-4 w-4" />
+              Lançar o dia
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -189,288 +196,60 @@ export default function HistoricoProducao() {
             <div className="text-center py-8 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <h3 className="text-lg font-semibold mb-2">Nenhum registro encontrado</h3>
-              <p>Comece criando seu primeiro registro de produção.</p>
+              <p>Comece lançando a produção de um dia.</p>
             </div>
           ) : (
             <div className="space-y-6">
-              {semanasProducao.map((semana) => (
-                <div key={semana.tipo} className="space-y-4">
-                  {semana.tipo === 'atual' ? (
-                    // Semana atual - sempre visível
-                    <>
-                      <div className="flex items-center gap-3 pb-2 border-b border-primary/20">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        <h2 className="text-xl font-semibold text-primary">{semana.titulo}</h2>
-                        <Badge className="bg-primary/10 text-primary border-primary/20">
-                          {semana.dias.length} {semana.dias.length === 1 ? 'dia' : 'dias'}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        {semana.dias.map((dia) => (
-                          <Card key={dia.data} className="border-l-4 border-l-primary shadow-sm">
-                            <Collapsible 
-                              open={diasExpandidos.has(dia.data)} 
-                              onOpenChange={() => toggleDiaExpandido(dia.data)}
-                            >
-                              <CollapsibleTrigger asChild>
-                                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      {diasExpandidos.has(dia.data) ? (
-                                        <ChevronDown className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4" />
-                                      )}
-                                      <div>
-                                        <h3 className="text-lg font-semibold capitalize">
-                                          {dia.dataFormatada}
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground">
-                                          {dia.registros.length} registro(s) de produção
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-6 text-sm">
-                                      <div className="text-center">
-                                        <div className="font-semibold text-primary">{dia.totalFormas}</div>
-                                        <div className="text-muted-foreground">Formas</div>
-                                      </div>
-                                      <div className="text-center">
-                                        <div className="font-semibold text-primary">{dia.totalUnidades}</div>
-                                        <div className="text-muted-foreground">Unidades</div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                              </CollapsibleTrigger>
-                              
-                              <CollapsibleContent>
-                                <CardContent className="pt-0">
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead>Produto</TableHead>
-                                        <TableHead>Formas</TableHead>
-                                        <TableHead>Rendimento Usado</TableHead>
-                                        <TableHead>Unidades Previstas</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Ações</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {dia.registros.map((registro) => (
-                                        <TableRow key={registro.id}>
-                                          <TableCell className="font-medium">
-                                            {registro.produto_nome}
-                                          </TableCell>
-                                          <TableCell>{registro.formas_producidas}</TableCell>
-                                          <TableCell>
-                                            {registro.rendimento_usado ? `${registro.rendimento_usado}/forma` : '—'}
-                                          </TableCell>
-                                          <TableCell>
-                                            {registro.unidades_previstas || registro.unidades_calculadas}
-                                          </TableCell>
-                                          <TableCell>
-                                            {getStatusBadge(registro.status)}
-                                            {registro.confirmado_em && (
-                                              <div className="text-xs text-muted-foreground mt-1">
-                                                {format(new Date(registro.confirmado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                                              </div>
-                                            )}
-                                          </TableCell>
-                                          <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                              <ConfirmacaoProducaoButton
-                                                registroId={registro.id}
-                                                produtoNome={registro.produto_nome}
-                                                formasProducidas={registro.formas_producidas}
-                                                unidadesPrevistas={registro.unidades_previstas || registro.unidades_calculadas}
-                                                status={registro.status || 'Registrado'}
-                                                onConfirmado={carregarHistorico}
-                                              />
-                                              
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => handleEditarRegistro(registro)}
-                                                disabled={registro.status === 'Confirmado'}
-                                              >
-                                                <Edit className="h-4 w-4" />
-                                              </Button>
-                                              
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => handleRemoverRegistro(registro.id)}
-                                                disabled={registro.status === 'Confirmado'}
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </CardContent>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          </Card>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    // Semanas passadas - ocultas por padrão
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between py-3 border-t border-muted">
-                        <div className="flex items-center gap-3">
-                          <Calendar className="h-5 w-5 text-muted-foreground" />
-                          <h2 className="text-lg font-medium text-muted-foreground">{semana.titulo}</h2>
-                          <Badge variant="secondary">
-                            {semana.dias.length} {semana.dias.length === 1 ? 'dia' : 'dias'}
-                          </Badge>
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSemanasPassadasVisiveis(!semanasPassadasVisiveis)}
-                          className="flex items-center gap-2"
-                        >
-                          {semanasPassadasVisiveis ? (
-                            <>
-                              <EyeOff className="h-4 w-4" />
-                              Ocultar
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="h-4 w-4" />
-                              Mostrar
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {semanasPassadasVisiveis && (
-                        <div className="space-y-4 opacity-75">
-                          {semana.dias.map((dia) => (
-                            <Card key={dia.data} className="border-l-4 border-l-muted">
-                              <Collapsible 
-                                open={diasExpandidos.has(dia.data)} 
-                                onOpenChange={() => toggleDiaExpandido(dia.data)}
-                              >
-                                <CollapsibleTrigger asChild>
-                                  <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        {diasExpandidos.has(dia.data) ? (
-                                          <ChevronDown className="h-4 w-4" />
-                                        ) : (
-                                          <ChevronRight className="h-4 w-4" />
-                                        )}
-                                        <div>
-                                          <h3 className="text-base font-medium capitalize text-muted-foreground">
-                                            {dia.dataFormatada}
-                                          </h3>
-                                          <p className="text-sm text-muted-foreground">
-                                            {dia.registros.length} registro(s) de produção
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-6 text-sm">
-                                        <div className="text-center">
-                                          <div className="font-semibold text-muted-foreground">{dia.totalFormas}</div>
-                                          <div className="text-muted-foreground">Formas</div>
-                                        </div>
-                                        <div className="text-center">
-                                          <div className="font-semibold text-muted-foreground">{dia.totalUnidades}</div>
-                                          <div className="text-muted-foreground">Unidades</div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </CardHeader>
-                                </CollapsibleTrigger>
-                                
-                                <CollapsibleContent>
-                                  <CardContent className="pt-0">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow>
-                                          <TableHead>Produto</TableHead>
-                                          <TableHead>Formas</TableHead>
-                                          <TableHead>Rendimento Usado</TableHead>
-                                          <TableHead>Unidades Previstas</TableHead>
-                                          <TableHead>Status</TableHead>
-                                          <TableHead className="text-right">Ações</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {dia.registros.map((registro) => (
-                                          <TableRow key={registro.id}>
-                                            <TableCell className="font-medium">
-                                              {registro.produto_nome}
-                                            </TableCell>
-                                            <TableCell>{registro.formas_producidas}</TableCell>
-                                            <TableCell>
-                                              {registro.rendimento_usado ? `${registro.rendimento_usado}/forma` : '—'}
-                                            </TableCell>
-                                            <TableCell>
-                                              {registro.unidades_previstas || registro.unidades_calculadas}
-                                            </TableCell>
-                                            <TableCell>
-                                              {getStatusBadge(registro.status)}
-                                              {registro.confirmado_em && (
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                  {format(new Date(registro.confirmado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                                                </div>
-                                              )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                              <div className="flex items-center justify-end gap-2">
-                                                <ConfirmacaoProducaoButton
-                                                  registroId={registro.id}
-                                                  produtoNome={registro.produto_nome}
-                                                  formasProducidas={registro.formas_producidas}
-                                                  unidadesPrevistas={registro.unidades_previstas || registro.unidades_calculadas}
-                                                  status={registro.status || 'Registrado'}
-                                                  onConfirmado={carregarHistorico}
-                                                />
-                                                
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={() => handleEditarRegistro(registro)}
-                                                  disabled={registro.status === 'Confirmado'}
-                                                >
-                                                  <Edit className="h-4 w-4" />
-                                                </Button>
-                                                
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={() => handleRemoverRegistro(registro.id)}
-                                                  disabled={registro.status === 'Confirmado'}
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                              </div>
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </CardContent>
-                                </CollapsibleContent>
-                              </Collapsible>
-                            </Card>
-                          ))}
-                        </div>
+              {diasSemanaAtual.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 pb-2 border-b border-primary/20">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <h2 className="text-xl font-semibold text-primary">Semana Atual</h2>
+                    <Badge className="bg-primary/10 text-primary border-primary/20">
+                      {diasSemanaAtual.length} {diasSemanaAtual.length === 1 ? 'dia' : 'dias'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-4">{diasSemanaAtual.map(dia => renderDia(dia, true))}</div>
+                </div>
+              )}
+
+              {diasSemanasPassadas.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 border-t border-muted">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                      <h2 className="text-lg font-medium text-muted-foreground">Semanas Anteriores</h2>
+                      <Badge variant="secondary">
+                        {diasSemanasPassadas.length} {diasSemanasPassadas.length === 1 ? 'dia' : 'dias'}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSemanasPassadasVisiveis(!semanasPassadasVisiveis)}
+                      className="flex items-center gap-2"
+                    >
+                      {semanasPassadasVisiveis ? (
+                        <>
+                          <EyeOff className="h-4 w-4" />
+                          Ocultar
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          Mostrar
+                        </>
                       )}
+                    </Button>
+                  </div>
+
+                  {semanasPassadasVisiveis && (
+                    <div className="space-y-4 opacity-75">
+                      {diasSemanasPassadas.map(dia => renderDia(dia, false))}
                     </div>
                   )}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </CardContent>
@@ -481,6 +260,20 @@ export default function HistoricoProducao() {
         onClose={() => setModalAberto(false)}
         onSuccess={handleSalvarRegistro}
         registro={registroEditando}
+      />
+
+      <LancarDiaDialog
+        isOpen={lancarDiaAberto}
+        onClose={() => setLancarDiaAberto(false)}
+        onGravado={carregarHistorico}
+        historico={historico}
+      />
+
+      <PuxarUnnoEstoqueDialog
+        isOpen={puxarAberto}
+        onClose={() => setPuxarAberto(false)}
+        onGravado={carregarHistorico}
+        historico={historico}
       />
     </div>
   );

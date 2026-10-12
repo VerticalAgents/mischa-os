@@ -16,7 +16,7 @@ interface Props {
 
 export default function ProducoesAtrasadasCard({ onChange }: Props) {
   const { registros, loading, recarregar } = useProducaoAgendada();
-  const { confirmarProducao, loading: confirmando } = useConfirmacaoProducao();
+  const { confirmarProducao, confirmarLote, loading: confirmando } = useConfirmacaoProducao();
   const { removerRegistro } = useSupabaseHistoricoProducao();
   const [acaoEm, setAcaoEm] = useState<string | null>(null);
   const [aberto, setAberto] = useState(true);
@@ -59,6 +59,16 @@ export default function ProducoesAtrasadasCard({ onChange }: Props) {
     }
   };
 
+  const handleConfirmarTodas = async () => {
+    setAcaoEm("todas");
+    const ok = (await confirmarLote(atrasados.map((r: any) => r.id))).ok;
+    setAcaoEm(null);
+    if (ok) {
+      await recarregar();
+      onChange?.();
+    }
+  };
+
   const handleExcluir = async (id: string, nome: string) => {
     if (!confirm(`Excluir o registro agendado de "${nome}"? Essa ação não pode ser desfeita.`)) return;
     setAcaoEm(id);
@@ -85,6 +95,23 @@ export default function ProducoesAtrasadasCard({ onChange }: Props) {
                 Estas produções foram agendadas para datas anteriores a hoje e ainda não foram confirmadas. Confirme ou exclua para manter o histórico correto.
               </CardDescription>
             </div>
+            {atrasados.length > 1 && (
+              <Button
+                size="sm"
+                onClick={handleConfirmarTodas}
+                disabled={confirmando || acaoEm !== null}
+                className="shrink-0 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {acaoEm === "todas" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-1" />
+                    Confirmar todas
+                  </>
+                )}
+              </Button>
+            )}
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 px-2 shrink-0">
                 {aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
