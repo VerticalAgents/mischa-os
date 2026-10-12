@@ -12,15 +12,26 @@ import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import HistoricoAnalytics from "@/components/pcp/HistoricoAnalytics";
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
 import HistoricoProducao from "@/components/pcp/HistoricoProducao";
-import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
 import SetupPCPTab from "@/components/pcp/SetupPCPTab";
+
+const ABAS = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "setup", label: "Setup" },
+  { id: "projecao-producao", label: "Projeção de Produção" },
+  { id: "registro", label: "Registro" },
+];
 
 export default function PCP() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeTab, changeTab } = useTabPersistence("dashboard");
+  const { activeTab: abaSalva, changeTab } = useTabPersistence("dashboard");
+
+  // A aba fica guardada no navegador e no endereco. Se ela nao existe mais (a
+  // Auditoria PCP saiu em 12/10/2026), cai no Dashboard em vez de abrir a pagina vazia.
+  const abaValida = (id: string | null) => ABAS.some(a => a.id === id);
+  const activeTab = abaValida(abaSalva) ? abaSalva : "dashboard";
   
   // Sincronização com a URL
-  const tabFromUrl = searchParams.get('tab');
+  const tabFromUrl = abaValida(searchParams.get('tab')) ? searchParams.get('tab') : null;
   
   // Sincronizar com URL ao montar (apenas uma vez)
   useEffect(() => {
@@ -62,13 +73,7 @@ export default function PCP() {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
           {/* Mobile: grid 2 colunas */}
           <div className="grid grid-cols-2 gap-2 lg:hidden">
-            {[
-              { id: "dashboard", label: "Dashboard" },
-              { id: "setup", label: "Setup" },
-              { id: "projecao-producao", label: "Projeção de Produção" },
-              { id: "registro", label: "Registro" },
-              { id: "auditoria-pcp", label: "Auditoria PCP" },
-            ].map((tab) => (
+            {ABAS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
@@ -88,7 +93,6 @@ export default function PCP() {
             <TabsTrigger value="setup">Setup</TabsTrigger>
             <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
             <TabsTrigger value="registro">Registro</TabsTrigger>
-            <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
           </TabsList>
           
           <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao" ? true : undefined}>
@@ -105,10 +109,6 @@ export default function PCP() {
 
           <TabsContent value="registro" className="space-y-6 mt-6">
             {activeTab === "registro" && <HistoricoProducao />}
-          </TabsContent>
-
-          <TabsContent value="auditoria-pcp" className="space-y-6 mt-6">
-            {activeTab === "auditoria-pcp" && <AuditoriaPCPTab />}
           </TabsContent>
         </Tabs>
       </div>
