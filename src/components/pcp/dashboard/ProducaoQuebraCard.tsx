@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Filter } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatarValor, UnidadeMedida, QuebraItem } from "@/hooks/useProducaoDashboard";
@@ -18,6 +19,7 @@ interface ProducaoQuebraCardProps {
     onCheckedChange: (v: boolean) => void;
   };
   limite?: number;
+  loading?: boolean;
 }
 
 export default function ProducaoQuebraCard({
@@ -29,6 +31,7 @@ export default function ProducaoQuebraCard({
   mostrarCategoria = false,
   toggleProporcao,
   limite,
+  loading = false,
 }: ProducaoQuebraCardProps) {
   const lista = limite ? itens.slice(0, limite) : itens;
 
@@ -65,7 +68,13 @@ export default function ProducaoQuebraCard({
         </div>
       </CardHeader>
       <CardContent className="flex-1">
-        {lista.length === 0 ? (
+        {loading ? (
+          <div className="space-y-4">
+            {[0, 1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-7 w-full" />
+            ))}
+          </div>
+        ) : lista.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhum registro no período com os filtros aplicados
           </div>

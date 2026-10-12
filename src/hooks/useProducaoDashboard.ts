@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subMonths, subYears, addDays, addWeeks, format, isWithinInterval } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useSupabaseHistoricoProducao, HistoricoProducaoSupabase } from './useSupabaseHistoricoProducao';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
 import { useSupabaseCategoriasProduto } from './useSupabaseCategoriasProduto';
+import { dataLocal, Janela } from '@/utils/periodoProducao';
 
 export type UnidadeMedida = 'formas' | 'unidades' | 'peso';
 
@@ -35,7 +34,9 @@ export interface CategoriaInfo {
 }
 
 export interface ProducaoDashboardParams {
-  dias: number;
+  janela: Janela;
+  // Periodo clicado no grafico: os quadros de categoria e produto passam a olhar so para ele.
+  foco?: { inicio: Date; fim: Date } | null;
   unidade: UnidadeMedida;
   categoriasSelecionadas: number[]; // vazio = todas
   apenasComProporcao?: boolean;
@@ -54,6 +55,28 @@ export interface QuebraItem {
   categoriaNome?: string;
 }
 
+export interface PeriodoDestaque {
+  label: string;
+  labelLongo: string;
+  valor: number;
+}
+
+export interface ProducaoKpis {
+  total: number;
+  // null = janela anterior sem producao, nao ha com o que comparar
+  variacaoTotal: number | null;
+  // null = a janela nao inclui periodo em andamento
+  emAndamento: number | null;
+  periodosFechados: number;
+  media: number;
+  mediaAnterior: number;
+  diasComProducao: number;
+  diasNoPeriodo: number;
+  porDiaProduzido: number;
+  melhor: PeriodoDestaque | null;
+  pior: PeriodoDestaque | null;
+}
+
 export const formatarValor = (valor: number, unidade: UnidadeMedida) => {
   if (unidade === 'peso') {
     return `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`;
@@ -62,7 +85,8 @@ export const formatarValor = (valor: number, unidade: UnidadeMedida) => {
 };
 
 export const useProducaoDashboard = ({
-  dias,
+  janela,
+  foco = null,
   unidade,
   categoriasSelecionadas,
   apenasComProporcao = false,
@@ -142,7 +166,7 @@ export const useProducaoDashboard = ({
       const pesoUnit = Number(produto?.peso_unitario) || 0;
       return {
         record,
-        data: startOfDay(new Date(record.data_producao)),
+        data: dataLocal(record.data_producao),
         categoriaId,
         categoriaNome,
         formas: record.formas_producidas || 0,
@@ -153,6 +177,18 @@ export const useProducaoDashboard = ({
       };
     });
   }, [historico, categoriasDisponiveis, produtoInfo]);
+
+  // Primeiro dia com registro: e ate onde a seta de voltar pode ir.
+  const primeiraData = useMemo(() => {
+    if (registros.length === 0) return null;
+    return registros.reduce((min, r) => (r.data < min ? r.data : min), registros[0].data);
+  }, [registros]);
+
+  // Ultimo dia com registro: a tela avisa ate quando os dados vao.
+  const ultimaData = useMemo(() => {
+    if (registros.length === 0) return null;
+    return registros.reduce((max, r) => (r.data > max ? r.data : max), registros[0].data);
+  }, [registros]);
 
   const valorDe = (r: RegistroEnriquecido) => {
     if (unidade === 'formas') return r.formas;
@@ -169,117 +205,44 @@ export const useProducaoDashboard = ({
     return true;
   };
 
-  const hoje = useMemo(() => new Date(), [historico]);
-
-  // Limite superior de datas consideradas: hoje ou a última produção agendada do mês vigente
-  const limiteSuperior = useMemo(() => {
-    const fimMes = endOfMonth(hoje);
-    let limite = endOfDay(hoje);
-    registros.forEach(r => {
-      if (!r.agendado) return;
-      if (r.data <= limite || r.data > fimMes) return;
-      limite = endOfDay(r.data);
-    });
-    return limite;
-  }, [registros, hoje]);
-
   const somaPeriodo = (inicio: Date, fim: Date) =>
     registros
-      .filter(r => passaFiltros(r) && r.data >= startOfDay(inicio) && r.data <= fim)
+      .filter(r => passaFiltros(r) && r.data >= inicio && r.data <= fim)
       .reduce((s, r) => s + valorDe(r), 0);
 
-  const registrosPeriodo = useMemo(() => {
-    const inicio = startOfDay(subDays(hoje, dias));
-    return registros.filter(r => passaFiltros(r) && r.data >= inicio && r.data <= limiteSuperior);
-  }, [registros, dias, hoje, limiteSuperior, unidade, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
-
-  const kpis = useMemo(() => {
-    const total = registrosPeriodo.reduce((s, r) => s + valorDe(r), 0);
-    const totalAnterior = somaPeriodo(subDays(hoje, dias * 2), subDays(hoje, dias));
-    const variacaoPeriodo = totalAnterior > 0 ? ((total - totalAnterior) / totalAnterior) * 100 : 0;
-
-    const mesAtual = somaPeriodo(startOfMonth(hoje), endOfMonth(hoje));
-    const mesAnterior = somaPeriodo(startOfMonth(subMonths(hoje, 1)), endOfMonth(subMonths(hoje, 1)));
-    const variacaoMes = mesAnterior > 0 ? ((mesAtual - mesAnterior) / mesAnterior) * 100 : 0;
-
-    const anoPassado = subYears(hoje, 1);
-    const mesmoMesAnoPassado = somaPeriodo(startOfMonth(anoPassado), endOfMonth(anoPassado));
-    const variacaoAno =
-      mesmoMesAnoPassado > 0 ? ((mesAtual - mesmoMesAnoPassado) / mesmoMesAnoPassado) * 100 : 0;
-
-    const semanas = Math.max(dias / 7, 1);
-    const mediaSemanal = total / semanas;
-
-    const confirmados = registrosPeriodo.filter(r => r.record.status === 'Confirmado').length;
-    const taxaConfirmacao =
-      registrosPeriodo.length > 0 ? (confirmados / registrosPeriodo.length) * 100 : 0;
-
-    const comRendimento = registrosPeriodo.filter(
-      r => r.record.rendimento_usado && r.record.rendimento_usado > 0
-    );
-    const rendimentoMedio =
-      comRendimento.length > 0
-        ? comRendimento.reduce((s, r) => s + (r.record.rendimento_usado || 0), 0) / comRendimento.length
-        : 0;
-
+  // Intervalo que entra nas contas: so os periodos fechados da janela.
+  const intervaloFechado = useMemo(() => {
+    if (janela.fechados.length === 0) return null;
     return {
-      total,
-      variacaoPeriodo,
-      mesAtual,
-      variacaoMes,
-      mesmoMesAnoPassado,
-      variacaoAno,
-      mediaSemanal,
-      taxaConfirmacao,
-      rendimentoMedio,
-      totalRegistros: registrosPeriodo.length,
-      mesAnoPassadoLabel: format(anoPassado, 'MMM/yy', { locale: ptBR }),
+      inicio: janela.fechados[0].inicio,
+      fim: janela.fechados[janela.fechados.length - 1].fim,
     };
-  }, [registrosPeriodo, registros, dias, hoje, unidade]);
+  }, [janela]);
 
-  // Série temporal empilhada por categoria (granularidade derivada do período do topo)
-  const granularidade: 'dia' | 'semana' | 'mes' = dias <= 14 ? 'dia' : dias <= 90 ? 'semana' : 'mes';
+  const registrosPeriodo = useMemo(() => {
+    if (!intervaloFechado) return [];
+    return registros.filter(
+      r => passaFiltros(r) && r.data >= intervaloFechado.inicio && r.data <= intervaloFechado.fim
+    );
+  }, [registros, intervaloFechado, unidade, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
 
-  const serieMensal = useMemo(() => {
-    const buckets: { inicio: Date; fim: Date; label: string }[] = [];
+  // De onde saem os quadros de categoria e produto: do periodo clicado, se houver.
+  const registrosQuebra = useMemo(() => {
+    if (!foco) return registrosPeriodo;
+    return registros.filter(r => passaFiltros(r) && r.data >= foco.inicio && r.data <= foco.fim);
+  }, [registros, registrosPeriodo, foco, unidade, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
 
-    if (granularidade === 'dia') {
-      const primeiro = startOfDay(subDays(hoje, dias - 1));
-      const ultimo = startOfDay(limiteSuperior);
-      const totalDias = Math.max(
-        dias,
-        Math.round((ultimo.getTime() - primeiro.getTime()) / 86400000) + 1
-      );
-      for (let i = 0; i < totalDias; i++) {
-        const d = addDays(primeiro, i);
-        buckets.push({ inicio: startOfDay(d), fim: endOfDay(d), label: format(d, 'dd/MM', { locale: ptBR }) });
-      }
-    } else if (granularidade === 'semana') {
-      let cursor = startOfWeek(subDays(hoje, dias - 1), { weekStartsOn: 1 });
-      const limite = endOfWeek(limiteSuperior, { weekStartsOn: 1 });
-      while (cursor <= limite) {
-        const fim = endOfWeek(cursor, { weekStartsOn: 1 });
-        buckets.push({ inicio: cursor, fim, label: format(cursor, 'dd/MM', { locale: ptBR }) });
-        cursor = addWeeks(cursor, 1);
-      }
-    } else {
-      const totalMeses = Math.max(1, Math.ceil(dias / 30));
-      for (let i = totalMeses - 1; i >= 0; i--) {
-        const inicio = startOfMonth(subMonths(hoje, i));
-        buckets.push({ inicio, fim: endOfMonth(inicio), label: format(inicio, 'MMM/yy', { locale: ptBR }) });
-      }
-    }
-
-    return buckets.map(({ inicio, fim, label }) => {
-      const parcial = (hoje >= inicio && hoje <= fim) || inicio > hoje;
-      const linha: Record<string, any> = { mes: label, total: 0, parcial, agendado: 0 };
+  // Série temporal empilhada por categoria, uma linha por período da janela
+  const serie = useMemo(() => {
+    return janela.buckets.map(({ inicio, fim, label, labelLongo, parcial }) => {
+      const linha: Record<string, any> = { mes: label, labelLongo, total: 0, parcial, agendado: 0 };
       categoriasDisponiveis.forEach(c => {
         if (categoriaAtiva(c.id)) linha[c.chave] = 0;
       });
 
       registros.forEach(r => {
         if (!passaFiltros(r)) return;
-        if (!isWithinInterval(r.data, { start: inicio, end: fim })) return;
+        if (r.data < inicio || r.data > fim) return;
         const cat = categoriasDisponiveis.find(c => c.id === r.categoriaId);
         if (!cat) return;
         const valor = valorDe(r);
@@ -290,20 +253,67 @@ export const useProducaoDashboard = ({
 
       if (unidade === 'peso') {
         Object.keys(linha).forEach(k => {
-          if (k !== 'mes' && k !== 'parcial' && typeof linha[k] === 'number') {
-            linha[k] = Number(linha[k].toFixed(1));
-          }
+          if (typeof linha[k] === 'number') linha[k] = Number(linha[k].toFixed(1));
         });
       }
 
       return linha;
     });
-  }, [registros, dias, granularidade, hoje, limiteSuperior, unidade, categoriasDisponiveis, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
+  }, [registros, janela, unidade, categoriasDisponiveis, categoriasSelecionadas, apenasComProporcao, nomesComProporcao]);
+
+  const kpis = useMemo<ProducaoKpis>(() => {
+    const periodosFechados = janela.fechados.length;
+    const total = registrosPeriodo.reduce((s, r) => s + valorDe(r), 0);
+    const totalAnterior =
+      periodosFechados > 0 ? somaPeriodo(janela.anterior.inicio, janela.anterior.fim) : 0;
+    const variacaoTotal = totalAnterior > 0 ? ((total - totalAnterior) / totalAnterior) * 100 : null;
+
+    const linhasParciais = serie.filter(l => l.parcial);
+    const emAndamento =
+      linhasParciais.length > 0 ? linhasParciais.reduce((s, l) => s + l.total, 0) : null;
+
+    const diasComProducao = new Set(
+      registrosPeriodo.filter(r => valorDe(r) > 0).map(r => r.data.getTime())
+    ).size;
+    const diasNoPeriodo = intervaloFechado
+      ? Math.round((intervaloFechado.fim.getTime() - intervaloFechado.inicio.getTime()) / 86400000)
+      : 0;
+
+    // Melhor e pior so entre periodos em que houve producao: fim de semana e
+    // feriado zerados nao sao "o pior dia".
+    const comProducao = serie.filter(l => !l.parcial && l.total > 0);
+    const destaque = (l: Record<string, any>): PeriodoDestaque => ({
+      label: l.mes,
+      labelLongo: l.labelLongo,
+      valor: l.total,
+    });
+    const melhor = comProducao.length
+      ? destaque(comProducao.reduce((a, b) => (b.total > a.total ? b : a)))
+      : null;
+    const pior =
+      comProducao.length > 1
+        ? destaque(comProducao.reduce((a, b) => (b.total < a.total ? b : a)))
+        : null;
+
+    return {
+      total,
+      variacaoTotal,
+      emAndamento,
+      periodosFechados,
+      media: periodosFechados > 0 ? total / periodosFechados : 0,
+      mediaAnterior: periodosFechados > 0 ? totalAnterior / periodosFechados : 0,
+      diasComProducao,
+      diasNoPeriodo,
+      porDiaProduzido: diasComProducao > 0 ? total / diasComProducao : 0,
+      melhor,
+      pior,
+    };
+  }, [registrosPeriodo, registros, serie, janela, intervaloFechado, unidade]);
 
   // Quebra por categoria
   const porCategoria = useMemo<QuebraItem[]>(() => {
     const mapa = new Map<number, QuebraItem>();
-    registrosPeriodo.forEach(r => {
+    registrosQuebra.forEach(r => {
       const atual =
         mapa.get(r.categoriaId) ||
         ({
@@ -327,12 +337,12 @@ export const useProducaoDashboard = ({
     return Array.from(mapa.values())
       .map(c => ({ ...c, percentual: total > 0 ? (c.valor / total) * 100 : 0 }))
       .sort((a, b) => b.valor - a.valor);
-  }, [registrosPeriodo, categoriasDisponiveis, unidade]);
+  }, [registrosQuebra, categoriasDisponiveis, unidade]);
 
   // Quebra por produto
   const porProduto = useMemo<QuebraItem[]>(() => {
     const mapa = new Map<string, QuebraItem>();
-    registrosPeriodo.forEach(r => {
+    registrosQuebra.forEach(r => {
       const nome = r.record.produto_nome;
       const atual =
         mapa.get(nome) ||
@@ -358,28 +368,28 @@ export const useProducaoDashboard = ({
     return Array.from(mapa.values())
       .map(p => ({ ...p, percentual: total > 0 ? (p.valor / total) * 100 : 0 }))
       .sort((a, b) => b.valor - a.valor);
-  }, [registrosPeriodo, categoriasDisponiveis, unidade]);
+  }, [registrosQuebra, categoriasDisponiveis, unidade]);
 
   // Produtos sem peso cadastrado (ignorados no modo peso)
   const produtosSemPeso = useMemo(() => {
     if (unidade !== 'peso') return [];
     const nomes = new Set<string>();
-    const inicio = startOfDay(subDays(hoje, dias));
     registros.forEach(r => {
       if (r.temPeso) return;
       if (!categoriaAtiva(r.categoriaId)) return;
-      if (r.data < inicio || r.data > limiteSuperior) return;
+      if (r.data < janela.inicio || r.data > janela.fim) return;
       nomes.add(r.record.produto_nome);
     });
     return Array.from(nomes);
-  }, [registros, unidade, dias, hoje, limiteSuperior, categoriasSelecionadas]);
+  }, [registros, unidade, janela, categoriasSelecionadas]);
 
   return {
     loading: loadingHistorico || loadingProdutos,
     categoriasDisponiveis,
+    primeiraData,
+    ultimaData,
     kpis,
-    serieMensal,
-    granularidade,
+    serie,
     porCategoria,
     porProduto,
     produtosSemPeso,

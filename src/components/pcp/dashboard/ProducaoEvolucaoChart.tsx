@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import type { CategoriaInfo, UnidadeMedida } from "@/hooks/useProducaoDashboard";
@@ -11,6 +12,10 @@ interface ProducaoEvolucaoChartProps {
   unidade: UnidadeMedida;
   granularidade: 'dia' | 'semana' | 'mes';
   textoPeriodo: string;
+  loading?: boolean;
+  // Indice da barra clicada (null = nenhuma): os quadros de baixo detalham so ela.
+  selecionado: number | null;
+  onSelecionar: (indice: number | null) => void;
 }
 
 const formatarNumero = (valor: number, unidade: UnidadeMedida) =>
@@ -43,7 +48,9 @@ function TooltipConteudo({
   return (
     <div className="min-w-[180px] rounded-lg border bg-background px-2.5 py-2 text-xs shadow-md">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium text-foreground">{label}</span>
+        <span className="font-medium text-foreground">
+          {payload[0]?.payload?.labelLongo ?? label}
+        </span>
         {parcial && (
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             em andamento
@@ -95,7 +102,23 @@ export default function ProducaoEvolucaoChart({
   unidade,
   granularidade,
   textoPeriodo,
+  loading = false,
+  selecionado,
+  onSelecionar,
 }: ProducaoEvolucaoChartProps) {
+  const nomePeriodo = granularidade === 'dia' ? 'dia' : granularidade === 'semana' ? 'semana' : 'mês';
+
+  // O recharts entrega o indice da barra sob o cursor; clicar de novo na mesma desfaz.
+  const aoClicar = (estado: any) => {
+    const indice = Number(estado?.activeTooltipIndex);
+    if (estado?.activeTooltipIndex == null || Number.isNaN(indice)) return;
+    onSelecionar(indice === selecionado ? null : indice);
+  };
+
+  const opacidade = (parcial: boolean, indice: number) => {
+    if (selecionado !== null) return indice === selecionado ? 1 : 0.25;
+    return parcial ? 0.35 : 1;
+  };
   const config = categorias.reduce((acc, c) => {
     acc[c.chave] = { label: c.nome, color: c.cor };
     return acc;
@@ -112,19 +135,22 @@ export default function ProducaoEvolucaoChart({
               Evolução da produção
             </CardTitle>
             <CardDescription className="text-left">
-              {eixoLabel} {granularidade === 'dia' ? 'por dia' : granularidade === 'semana' ? 'por semana' : 'por mês'}, empilhado por categoria — {textoPeriodo.toLowerCase()}
+              {eixoLabel} {granularidade === 'dia' ? 'por dia' : granularidade === 'semana' ? 'por semana' : 'por mês'}, empilhado por categoria — {textoPeriodo}
             </CardDescription>
         </div>
       </CardHeader>
       <CardContent>
-        {dados.length === 0 || categorias.length === 0 ? (
+        {loading ? (
+          <Skeleton className="h-[300px] w-full" />
+        ) : dados.length === 0 || categorias.length === 0 ? (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
             Nenhum dado disponível para o período
           </div>
         ) : (
           <ChartContainer config={config} className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dados} barSize={32}>
+              {/* maxBarSize e nao barSize: com 60 dias a barra precisa afinar para caber */}
+              <BarChart data={dados} maxBarSize={32} onClick={aoClicar} className="cursor-pointer">
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="mes" className="text-xs" tick={{ fill: 'hsl(var(--foreground))' }} />
                 <YAxis
@@ -155,7 +181,7 @@ export default function ProducaoEvolucaoChart({
                       <Cell
                         key={`${c.chave}-${i}`}
                         fill={c.cor}
-                        fillOpacity={d.parcial ? 0.35 : 1}
+                        fillOpacity={opacidade(Boolean(d.parcial), i)}
                         stroke={d.parcial ? c.cor : undefined}
                         strokeWidth={d.parcial ? 1 : 0}
                         strokeDasharray={d.parcial ? '3 3' : undefined}
@@ -167,9 +193,11 @@ export default function ProducaoEvolucaoChart({
             </ResponsiveContainer>
           </ChartContainer>
         )}
-        {dados.some(d => d.parcial) && (
+        {!loading && dados.length > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Barra tracejada e mais clara = {granularidade === 'dia' ? 'dia' : granularidade === 'semana' ? 'semana' : 'mês'} em andamento (ainda não fechado).
+            Clique numa barra para ver as categorias e os produtos só daquele {nomePeriodo}.
+            {dados.some(d => d.parcial) &&
+              ` Barra tracejada = ${nomePeriodo} em andamento: aparece aqui, mas fica fora dos totais.`}
           </p>
         )}
       </CardContent>
