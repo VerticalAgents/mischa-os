@@ -110,6 +110,30 @@ export function precoUnitarioDisplays(args: {
   return precoPorDisplays(Math.floor(inteiro(args.unidadesDaCategoria) / UNIDADES_POR_DISPLAY));
 }
 
+export const PRAZO_BOLETO_PADRAO = 7;
+export const PRAZO_BOLETO_MAIOR = 14;
+/** Pedido de 4 displays ou mais (o dobro do mínimo) pode ter o prazo maior. */
+export const DISPLAYS_PARA_PRAZO_MAIOR = 4;
+export const PEDIDOS_QUITADOS_PARA_PRAZO_MAIOR = 3;
+/** Boleto vencido há este tanto de dias, ou mais, segura pedido novo do cliente. */
+export const DIAS_DE_ATRASO_QUE_BLOQUEIAM = 2;
+
+/**
+ * Prazo do boleto, em dias. 14 só para pedido de 4 displays ou mais de cliente que já
+ * teve 3 pedidos entregues e pagos; no resto, 7. Pedido quitado = entregue e sem título
+ * em aberto: quem deve um boleto de pedido já entregue ainda não tem esse pedido quitado.
+ */
+export function prazoDoBoleto(args: { displays: number; entregasFeitas: number; titulosEmAberto: number }): number {
+  const quitados = inteiro(args.entregasFeitas) - inteiro(args.titulosEmAberto);
+  return inteiro(args.displays) >= DISPLAYS_PARA_PRAZO_MAIOR && quitados >= PEDIDOS_QUITADOS_PARA_PRAZO_MAIOR
+    ? PRAZO_BOLETO_MAIOR
+    : PRAZO_BOLETO_PADRAO;
+}
+
+export function atrasoBloqueiaPedido(diasDeAtraso: number): boolean {
+  return inteiro(diasDeAtraso) >= DIAS_DE_ATRASO_QUE_BLOQUEIAM;
+}
+
 /** Data, hora e dia da semana (0 = domingo) em São Paulo, sem depender do fuso de quem roda. */
 export function agoraEmSaoPaulo(agora: Date = new Date()) {
   const partes = new Intl.DateTimeFormat('en-CA', {

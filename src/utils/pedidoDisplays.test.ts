@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   SORTIDO,
   UNIDADES_POR_DISPLAY,
+  atrasoBloqueiaPedido,
+  prazoDoBoleto,
   dataEntrega,
   expandirParaItens,
   precoPorDisplays,
@@ -112,5 +114,33 @@ describe('dia de entrega', () => {
     expect(dataEntrega(new Date('2026-10-14T02:30:00Z'))).toBe('2026-10-16');
     // Segunda 23h30 em São Paulo (terça em UTC): passou das 14h de segunda, entra na quarta.
     expect(dataEntrega(new Date('2026-10-13T02:30:00Z'))).toBe('2026-10-14');
+  });
+});
+
+describe('prazo do boleto', () => {
+  it('7 dias enquanto o cliente não tem 3 pedidos entregues e pagos', () => {
+    expect(prazoDoBoleto({ displays: 4, entregasFeitas: 0, titulosEmAberto: 0 })).toBe(7);
+    expect(prazoDoBoleto({ displays: 8, entregasFeitas: 2, titulosEmAberto: 0 })).toBe(7);
+  });
+
+  it('14 dias no pedido de 4 displays ou mais, com 3 pedidos quitados', () => {
+    expect(prazoDoBoleto({ displays: 4, entregasFeitas: 3, titulosEmAberto: 0 })).toBe(14);
+    expect(prazoDoBoleto({ displays: 10, entregasFeitas: 7, titulosEmAberto: 1 })).toBe(14);
+  });
+
+  it('pedido pequeno segue em 7 dias, mesmo de cliente antigo', () => {
+    expect(prazoDoBoleto({ displays: 3, entregasFeitas: 20, titulosEmAberto: 0 })).toBe(7);
+    expect(prazoDoBoleto({ displays: 2, entregasFeitas: 3, titulosEmAberto: 0 })).toBe(7);
+  });
+
+  it('pedido entregue e ainda não pago não conta como quitado', () => {
+    expect(prazoDoBoleto({ displays: 4, entregasFeitas: 3, titulosEmAberto: 1 })).toBe(7);
+    expect(prazoDoBoleto({ displays: 4, entregasFeitas: 4, titulosEmAberto: 1 })).toBe(14);
+  });
+});
+
+describe('bloqueio por atraso', () => {
+  it('segura o pedido a partir de 2 dias de vencido', () => {
+    expect([0, 1, 2, 3, 30].map(atrasoBloqueiaPedido)).toEqual([false, false, true, true, true]);
   });
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import TrocasAccordion from "@/components/agendamento/TrocasAccordion";
 import StepperDisplays from "@/components/rep/pedidos/StepperDisplays";
+import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AVISO_SEPARADO,
   diaPorExtenso,
@@ -31,8 +33,10 @@ import {
   SABORES,
   SORTIDO,
   UNIDADES_POR_DISPLAY,
+  atrasoBloqueiaPedido,
   dataEntrega,
   faixaPorDisplays,
+  prazoDoBoleto,
   totalDisplays,
   totalUnidades,
 } from "@/utils/pedidoDisplays";
@@ -61,6 +65,27 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
   const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  // Pagamentos do cliente, lidos do Gestão Click: seguram pedido novo e definem o prazo do boleto.
+  const { clientes: situacoes, loading: conferindoPagamentos } = useInadimplencia();
+  const situacao = situacoes.find((c) => c.clienteId === cliente.id);
+  const vencidos = (situacao?.titulos ?? []).filter((t) => atrasoBloqueiaPedido(t.diasAtraso));
+
+  const [entregasFeitas, setEntregasFeitas] = useState(0);
+  useEffect(() => {
+    let cancelado = false;
+    supabase
+      .from("historico_entregas")
+      .select("id", { count: "exact", head: true })
+      .eq("cliente_id", cliente.id)
+      .eq("tipo", "entrega")
+      .then(({ count }) => {
+        if (!cancelado) setEntregasFeitas(count ?? 0);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [cliente.id]);
+
   const jaConfirmado = pedidoAtual?.status === "Agendado";
   if (jaConfirmado && pedidoAtual?.travado) {
     return (
@@ -70,11 +95,33 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
     );
   }
 
+  if (vencidos.length > 0) {
+    const valor = vencidos.reduce((soma, t) => soma + t.valor, 0);
+    const maiorAtraso = Math.max(...vencidos.map((t) => t.diasAtraso));
+    return (
+      <Card>
+        <CardContent className="p-4 space-y-2 text-sm">
+          <p className="font-medium">Cliente com pagamento em atraso</p>
+          <p>
+            {vencidos.length === 1 ? "Há 1 boleto vencido" : `Há ${vencidos.length} boletos vencidos`}, somando{" "}
+            {reais(valor)}, {maiorAtraso === 1 ? "há 1 dia" : `há até ${maiorAtraso} dias`}. Enquanto estiver em
+            atraso, não dá para lançar nem alterar pedido deste cliente.
+          </p>
+          <p className="text-muted-foreground">
+            Depois do pagamento, a liberação acontece quando a Mischa's dá baixa no boleto. Se o cliente já pagou,
+            fale com a Mischa's.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const displays = totalDisplays(pedido);
   const unidades = totalUnidades(pedido);
   const faixa = faixaPorDisplays(displays);
   const total = unidades * faixa.preco;
   const faltam = Math.max(0, MINIMO_DISPLAYS - displays);
+  const prazo = prazoDoBoleto({ displays, entregasFeitas, titulosEmAberto: situacao?.titulos.length ?? 0 });
   // Alterar não muda o dia da entrega; pedido novo entra na próxima rota.
   const entrega = jaConfirmado && pedidoAtual?.dataEntrega ? pedidoAtual.dataEntrega : dataEntrega(new Date());
 
@@ -141,6 +188,10 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
             </span>
             <span className="text-muted-foreground">Entrega</span>
             <span className="text-right font-medium">{diaPorExtenso(entrega)}</span>
+            <span className="text-muted-foreground">Pagamento</span>
+            <span className="text-right font-medium">
+              {conferindoPagamentos ? "conferindo..." : `Boleto de ${prazo} dias`}
+            </span>
           </div>
           <div className="flex items-baseline justify-between border-t pt-3">
             <span className="font-medium">Total</span>
@@ -154,8 +205,12 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
               {faltam === 1 ? "Falta 1 display." : `Faltam ${faltam} displays.`}
             </p>
           )}
-          <Button className="w-full h-12 text-base" disabled={faltam > 0} onClick={() => setConfirmando(true)}>
-            {jaConfirmado ? "Salvar alteração" : "Confirmar pedido"}
+          <Button
+            className="w-full h-12 text-base"
+            disabled={faltam > 0 || conferindoPagamentos}
+            onClick={() => setConfirmando(true)}
+          >
+            {conferindoPagamentos ? "Conferindo pagamentos..." : jaConfirmado ? "Salvar alteração" : "Confirmar pedido"}
           </Button>
         </CardContent>
       </Card>
@@ -171,7 +226,8 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
             <AlertDialogTitle>{jaConfirmado ? "Salvar a alteração?" : "Confirmar o pedido?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {cliente.nome}: {resumoDosDisplays(pedido)} ({unidades} brownies), {reais(total)}. Entrega{" "}
-              {diaPorExtenso(entrega)}.{trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""} O pedido vai
+              {diaPorExtenso(entrega)}, boleto de {prazo} dias.
+              {trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""} O pedido vai
               direto para a separação da fábrica.
             </AlertDialogDescription>
           </AlertDialogHeader>

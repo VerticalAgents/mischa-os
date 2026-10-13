@@ -1,5 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { CATEGORIA_DISPLAYS, precoUnitarioDisplays } from '../_shared/pedidoDisplays.ts';
+import {
+  CATEGORIA_DISPLAYS,
+  DISPLAYS_PARA_PRAZO_MAIOR,
+  MODELO_DISPLAYS,
+  PEDIDOS_QUITADOS_PARA_PRAZO_MAIOR,
+  UNIDADES_POR_DISPLAY,
+  prazoDoBoleto,
+  precoUnitarioDisplays,
+} from '../_shared/pedidoDisplays.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,6 +48,95 @@ function ajusteDeDisplays(
   }, 0);
   return (categoriaId: number | null | undefined, precoAtual: number) =>
     precoUnitarioDisplays({ modeloPedido, categoriaId, unidadesDaCategoria, precoAtual });
+}
+
+/** Quantos títulos o cliente tem em aberto no Gestão Click (o filtro por cliente de lá não é confiável: conta aqui). */
+async function contarTitulosEmAberto(
+  tokens: { access_token: string; secret_token: string },
+  gestaoclickClienteId: string | number | null | undefined,
+): Promise<number> {
+  const alvo = String(gestaoclickClienteId ?? '').trim();
+  if (!alvo) return 0;
+  const hoje = new Date();
+  const inicio = formatDate(addDays(hoje, -365));
+  const fim = formatDate(addDays(hoje, 120));
+  let total = 0;
+  let pagina = 1;
+  let totalPaginas = 1;
+  do {
+    const resp = await fetch(
+      `${GESTAOCLICK_BASE_URL}/recebimentos?liquidado=ab&data_inicio=${inicio}&data_fim=${fim}&pagina=${pagina}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'access-token': tokens.access_token,
+          'secret-access-token': tokens.secret_token,
+        },
+      },
+    );
+    if (!resp.ok) throw new Error(`recebimentos em aberto: ${resp.status}`);
+    const json = await resp.json();
+    const lista = json?.data || [];
+    for (const linha of lista) {
+      const rec = linha.Recebimento || linha;
+      if (String(rec.cliente_id ?? '') === alvo && String(rec.liquidado ?? '0') !== '1') total++;
+    }
+    if (json?.meta?.total_paginas) totalPaginas = json.meta.total_paginas;
+    if (lista.length === 0) break;
+    pagina++;
+  } while (pagina <= totalPaginas && pagina <= 50);
+  return total;
+}
+
+/**
+ * Cliente de displays: o prazo do boleto não vem do cadastro, vem da regra do canal
+ * (7 dias; 14 no pedido de 4 displays ou mais de quem já teve 3 pedidos entregues e pagos).
+ * Devolve o cliente com o prazo já resolvido; cliente comum volta como veio.
+ * `vendaJaExiste`: ao editar a venda ou tirar a nota, o título deste próprio pedido já
+ * está em aberto e não pode contar contra o cliente.
+ */
+async function clienteComPrazoDeDisplays(
+  supabase: any,
+  cliente: any,
+  clienteId: string,
+  itens: Array<{ produto_id: string; quantidade: number }>,
+  produtos: Array<{ id: string; categoria_id: number | null }> | null | undefined,
+  tokens: { access_token: string; secret_token: string },
+  vendaJaExiste: boolean,
+) {
+  if (cliente?.modelo_pedido !== MODELO_DISPLAYS) return cliente;
+
+  const unidades = (itens || []).reduce((soma, item) => {
+    const categoria = produtos?.find((p) => p.id === item.produto_id)?.categoria_id;
+    return categoria === CATEGORIA_DISPLAYS ? soma + (Number(item.quantidade) || 0) : soma;
+  }, 0);
+  const displays = Math.floor(unidades / UNIDADES_POR_DISPLAY);
+
+  let entregasFeitas = 0;
+  let titulosEmAberto = 0;
+  if (displays >= DISPLAYS_PARA_PRAZO_MAIOR) {
+    const { count } = await supabase
+      .from('historico_entregas')
+      .select('id', { count: 'exact', head: true })
+      .eq('cliente_id', clienteId)
+      .eq('tipo', 'entrega');
+    entregasFeitas = count ?? 0;
+    if (entregasFeitas >= PEDIDOS_QUITADOS_PARA_PRAZO_MAIOR) {
+      try {
+        const abertos = await contarTitulosEmAberto(tokens, cliente.gestaoclick_cliente_id);
+        titulosEmAberto = Math.max(0, abertos - (vendaJaExiste ? 1 : 0));
+      } catch (erro) {
+        // Sem conseguir conferir os pagamentos, vale o prazo curto.
+        console.error('[gestaoclick-proxy] Não deu para conferir os títulos do cliente:', erro);
+        titulosEmAberto = entregasFeitas;
+      }
+    }
+  }
+
+  const dias = prazoDoBoleto({ displays, entregasFeitas, titulosEmAberto });
+  console.log(`[gestaoclick-proxy] Prazo de displays: ${displays} displays, ${entregasFeitas} entregas, ${titulosEmAberto} em aberto -> ${dias} dias`);
+  return { ...cliente, prazo_pagamento_tipo: 'dias', prazo_pagamento_dias: dias };
 }
 
 // Helper: Add days to a date
@@ -98,12 +195,8 @@ const numGC = (v: any): number => parseFloat(String(v ?? '0').replace(',', '.'))
 // Helper: resolve os tokens do GestaoClick do "dono" da conta (admin) a partir
 // do usuario autenticado. Usado em acoes SOMENTE LEITURA para que contas de
 // representante/staff (que nao tem conta no GC) possam visualizar os dados.
-async function resolveTokensDoDono(
-  supabase: any,
-  userId: string | null,
-): Promise<{ access_token: string; secret_token: string } | null> {
-  if (!userId) return null;
-
+/** De quem é a conta: o dono, quando quem chama é representante ou equipe; senão, ele mesmo. */
+async function resolveDonoDaConta(supabase: any, userId: string): Promise<string> {
   let ownerId: string | null = null;
 
   const { data: repAccount } = await supabase
@@ -119,7 +212,16 @@ async function resolveTokensDoDono(
     if (staffOwner) ownerId = staffOwner as string;
   }
 
-  if (!ownerId) ownerId = userId;
+  return ownerId || userId;
+}
+
+async function resolveTokensDoDono(
+  supabase: any,
+  userId: string | null,
+): Promise<{ access_token: string; secret_token: string } | null> {
+  if (!userId) return null;
+
+  const ownerId = await resolveDonoDaConta(supabase, userId);
 
   const { data: configData } = await supabase
     .from('integracoes_config')
@@ -845,7 +947,8 @@ Deno.serve(async (req) => {
         const dataVenda = dataDoAgendamento(agendamentoExistente?.data_proxima_reposicao);
 
         // 10. Calculate data_vencimento based on payment method
-        const dataVencimento = calcularDataVencimento(dataVenda, cliente);
+        const clienteDoPrazo = await clienteComPrazoDeDisplays(supabase, cliente, cliente_id, itens, produtos, config as any, false);
+        const dataVencimento = calcularDataVencimento(dataVenda, clienteDoPrazo);
         console.log(`[gestaoclick-proxy] Data venda: ${dataVenda}, Payment: ${formaPagamento}, Prazo: ${cliente.prazo_pagamento_tipo || 'dias'}/${cliente.prazo_pagamento_dias}, Data Vencimento: ${dataVencimento}`);
 
         // 11. Build sale payload according to GestaoClick API docs
@@ -1179,7 +1282,8 @@ Deno.serve(async (req) => {
           .eq('id', agendamento_id)
           .single();
         const dataVenda = dataDoAgendamento(agendamentoAtual?.data_proxima_reposicao);
-        const dataVencimento = calcularDataVencimento(dataVenda, cliente);
+        const clienteDoPrazo = await clienteComPrazoDeDisplays(supabase, cliente, cliente_id, itens, produtos, config as any, true);
+        const dataVencimento = calcularDataVencimento(dataVenda, clienteDoPrazo);
 
         // 11. Build new sale payload
         const vendaPayload: Record<string, any> = {
@@ -1497,7 +1601,8 @@ Deno.serve(async (req) => {
         }
 
         // Emissão da NF é hoje (SEFAZ não aceita data futura); o vencimento segue o agendamento, igual à venda
-        const dataVencimento = calcularDataVencimento(dataDoAgendamento(agendamentoCheck?.data_proxima_reposicao), cliente);
+        const clienteDoPrazo = await clienteComPrazoDeDisplays(supabase, cliente, cliente_id, itens, produtos, config as any, true);
+        const dataVencimento = calcularDataVencimento(dataDoAgendamento(agendamentoCheck?.data_proxima_reposicao), clienteDoPrazo);
 
         // Helper to format date as DD/MM/YYYY for GestaoClick
         const formatDateBR = (dateStr: string): string => {
@@ -2044,11 +2149,14 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Fetch GestaoClick config
+        // Fetch GestaoClick config. Conta de representante não tem integração própria:
+        // o cliente que ele cadastra nasce no Gestão Click pela integração do dono
+        // (autorizado pelo Lucca em 12/10/2026), senão não sai venda nem boleto dele.
+        const donoDaIntegracao = await resolveDonoDaConta(supabase, userId);
         const { data: configData } = await supabase
           .from('integracoes_config')
           .select('config')
-          .eq('user_id', userId)
+          .eq('user_id', donoDaIntegracao)
           .eq('integracao', 'gestaoclick')
           .maybeSingle();
 

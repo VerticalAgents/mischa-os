@@ -35,25 +35,15 @@ export interface ResultadoDaSincronia {
 /**
  * Cria o cliente correspondente no Gestão Click e guarda o id no cadastro.
  *
- * Quando a integração não está configurada nesta conta, devolve o motivo em vez
- * de estourar: é situação normal para quem não é o dono.
+ * Quando a integração não está configurada, devolve o motivo em vez de estourar.
  */
 export async function sincronizarClienteComGestaoClick(
   clienteId: string,
   dados: DadosParaGestaoClick
 ): Promise<ResultadoDaSincronia> {
   try {
-    const { data: configData } = await supabase
-      .from('integracoes_config')
-      .select('config')
-      .eq('integracao', 'gestaoclick')
-      .maybeSingle();
-
-    const config = (configData?.config || {}) as { access_token?: string };
-    if (!config.access_token) {
-      return { gestaoclickClienteId: null, motivo: 'Gestão Click não configurado nesta conta' };
-    }
-
+    // Quem responde se há integração é a função: a conta de representante não enxerga a
+    // configuração, e o cliente dele nasce no Gestão Click pela integração do dono.
     const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
       body: {
         action: 'criar_cliente_gc',
