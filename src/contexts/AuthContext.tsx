@@ -268,6 +268,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           localStorage.removeItem('lastVisitedRoute');
           navigate('/auth');
           toast.info("Você foi desconectado");
+          // Recarrega a página para esvaziar o que ficou na memória (clientes, agenda, papel).
+          // Sem isso, quem entra em seguida na mesma aba vê os dados de quem saiu.
+          setTimeout(() => window.location.replace('/auth'), 400);
         }
 
         if (event === 'TOKEN_REFRESHED' && session) {

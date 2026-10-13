@@ -2875,6 +2875,10 @@ export type Database = {
         Returns: string
       }
       displays_data_entrega: { Args: { p_agora?: string }; Returns: string }
+      documento_ja_cadastrado: {
+        Args: { p_documento: string; p_ignorar_cliente?: string }
+        Returns: boolean
+      }
       encrypt_sensitive_data: { Args: { data: string }; Returns: string }
       get_cliente_secure: {
         Args: { cliente_id: string }

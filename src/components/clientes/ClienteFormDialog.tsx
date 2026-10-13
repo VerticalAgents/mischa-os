@@ -36,6 +36,7 @@ import DiasSemanaPicker from "./DiasSemanaPicker";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
 import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
+import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIA_DISPLAYS, FAIXAS, MINIMO_DISPLAYS, MODELO_DISPLAYS, UNIDADES_POR_DISPLAY } from "@/utils/pedidoDisplays";
 import { useErrorDetail } from '@/hooks/useErrorDetail';
 import { ErrorDetailDialog } from '@/components/common/ErrorDetailDialog';
@@ -303,6 +304,22 @@ export default function ClienteFormDialog({
             return;
           }
           payload = { ...payload, representanteId: meuRepresentanteId };
+        }
+        // Representante não cadastra documento que já existe na base. Ele não enxerga
+        // os clientes dos outros, então quem responde é o banco (que também barra ao gravar).
+        if (isRep && payload.cnpjCpf) {
+          const { data: jaExiste } = await supabase.rpc('documento_ja_cadastrado', {
+            p_documento: payload.cnpjCpf,
+          });
+          if (jaExiste) {
+            toast({
+              title: "CNPJ já cadastrado",
+              description: "Este CNPJ/CPF já é cliente da Mischa's. Fale com a Mischa's antes de cadastrar.",
+              variant: "destructive",
+            });
+            setIsSaving(false);
+            return;
+          }
         }
         const novoCliente = await adicionarCliente(payload as Omit<Cliente, 'id' | 'dataCadastro'>);
         clienteId = novoCliente.id;
