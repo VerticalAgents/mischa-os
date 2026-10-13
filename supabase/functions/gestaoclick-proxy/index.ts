@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { CATEGORIA_DISPLAYS, precoUnitarioDisplays } from '../_shared/pedidoDisplays.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,23 @@ interface GestaoClickConfig {
     PIX?: string;
     DINHEIRO?: string;
   };
+}
+
+/**
+ * Cliente que compra em displays paga pela faixa da entrega (quantos displays vieram),
+ * não pelo preço por cliente. Para os outros, devolve o preço como veio.
+ */
+function ajusteDeDisplays(
+  modeloPedido: string | null | undefined,
+  itens: Array<{ produto_id: string; quantidade: number }>,
+  produtos: Array<{ id: string; categoria_id: number | null }> | null | undefined,
+) {
+  const unidadesDaCategoria = (itens || []).reduce((soma, item) => {
+    const categoria = produtos?.find((p) => p.id === item.produto_id)?.categoria_id;
+    return categoria === CATEGORIA_DISPLAYS ? soma + (Number(item.quantidade) || 0) : soma;
+  }, 0);
+  return (categoriaId: number | null | undefined, precoAtual: number) =>
+    precoUnitarioDisplays({ modeloPedido, categoriaId, unidadesDaCategoria, precoAtual });
 }
 
 // Helper: Add days to a date
@@ -698,7 +716,7 @@ Deno.serve(async (req) => {
         // 2. Get client data
         const { data: cliente, error: clienteError } = await supabase
           .from('clientes')
-          .select(`gestaoclick_cliente_id, nome, ${CAMPOS_PRAZO_CLIENTE}`)
+          .select(`gestaoclick_cliente_id, nome, modelo_pedido, ${CAMPOS_PRAZO_CLIENTE}`)
           .eq('id', cliente_id)
           .single();
 
@@ -774,6 +792,7 @@ Deno.serve(async (req) => {
 
         // 7. Build items with prices - using correct GestaoClick structure
         const produtosVenda: any[] = [];
+        const precoComDisplays = ajusteDeDisplays(cliente.modelo_pedido, itens, produtos);
         
         for (const item of itens) {
           const produto = produtos?.find(p => p.id === item.produto_id);
@@ -796,6 +815,8 @@ Deno.serve(async (req) => {
               precoUnitario = precosDefault[categoriaId.toString()];
             }
           }
+
+          precoUnitario = precoComDisplays(categoriaId, precoUnitario);
 
           // GestaoClick expects nested structure: produtos: [{ produto: { ... } }]
           produtosVenda.push({
@@ -1044,7 +1065,7 @@ Deno.serve(async (req) => {
         // 3. Get client data
         const { data: cliente } = await supabase
           .from('clientes')
-          .select(`gestaoclick_cliente_id, nome, representante_id, ${CAMPOS_PRAZO_CLIENTE}`)
+          .select(`gestaoclick_cliente_id, nome, representante_id, modelo_pedido, ${CAMPOS_PRAZO_CLIENTE}`)
           .eq('id', cliente_id)
           .single();
 
@@ -1094,6 +1115,7 @@ Deno.serve(async (req) => {
 
         // 7. Build products array
         const produtosVenda: any[] = [];
+        const precoComDisplays = ajusteDeDisplays(cliente.modelo_pedido, itens, produtos);
         for (const item of itens) {
           const produto = produtos?.find(p => p.id === item.produto_id);
           if (!produto?.gestaoclick_produto_id) {
@@ -1113,6 +1135,7 @@ Deno.serve(async (req) => {
               precoUnitario = precosDefault[categoriaId.toString()];
             }
           }
+          precoUnitario = precoComDisplays(categoriaId, precoUnitario);
 
           produtosVenda.push({
             produto: {
@@ -1319,7 +1342,7 @@ Deno.serve(async (req) => {
         // Get client data
         const { data: cliente, error: clienteError } = await supabase
           .from('clientes')
-          .select(`gestaoclick_cliente_id, nome, ${CAMPOS_PRAZO_CLIENTE}`)
+          .select(`gestaoclick_cliente_id, nome, modelo_pedido, ${CAMPOS_PRAZO_CLIENTE}`)
           .eq('id', cliente_id)
           .single();
 
@@ -1412,6 +1435,7 @@ Deno.serve(async (req) => {
         // IMPORTANTE: Usar formato ANINHADO igual ao de vendas para que o GestaoClick aceite os preços
         const produtosNF: any[] = [];
         let valorTotal = 0;
+        const precoComDisplays = ajusteDeDisplays(cliente.modelo_pedido, itens, produtos);
         
         console.log(`[gestaoclick-proxy] Calculando produtos para NF (${itens.length} itens):`);
         
@@ -1438,6 +1462,12 @@ Deno.serve(async (req) => {
               precoUnitario = precosDefault[categoriaId.toString()];
               precoOrigem = 'categoria_padrao';
             }
+          }
+
+          const precoDaFaixa = precoComDisplays(categoriaId, precoUnitario);
+          if (precoDaFaixa !== precoUnitario) {
+            precoUnitario = precoDaFaixa;
+            precoOrigem = 'faixa_de_displays';
           }
 
           const subtotal = item.quantidade * precoUnitario;

@@ -1,3 +1,4 @@
+import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Home,
@@ -68,6 +69,7 @@ interface RepSidebarProps {
 export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps = {}) {
   const { logout, user } = useAuth();
   const { pathname } = useLocation();
+  const { vendeEmDisplays } = useModeloPedidoRep();
   const expandido = useSidebarStore((s) => s.expandido);
   const alternar = useSidebarStore((s) => s.alternar);
 
@@ -115,7 +117,8 @@ export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps 
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
-        {items.map((item) => {
+        {items.map((original) => {
+          const item = vendeEmDisplays && original.to === "/rep/agendamentos" ? { ...original, label: "Pedidos" } : original;
           const Icon = item.icon;
           const aceso = estaAceso(pathname, item.to);
           return (
@@ -158,6 +161,7 @@ export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps 
  */
 export function RepTopNavBar() {
   const { pathname } = useLocation();
+  const { vendeEmDisplays } = useModeloPedidoRep();
   const { logout } = useAuth();
   const expandido = useSidebarStore((s) => s.expandido);
   const alternar = useSidebarStore((s) => s.alternar);
@@ -187,7 +191,8 @@ export function RepTopNavBar() {
         />
 
         <nav className="flex min-w-0 flex-1 items-center gap-1">
-          {items.map((item) => {
+          {items.map((original) => {
+            const item = vendeEmDisplays && original.to === "/rep/agendamentos" ? { ...original, label: "Pedidos" } : original;
             const Icon = item.icon;
             const aceso = estaAceso(pathname, item.to);
             return (

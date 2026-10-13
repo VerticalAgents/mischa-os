@@ -61,7 +61,7 @@ const Modulos = lazy(() => import('@/pages/Modulos'));
 // Páginas dedicadas para representantes comerciais
 const RepHome = lazy(() => import('@/pages/rep/RepHome'));
 const RepClientes = lazy(() => import('@/pages/rep/RepClientes'));
-const RepAgendamentos = lazy(() => import('@/pages/rep/RepAgendamentos'));
+const RepAgenda = lazy(() => import('@/pages/rep/RepAgenda'));
 const RepConfiguracoes = lazy(() => import('@/pages/rep/RepConfiguracoes'));
 const RepEstatisticas = lazy(() => import('@/pages/rep/RepEstatisticas'));
 const RepInadimplencia = lazy(() => import('@/pages/rep/RepInadimplencia'));
@@ -118,7 +118,7 @@ function App() {
                       <ProtectedRoute>
                         <RepGuard>
                           <RepLayout>
-                            <RepAgendamentos />
+                            <RepAgenda />
                           </RepLayout>
                         </RepGuard>
                       </ProtectedRoute>

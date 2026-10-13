@@ -80,6 +80,8 @@ export interface Cliente {
   
   // Flag para desabilitar reagendamento automático
   desabilitarReagendamento?: boolean;
+  /** 'displays' = compra em displays de 18, com preço por faixa (ver utils/pedidoDisplays). */
+  modeloPedido?: 'padrao' | 'displays';
 
   // Private-label / industrialização terceirizada
   tipoCliente?: TipoCliente; // PDV (padrão), INDUSTRIAL (só coleta), AMBOS (compra + coleta)

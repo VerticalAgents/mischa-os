@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import BarraInferior from "@/components/mobile/BarraInferior";
-import { itensBarraRep } from "@/components/mobile/itens-barra";
+import { useItensBarraRep } from "@/components/mobile/itens-barra";
 import RepMobileMenuSheet from "@/components/rep/RepMobileMenuSheet";
 
 export default function RepMobileDock() {
   const { pathname } = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
+  const itens = useItensBarraRep();
 
   useEffect(() => {
     setMenuAberto(false);
@@ -15,7 +16,7 @@ export default function RepMobileDock() {
   return (
     <>
       <BarraInferior
-        itens={itensBarraRep}
+        itens={itens}
         maisAberto={menuAberto}
         aoAbrirMais={() => setMenuAberto(true)}
       />

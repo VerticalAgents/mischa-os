@@ -1,3 +1,4 @@
+import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { useMemo } from "react";
 import { Home, Clipboard, Truck, Layers, Users, Calendar, BarChart3 } from "lucide-react";
 import { mainMenuItems } from "@/components/layout/navigation-items";
@@ -49,3 +50,15 @@ export const itensBarraRep: ItemBarra[] = [
   { path: "/rep/estatisticas", label: "Stats", Icon: BarChart3 },
   { path: "/rep/clientes", label: "Clientes", Icon: Users },
 ];
+
+/** Para quem vende em displays a agenda é a tela de pedidos: mesma rota, outro nome. */
+export function useItensBarraRep(): ItemBarra[] {
+  const { vendeEmDisplays } = useModeloPedidoRep();
+  return useMemo(
+    () =>
+      vendeEmDisplays
+        ? itensBarraRep.map((item) => (item.path === "/rep/agendamentos" ? { ...item, label: "Pedidos" } : item))
+        : itensBarraRep,
+    [vendeEmDisplays]
+  );
+}

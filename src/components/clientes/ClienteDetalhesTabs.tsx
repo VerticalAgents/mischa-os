@@ -1,4 +1,8 @@
 
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { MODELO_DISPLAYS } from "@/utils/pedidoDisplays";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Cliente } from "@/types";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
@@ -22,6 +26,10 @@ export default function ClienteDetalhesTabs({
   hideFinanceiro = false,
 }: ClienteDetalhesTabsProps) {
   const { activeTab, changeTab } = useTabPersistence("informacoes");
+  const { isRepresentante } = useUserRoles();
+  const navigate = useNavigate();
+  // Representante não mexe na agenda de cliente de displays: o pedido é lançado na tela de Pedidos.
+  const pedidoPelaTelaDePedidos = isRepresentante() && cliente.modeloPedido === MODELO_DISPLAYS;
 
   const mobileTabs = [
     { id: "informacoes", label: "Informações" },
@@ -75,11 +83,22 @@ export default function ClienteDetalhesTabs({
       </TabsContent>
 
       <TabsContent value="agendamento" className="mt-6">
-        <AgendamentoAtual 
-          cliente={cliente} 
-          onAgendamentoUpdate={onAgendamentoUpdate}
-          key={refreshTrigger}
-        />
+        {pedidoPelaTelaDePedidos ? (
+          <div className="rounded-lg border p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Este cliente compra em displays. O pedido é lançado, alterado e cancelado na tela de Pedidos.
+            </p>
+            <Button className="h-11" onClick={() => navigate(`/rep/agendamentos?cliente=${cliente.id}`)}>
+              Fazer pedido
+            </Button>
+          </div>
+        ) : (
+          <AgendamentoAtual 
+            cliente={cliente} 
+            onAgendamentoUpdate={onAgendamentoUpdate}
+            key={refreshTrigger}
+          />
+        )}
       </TabsContent>
 
       <TabsContent value="analise" className="mt-6">

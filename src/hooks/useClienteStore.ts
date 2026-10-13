@@ -188,6 +188,7 @@ export const transformDbRowToCliente = (row: any): Cliente => {
     subcategoriaId: row.subcategoria_id || 1,
     gestaoClickClienteId: row.gestaoclick_cliente_id || null,
     desabilitarReagendamento: row.desabilitar_reagendamento === true,
+    modeloPedido: row.modelo_pedido === 'displays' ? 'displays' : 'padrao',
     tipoCliente: (row.tipo_cliente as any) || 'PDV',
     precoIndustrializacaoUnitario: row.preco_industrializacao_unitario ?? null,
   };

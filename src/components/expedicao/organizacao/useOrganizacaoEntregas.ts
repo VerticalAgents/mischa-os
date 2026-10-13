@@ -1,3 +1,4 @@
+import { CATEGORIA_DISPLAYS, MODELO_DISPLAYS, UNIDADES_POR_DISPLAY, precoPorDisplays } from '@/utils/pedidoDisplays';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -60,7 +61,8 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
             emite_nota_fiscal,
             representante_id,
             categorias_habilitadas,
-            link_google_maps
+            link_google_maps,
+            modelo_pedido
           )
         `)
         .eq('data_proxima_reposicao', hoje)
@@ -149,6 +151,15 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
         categoriasHabilitadas.forEach((categoriaId: number) => {
           const nomeCategoria = categoriasMap.get(categoriaId);
           if (!nomeCategoria) return;
+
+          // Cliente de displays: o preço é o da faixa desta entrega
+          if (cliente?.modelo_pedido === MODELO_DISPLAYS && categoriaId === CATEGORIA_DISPLAYS) {
+            precosCliente.push({
+              categoria: nomeCategoria,
+              preco: precoPorDisplays(Math.floor((ag.quantidade_total || 0) / UNIDADES_POR_DISPLAY)),
+            });
+            return;
+          }
 
           // Verificar se tem preço personalizado
           const precoPersonalizado = precosPersonalizados?.get(categoriaId);

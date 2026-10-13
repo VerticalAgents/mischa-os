@@ -9,6 +9,7 @@ import { VendaGCCard } from "./gestaoclick/VendaGCCard";
 import { AcoesMassaGC } from "./gestaoclick/AcoesMassaGC";
 import { useGerarDocumentoVenda } from "./gestaoclick/useGerarDocumentoVenda";
 import { useGestaoClickNF } from "./gestaoclick/useGestaoClickNF";
+import { CATEGORIA_DISPLAYS, precoUnitarioDisplays } from "@/utils/pedidoDisplays";
 
 const STORAGE_KEY = "gestaoclick_documentos_status";
 
@@ -117,7 +118,7 @@ export default function GestaoClickTab() {
       const clienteIds = [...new Set(agendamentos.map(a => a.cliente_id))];
       const { data: clientes } = await supabase
         .from("clientes")
-        .select("id, nome, cnpj_cpf, endereco_entrega, contato_telefone, contato_email, forma_pagamento, tipo_cobranca, prazo_pagamento_dias, prazo_pagamento_tipo, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos")
+        .select("id, nome, modelo_pedido, cnpj_cpf, endereco_entrega, contato_telefone, contato_email, forma_pagamento, tipo_cobranca, prazo_pagamento_dias, prazo_pagamento_tipo, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos")
         .in("id", clienteIds);
 
       const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
@@ -166,6 +167,11 @@ export default function GestaoClickTab() {
         
         // Processar itens - estrutura: { produto: "Nome do Produto", quantidade: X }
         const itensRaw = ag.itens_personalizados as any[] || [];
+        // Cliente de displays paga pela faixa da entrega (brownies da Revenda Padrão no pedido)
+        const unidadesDeDisplays = itensRaw.reduce((soma, item) => {
+          const categoria = produtos?.find(p => p.nome === (item.produto || item.nome))?.categoria_id;
+          return categoria === CATEGORIA_DISPLAYS ? soma + (item.quantidade || 0) : soma;
+        }, 0);
         const itens = itensRaw.map(item => {
           const nomeProduto = item.produto || item.nome || "Produto";
           
@@ -181,6 +187,12 @@ export default function GestaoClickTab() {
           } else if (categoriaId && precosPadraoCategoria.has(categoriaId)) {
             precoUnitario = precosPadraoCategoria.get(categoriaId)!;
           }
+          precoUnitario = precoUnitarioDisplays({
+            modeloPedido: (cliente as any)?.modelo_pedido,
+            categoriaId,
+            unidadesDaCategoria: unidadesDeDisplays,
+            precoAtual: precoUnitario,
+          });
 
           return {
             produto_id: produto?.id || "",

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.3"
   }
   public: {
     Tables: {
@@ -18,9 +18,12 @@ export type Database = {
         Row: {
           bonificacoes_pendentes: Json
           cliente_id: string
+          confirmado_em: string | null
           contatar_cliente: boolean | null
           created_at: string
           data_proxima_reposicao: string | null
+          despachado_em: string | null
+          displays: Json | null
           gestaoclick_nf_id: string | null
           gestaoclick_nf_status: string | null
           gestaoclick_sincronizado_em: string | null
@@ -29,6 +32,7 @@ export type Database = {
           itens_personalizados: Json | null
           observacoes_agendamento: string | null
           quantidade_total: number
+          separado_em: string | null
           status_agendamento: string
           substatus_pedido: string | null
           tipo_pedido: string
@@ -38,9 +42,12 @@ export type Database = {
         Insert: {
           bonificacoes_pendentes?: Json
           cliente_id: string
+          confirmado_em?: string | null
           contatar_cliente?: boolean | null
           created_at?: string
           data_proxima_reposicao?: string | null
+          despachado_em?: string | null
+          displays?: Json | null
           gestaoclick_nf_id?: string | null
           gestaoclick_nf_status?: string | null
           gestaoclick_sincronizado_em?: string | null
@@ -49,6 +56,7 @@ export type Database = {
           itens_personalizados?: Json | null
           observacoes_agendamento?: string | null
           quantidade_total?: number
+          separado_em?: string | null
           status_agendamento?: string
           substatus_pedido?: string | null
           tipo_pedido?: string
@@ -58,9 +66,12 @@ export type Database = {
         Update: {
           bonificacoes_pendentes?: Json
           cliente_id?: string
+          confirmado_em?: string | null
           contatar_cliente?: boolean | null
           created_at?: string
           data_proxima_reposicao?: string | null
+          despachado_em?: string | null
+          displays?: Json | null
           gestaoclick_nf_id?: string | null
           gestaoclick_nf_status?: string | null
           gestaoclick_sincronizado_em?: string | null
@@ -69,6 +80,7 @@ export type Database = {
           itens_personalizados?: Json | null
           observacoes_agendamento?: string | null
           quantidade_total?: number
+          separado_em?: string | null
           status_agendamento?: string
           substatus_pedido?: string | null
           tipo_pedido?: string
@@ -417,6 +429,7 @@ export type Database = {
           janelas_entrega: Json | null
           link_google_maps: string | null
           meta_giro_semanal: number | null
+          modelo_pedido: string
           nome: string
           observacoes: string | null
           periodicidade_padrao: number | null
@@ -437,6 +450,7 @@ export type Database = {
           tipo_pessoa: string | null
           ultima_data_reposicao_efetiva: string | null
           updated_at: string
+          valor_entrega_personalizado: number | null
         }
         Insert: {
           ativo?: boolean | null
@@ -465,6 +479,7 @@ export type Database = {
           janelas_entrega?: Json | null
           link_google_maps?: string | null
           meta_giro_semanal?: number | null
+          modelo_pedido?: string
           nome: string
           observacoes?: string | null
           periodicidade_padrao?: number | null
@@ -485,6 +500,7 @@ export type Database = {
           tipo_pessoa?: string | null
           ultima_data_reposicao_efetiva?: string | null
           updated_at?: string
+          valor_entrega_personalizado?: number | null
         }
         Update: {
           ativo?: boolean | null
@@ -513,6 +529,7 @@ export type Database = {
           janelas_entrega?: Json | null
           link_google_maps?: string | null
           meta_giro_semanal?: number | null
+          modelo_pedido?: string
           nome?: string
           observacoes?: string | null
           periodicidade_padrao?: number | null
@@ -533,6 +550,7 @@ export type Database = {
           tipo_pessoa?: string | null
           ultima_data_reposicao_efetiva?: string | null
           updated_at?: string
+          valor_entrega_personalizado?: number | null
         }
         Relationships: []
       }
@@ -677,6 +695,45 @@ export type Database = {
           status_contato?: string
           ultimo_contato_em?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      contatos_externos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          tipo: string
+          updated_at: string
+          valor_coleta: number | null
+          valor_por_entrega: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+          tipo: string
+          updated_at?: string
+          valor_coleta?: number | null
+          valor_por_entrega?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+          tipo?: string
+          updated_at?: string
+          valor_coleta?: number | null
+          valor_por_entrega?: number | null
         }
         Relationships: []
       }
@@ -2111,6 +2168,7 @@ export type Database = {
           email: string | null
           gestaoclick_funcionario_id: string | null
           id: number
+          modelo_pedido_padrao: string
           nome: string
           telefone: string | null
           updated_at: string
@@ -2124,6 +2182,7 @@ export type Database = {
           email?: string | null
           gestaoclick_funcionario_id?: string | null
           id?: number
+          modelo_pedido_padrao?: string
           nome: string
           telefone?: string | null
           updated_at?: string
@@ -2137,6 +2196,7 @@ export type Database = {
           email?: string | null
           gestaoclick_funcionario_id?: string | null
           id?: number
+          modelo_pedido_padrao?: string
           nome?: string
           telefone?: string | null
           updated_at?: string
@@ -2649,6 +2709,7 @@ export type Database = {
         Row: {
           chat_titulo: string | null
           cliente_id: string | null
+          contato_id: string | null
           created_at: string
           criado_por: string | null
           id: string
@@ -2661,6 +2722,7 @@ export type Database = {
         Insert: {
           chat_titulo?: string | null
           cliente_id?: string | null
+          contato_id?: string | null
           created_at?: string
           criado_por?: string | null
           id?: string
@@ -2673,6 +2735,7 @@ export type Database = {
         Update: {
           chat_titulo?: string | null
           cliente_id?: string | null
+          contato_id?: string | null
           created_at?: string
           criado_por?: string | null
           id?: string
@@ -2696,6 +2759,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "dados_analise_giro_materialized"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_vinculos_contato_id_fkey"
+            columns: ["contato_id"]
+            isOneToOne: false
+            referencedRelation: "contatos_externos"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "whatsapp_vinculos_lead_id_fkey"
@@ -2799,10 +2869,12 @@ export type Database = {
         Args: { p_cartao_id: string; p_data_compra: string }
         Returns: string
       }
+      confirmar_producao_lote: { Args: { p_ids: string[] }; Returns: Json }
       decrypt_sensitive_data: {
         Args: { encrypted_data: string }
         Returns: string
       }
+      displays_data_entrega: { Args: { p_agora?: string }; Returns: string }
       encrypt_sensitive_data: { Args: { data: string }; Returns: string }
       get_cliente_secure: {
         Args: { cliente_id: string }
@@ -2937,6 +3009,10 @@ export type Database = {
       }
       is_owner_or_staff: { Args: never; Returns: boolean }
       is_representante: { Args: never; Returns: boolean }
+      lancar_producao_lote: {
+        Args: { p_confirmar: boolean; p_itens: Json; p_origem?: string }
+        Returns: Json
+      }
       marcar_parcelas_atrasadas: { Args: never; Returns: undefined }
       populate_historico_giro_semanal: { Args: never; Returns: undefined }
       process_entrega: { Args: { p_entrega_id: string }; Returns: undefined }
@@ -2962,6 +3038,14 @@ export type Database = {
             Returns: undefined
           }
       refresh_dados_analise_giro: { Args: never; Returns: undefined }
+      rep_cancelar_pedido_displays: {
+        Args: { p_cliente_id: string }
+        Returns: undefined
+      }
+      rep_lancar_pedido_displays: {
+        Args: { p_cliente_id: string; p_displays: Json; p_itens: Json }
+        Returns: Json
+      }
       representante_update_agendamento: {
         Args: {
           p_agendamento_id: string

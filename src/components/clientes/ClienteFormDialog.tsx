@@ -35,6 +35,8 @@ import { toast } from "@/hooks/use-toast";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
+import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
+import { CATEGORIA_DISPLAYS, FAIXAS, MINIMO_DISPLAYS, MODELO_DISPLAYS, UNIDADES_POR_DISPLAY } from "@/utils/pedidoDisplays";
 import { useErrorDetail } from '@/hooks/useErrorDetail';
 import { ErrorDetailDialog } from '@/components/common/ErrorDetailDialog';
 import { ClienteResetDialog } from './ClienteResetDialog';
@@ -88,12 +90,24 @@ interface ClienteFormDialogProps {
  * Fica separado do getDefaultFormData porque nao e um valor sugerido — e regra
  * da empresa, e o campo correspondente nem aparece na tela para ele.
  */
-const valoresDoRepresentante = (): Partial<Cliente> => ({
+const valoresDoRepresentante = (emDisplays = false): Partial<Cliente> => ({
   tipoCliente: REGRAS_DO_REPRESENTANTE.tipoCliente as Cliente['tipoCliente'],
   tipoLogistica: REGRAS_DO_REPRESENTANTE.tipoLogistica as Cliente['tipoLogistica'],
   emiteNotaFiscal: REGRAS_DO_REPRESENTANTE.emiteNotaFiscal,
   categoriasHabilitadas: [REGRAS_DO_REPRESENTANTE.categoriaPadrao],
+  ...(emDisplays ? REGRAS_DO_CANAL_DE_DISPLAYS : {}),
 });
+
+/**
+ * Canal que vende em displays (representantes da Imigracao): quem entrega e a
+ * Mischa's, em dia fixo, e o pedido so existe quando o representante lanca.
+ * O banco repete a regra do reagendamento ao gravar o cliente.
+ */
+const REGRAS_DO_CANAL_DE_DISPLAYS: Partial<Cliente> = {
+  tipoLogistica: 'Própria',
+  desabilitarReagendamento: true,
+  periodicidadePadrao: 0,
+};
 
 const getDefaultFormData = (): Partial<Cliente> => ({
   nome: '',
@@ -146,6 +160,9 @@ export default function ClienteFormDialog({
   // Representante não pode editar dados básicos de clientes já criados.
   // Só pode preencher no primeiro cadastro. Depois, somente admin altera.
   const lockBasicForRep = isRep && !!cliente;
+  const { vendeEmDisplays: repDeDisplays, loading: loadingModeloRep } = useModeloPedidoRep();
+  // Cliente que compra em displays: sem periodicidade, sem preço por cliente.
+  const emDisplays = (isRep && repDeDisplays) || cliente?.modeloPedido === MODELO_DISPLAYS;
   const { rotasEntrega, adicionarRotaEntrega } = useSupabaseRotasEntrega();
   const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
   const { formasPagamento } = useSupabaseFormasPagamento();
@@ -185,7 +202,7 @@ export default function ClienteFormDialog({
       
       // Se for representante, aguardar o id resolver antes de inicializar o form
       // de criação — caso contrário o representante_id sai null e o RLS rejeita.
-      if (!cliente && isRep && loadingMeuRep) {
+      if (!cliente && isRep && (loadingMeuRep || loadingModeloRep)) {
         return;
       }
 
@@ -201,7 +218,7 @@ export default function ClienteFormDialog({
         setFormData({
           ...getDefaultFormData(),
           ...dadosIniciais,
-          ...(isRep ? valoresDoRepresentante() : {}),
+          ...(isRep ? valoresDoRepresentante(repDeDisplays) : {}),
           representanteId: isRep && meuRepresentanteId
             ? meuRepresentanteId
             : (dadosIniciais.representanteId ?? undefined),
@@ -217,7 +234,7 @@ export default function ClienteFormDialog({
         // MODO DE CRIAÇÃO VAZIA: Novo cliente em branco
         setFormData({
           ...getDefaultFormData(),
-          ...(isRep ? valoresDoRepresentante() : {}),
+          ...(isRep ? valoresDoRepresentante(repDeDisplays) : {}),
           representanteId: isRep && meuRepresentanteId ? meuRepresentanteId : undefined,
         });
         lastClienteIdRef.current = null;
@@ -226,7 +243,7 @@ export default function ClienteFormDialog({
     } else {
       console.log('⏭️ Mantendo formData (sem reinit)');
     }
-  }, [open, cliente?.id, dadosIniciais, isRep, meuRepresentanteId, loadingMeuRep]);
+  }, [open, cliente?.id, dadosIniciais, isRep, meuRepresentanteId, loadingMeuRep, repDeDisplays]);
 
   const handleInputChange = (field: keyof Cliente, value: any) => {
     console.log(`ClienteFormDialog: Atualizando campo ${field}:`, value);
@@ -657,7 +674,7 @@ export default function ClienteFormDialog({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className={emDisplays ? "hidden" : "space-y-2"}>
                   <Label htmlFor="periodicidadePadrao">Periodicidade (dias)</Label>
                   <Input
                     id="periodicidadePadrao"
@@ -686,7 +703,7 @@ export default function ClienteFormDialog({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className={emDisplays ? "hidden" : "flex items-center justify-between rounded-lg border p-3"}>
                 <div className="space-y-0.5">
                   <Label htmlFor="desabilitarReagendamento" className="text-sm font-medium cursor-pointer">
                     Desabilitar reagendamento automático
@@ -1036,10 +1053,34 @@ export default function ClienteFormDialog({
             value={formData.categoriasHabilitadas || []}
             onChange={handleCategoriasChange}
             clienteId={cliente?.id}
-            idsPermitidos={isRep ? [...REGRAS_DO_REPRESENTANTE.categoriasPermitidas] : undefined}
+            idsPermitidos={
+              isRep
+                ? (repDeDisplays ? [CATEGORIA_DISPLAYS] : [...REGRAS_DO_REPRESENTANTE.categoriasPermitidas])
+                : undefined
+            }
           />
 
-          {(formData.categoriasHabilitadas?.length ?? 0) > 0 && (
+          {emDisplays ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Preço por brownie</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  Este cliente compra em displays de {UNIDADES_POR_DISPLAY}. O preço vale por entrega, igual para
+                  todos os sabores, e o pedido mínimo é de {MINIMO_DISPLAYS} displays.
+                </p>
+                {[...FAIXAS].reverse().map((faixa) => (
+                  <div key={faixa.minimo} className="flex justify-between border-b last:border-0 py-1.5">
+                    <span>{faixa.rotulo} displays</span>
+                    <span className="font-medium tabular-nums">
+                      {faixa.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : (formData.categoriasHabilitadas?.length ?? 0) > 0 && (
             <PrecificacaoPorCategoria
               cliente={clienteTemp}
             />

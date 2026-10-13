@@ -1,3 +1,4 @@
+import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Users, Calendar, BarChart3, Settings, LogOut, X, AlertTriangle } from "lucide-react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
@@ -29,6 +30,7 @@ interface RepMobileMenuSheetProps {
 
 export default function RepMobileMenuSheet({ open, onOpenChange }: RepMobileMenuSheetProps) {
   const { pathname } = useLocation();
+  const { vendeEmDisplays } = useModeloPedidoRep();
   const { logout, user } = useAuth();
   const { isDark, toggleTheme } = useThemeStore();
 
@@ -54,7 +56,8 @@ export default function RepMobileMenuSheet({ open, onOpenChange }: RepMobileMenu
           style={{ borderColor: BORDA_INTERNA, paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
         >
           <div className="grid grid-cols-3 gap-2">
-            {repMenuItems.map(({ to, label, Icon }) => {
+            {repMenuItems.map(({ to, label: rotulo, Icon }) => {
+              const label = vendeEmDisplays && to === "/rep/agendamentos" ? "Pedidos" : rotulo;
               const isActive = pathname === to || pathname.startsWith(to + "/");
               return (
                 <Link

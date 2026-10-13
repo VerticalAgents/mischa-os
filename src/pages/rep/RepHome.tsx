@@ -1,3 +1,4 @@
+import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ const STATUS_META = {
 export default function RepHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { vendeEmDisplays } = useModeloPedidoRep();
   const { data, loading, refetch } = useRepDashboardData();
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
   const [atualizarAgendamentoOpen, setAtualizarAgendamentoOpen] = useState(false);
@@ -473,12 +475,12 @@ export default function RepHome() {
         <Button
           variant="secondary"
           className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal col-span-2 md:col-span-1"
-          onClick={() => setAtualizarAgendamentoOpen(true)}
+          onClick={() => (vendeEmDisplays ? navigate("/rep/agendamentos") : setAtualizarAgendamentoOpen(true))}
         >
-          <CalendarClock className="w-4 h-4 mr-2 shrink-0" /> Atualizar agendamento
+          <CalendarClock className="w-4 h-4 mr-2 shrink-0" /> {vendeEmDisplays ? "Novo pedido" : "Atualizar agendamento"}
         </Button>
         <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/agendamentos")}>
-          <Calendar className="w-4 h-4 mr-2 shrink-0" /> Agendamentos
+          <Calendar className="w-4 h-4 mr-2 shrink-0" /> {vendeEmDisplays ? "Pedidos" : "Agendamentos"}
         </Button>
         <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/inadimplencia")}>
           <AlertCircle className="w-4 h-4 mr-2 shrink-0" /> Inadimplência
