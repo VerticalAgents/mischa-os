@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { RepSidebar, RepTopNavBar } from "@/components/rep/RepSidebar";
 import RepMobileDock from "@/components/rep/RepMobileDock";
 import AreaGestos from "@/components/mobile/AreaGestos";
-import { itensBarraRep } from "@/components/mobile/itens-barra";
+import { useItensBarraRep } from "@/components/mobile/itens-barra";
 import { paginasBarraRep } from "@/components/mobile/paginas-barra";
 import { useSidebarStore } from "@/lib/sidebar-store";
 import logo from "@/assets/mischas-logo.png";
@@ -11,7 +11,6 @@ import logo from "@/assets/mischas-logo.png";
 const VERMELHO = "#d1193a";
 const BORDA_INTERNA = "rgba(255,255,255,0.18)";
 
-const rotasBarra = itensBarraRep.map((i) => i.path);
 
 interface RepLayoutProps {
   children: ReactNode;
@@ -19,7 +18,8 @@ interface RepLayoutProps {
 
 export default function RepLayout({ children }: RepLayoutProps) {
   const sidebarExpandido = useSidebarStore((s) => s.expandido);
-  const rotas = useMemo(() => rotasBarra, []);
+  const itensBarra = useItensBarraRep();
+  const rotas = useMemo(() => itensBarra.map((i) => i.path), [itensBarra]);
 
   return (
     <div className="flex min-h-screen min-h-[100dvh] w-full bg-ground">

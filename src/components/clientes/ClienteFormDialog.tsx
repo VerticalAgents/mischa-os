@@ -101,13 +101,14 @@ const valoresDoRepresentante = (emDisplays = false): Partial<Cliente> => ({
 
 /**
  * Canal que vende em displays (representantes da Imigracao): quem entrega e a
- * Mischa's, em dia fixo, e o pedido so existe quando o representante lanca.
- * O banco repete a regra do reagendamento ao gravar o cliente.
+ * Mischa's, em dia fixo, e depois de cada entrega o cliente volta como previsto
+ * para a semana seguinte. O banco repete a regra ao gravar o cliente.
  */
 const REGRAS_DO_CANAL_DE_DISPLAYS: Partial<Cliente> = {
   tipoLogistica: 'Própria',
-  desabilitarReagendamento: true,
-  periodicidadePadrao: 0,
+  // O ponto de venda compra toda semana: depois da entrega volta como previsto.
+  desabilitarReagendamento: false,
+  periodicidadePadrao: 7,
 };
 
 const getDefaultFormData = (): Partial<Cliente> => ({
@@ -162,7 +163,7 @@ export default function ClienteFormDialog({
   // Só pode preencher no primeiro cadastro. Depois, somente admin altera.
   const lockBasicForRep = isRep && !!cliente;
   const { vendeEmDisplays: repDeDisplays, loading: loadingModeloRep } = useModeloPedidoRep();
-  // Cliente que compra em displays: sem periodicidade, sem preço por cliente.
+  // Cliente que compra em displays: periodicidade fixa do canal, sem preço por cliente.
   const emDisplays = (isRep && repDeDisplays) || cliente?.modeloPedido === MODELO_DISPLAYS;
   const { rotasEntrega, adicionarRotaEntrega } = useSupabaseRotasEntrega();
   const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();

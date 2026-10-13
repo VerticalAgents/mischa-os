@@ -88,7 +88,7 @@ export default function ClienteDetalhesTabs({
             <p className="text-sm text-muted-foreground">
               Este cliente compra em displays. O pedido é lançado, alterado e cancelado na tela de Pedidos.
             </p>
-            <Button className="h-11" onClick={() => navigate(`/rep/agendamentos?cliente=${cliente.id}`)}>
+            <Button className="h-11" onClick={() => navigate(`/rep/pedidos?cliente=${cliente.id}`)}>
               Fazer pedido
             </Button>
           </div>

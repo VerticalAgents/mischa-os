@@ -475,12 +475,12 @@ export default function RepHome() {
         <Button
           variant="secondary"
           className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal col-span-2 md:col-span-1"
-          onClick={() => (vendeEmDisplays ? navigate("/rep/agendamentos") : setAtualizarAgendamentoOpen(true))}
+          onClick={() => (vendeEmDisplays ? navigate("/rep/pedidos") : setAtualizarAgendamentoOpen(true))}
         >
           <CalendarClock className="w-4 h-4 mr-2 shrink-0" /> {vendeEmDisplays ? "Novo pedido" : "Atualizar agendamento"}
         </Button>
         <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/agendamentos")}>
-          <Calendar className="w-4 h-4 mr-2 shrink-0" /> {vendeEmDisplays ? "Pedidos" : "Agendamentos"}
+          <Calendar className="w-4 h-4 mr-2 shrink-0" /> Agendamentos
         </Button>
         <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/inadimplencia")}>
           <AlertCircle className="w-4 h-4 mr-2 shrink-0" /> Inadimplência

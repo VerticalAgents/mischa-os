@@ -3047,7 +3047,12 @@ export type Database = {
         Returns: undefined
       }
       rep_lancar_pedido_displays: {
-        Args: { p_cliente_id: string; p_displays: Json; p_itens: Json }
+        Args: {
+          p_cliente_id: string
+          p_displays: Json
+          p_itens: Json
+          p_trocas?: Json
+        }
         Returns: Json
       }
       representante_update_agendamento: {

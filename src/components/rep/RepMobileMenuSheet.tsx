@@ -1,6 +1,6 @@
 import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Calendar, BarChart3, Settings, LogOut, X, AlertTriangle } from "lucide-react";
+import { Home, Users, Calendar, BarChart3, Settings, LogOut, X, AlertTriangle, Package } from "lucide-react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useThemeStore } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
@@ -21,6 +21,13 @@ export const repMenuItems = [
   { to: "/rep/clientes", label: "Meus Clientes", Icon: Users },
   { to: "/rep/inadimplencia", label: "Inadimplência", Icon: AlertTriangle },
   { to: "/rep/configuracoes", label: "Configurações", Icon: Settings },
+];
+
+/** Quem vende em displays tem a tela de Pedidos, logo antes da agenda. */
+const repMenuItemsDisplays = [
+  repMenuItems[0],
+  { to: "/rep/pedidos", label: "Pedidos", Icon: Package },
+  ...repMenuItems.slice(1),
 ];
 
 interface RepMobileMenuSheetProps {
@@ -56,8 +63,7 @@ export default function RepMobileMenuSheet({ open, onOpenChange }: RepMobileMenu
           style={{ borderColor: BORDA_INTERNA, paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
         >
           <div className="grid grid-cols-3 gap-2">
-            {repMenuItems.map(({ to, label: rotulo, Icon }) => {
-              const label = vendeEmDisplays && to === "/rep/agendamentos" ? "Pedidos" : rotulo;
+            {(vendeEmDisplays ? repMenuItemsDisplays : repMenuItems).map(({ to, label, Icon }) => {
               const isActive = pathname === to || pathname.startsWith(to + "/");
               return (
                 <Link

@@ -19,6 +19,18 @@ export interface PedidoDoCliente {
   dataEntrega: string | null;
   quantidadeTotal: number;
   displays: PedidoDisplays | null;
+  trocas: ItemExtra[];
+  /** Só a Mischa's lança bonificação; o representante vê. */
+  bonificacoes: ItemExtra[];
+}
+
+/** Troca ou bonificação pendurada no pedido (mesmo formato da agenda da casa). */
+export interface ItemExtra {
+  produto_id?: string;
+  produto_nome: string;
+  quantidade: number;
+  motivo_id?: number;
+  motivo_nome: string;
 }
 
 export interface ResultadoLancamento {
@@ -45,7 +57,7 @@ export async function listarPedidos(clienteIds: string[]): Promise<PedidoDoClien
   const { data, error } = await supabase
     .from("agendamentos_clientes")
     .select(
-      "cliente_id, status_agendamento, substatus_pedido, separado_em, gestaoclick_venda_id, data_proxima_reposicao, quantidade_total, displays"
+      "cliente_id, status_agendamento, substatus_pedido, separado_em, gestaoclick_venda_id, data_proxima_reposicao, quantidade_total, displays, trocas_pendentes, bonificacoes_pendentes"
     )
     .in("cliente_id", clienteIds);
   if (error) throw error;
@@ -56,17 +68,24 @@ export async function listarPedidos(clienteIds: string[]): Promise<PedidoDoClien
     dataEntrega: a.data_proxima_reposicao,
     quantidadeTotal: a.quantidade_total || 0,
     displays: (a.displays as PedidoDisplays) ?? null,
+    trocas: Array.isArray(a.trocas_pendentes) ? a.trocas_pendentes : [],
+    bonificacoes: Array.isArray(a.bonificacoes_pendentes) ? a.bonificacoes_pendentes : [],
   }));
 }
 
 /** Lança ou altera o pedido. Quem decide o dia da entrega e as travas é o banco. */
-export async function lancarPedido(clienteId: string, pedido: PedidoDisplays): Promise<ResultadoLancamento> {
+export async function lancarPedido(
+  clienteId: string,
+  pedido: PedidoDisplays,
+  trocas: ItemExtra[] = []
+): Promise<ResultadoLancamento> {
   const validacao = validarPedido(pedido);
   if (!validacao.ok) throw new Error(validacao.erro);
   const { data, error } = await supabase.rpc("rep_lancar_pedido_displays", {
     p_cliente_id: clienteId,
     p_displays: pedido as any,
     p_itens: expandirParaItens(pedido) as any,
+    p_trocas: trocas.filter((t) => t.produto_nome && t.quantidade > 0) as any,
   });
   if (error) throw new Error(error.message);
   return data as unknown as ResultadoLancamento;

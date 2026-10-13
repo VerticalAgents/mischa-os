@@ -4,6 +4,7 @@ import {
   Home,
   Users,
   Calendar,
+  Package,
   LogOut,
   Settings,
   BarChart3,
@@ -45,6 +46,13 @@ const items = [
   { to: "/rep/configuracoes", label: "Configurações", icon: Settings },
 ];
 
+/** Quem vende em displays tem a tela de Pedidos, logo acima da agenda. */
+const itemsDisplays = [
+  items[0],
+  { to: "/rep/pedidos", label: "Pedidos", icon: Package },
+  ...items.slice(1),
+];
+
 /** Rótulo de interface: maiúscula espaçada. Conteúdo vai em caixa normal. */
 const ROTULO = "text-[0.7rem] font-semibold uppercase tracking-[1px]";
 
@@ -70,6 +78,7 @@ export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps 
   const { logout, user } = useAuth();
   const { pathname } = useLocation();
   const { vendeEmDisplays } = useModeloPedidoRep();
+  const itensDoMenu = vendeEmDisplays ? itemsDisplays : items;
   const expandido = useSidebarStore((s) => s.expandido);
   const alternar = useSidebarStore((s) => s.alternar);
 
@@ -117,8 +126,7 @@ export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps 
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
-        {items.map((original) => {
-          const item = vendeEmDisplays && original.to === "/rep/agendamentos" ? { ...original, label: "Pedidos" } : original;
+        {itensDoMenu.map((item) => {
           const Icon = item.icon;
           const aceso = estaAceso(pathname, item.to);
           return (
@@ -162,6 +170,7 @@ export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps 
 export function RepTopNavBar() {
   const { pathname } = useLocation();
   const { vendeEmDisplays } = useModeloPedidoRep();
+  const itensDoMenu = vendeEmDisplays ? itemsDisplays : items;
   const { logout } = useAuth();
   const expandido = useSidebarStore((s) => s.expandido);
   const alternar = useSidebarStore((s) => s.alternar);
@@ -191,8 +200,7 @@ export function RepTopNavBar() {
         />
 
         <nav className="flex min-w-0 flex-1 items-center gap-1">
-          {items.map((original) => {
-            const item = vendeEmDisplays && original.to === "/rep/agendamentos" ? { ...original, label: "Pedidos" } : original;
+          {itensDoMenu.map((item) => {
             const Icon = item.icon;
             const aceso = estaAceso(pathname, item.to);
             return (

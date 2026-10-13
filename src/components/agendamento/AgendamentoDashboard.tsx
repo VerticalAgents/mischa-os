@@ -136,10 +136,17 @@ const IndicadoresEntrega = ({
 interface AgendamentoDashboardProps {
   hideExportPDF?: boolean;
   repMode?: boolean;
+  /**
+   * Quando vem, editar um agendamento chama isto em vez de abrir o modal, e as ações
+   * diretas (confirmar, adiar, reagendar em massa) ficam desligadas. É o caso de quem
+   * vende em displays: o pedido só muda pela tela de Pedidos.
+   */
+  onEditarAgendamento?: (agendamento: any) => void;
 }
 
-export default function AgendamentoDashboard({ hideExportPDF = false, repMode = false }: AgendamentoDashboardProps = {}) {
+export default function AgendamentoDashboard({ hideExportPDF = false, repMode = false, onEditarAgendamento }: AgendamentoDashboardProps = {}) {
   const { canEdit } = useEditPermission();
+  const podeAgirDireto = canEdit && !onEditarAgendamento;
   const isMobile = useIsMobile();
   const {
     agendamentos,
@@ -616,6 +623,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   };
 
   const handleEditarAgendamento = async (agendamento: any) => {
+    if (onEditarAgendamento) {
+      onEditarAgendamento(agendamento);
+      return;
+    }
     // Carregar dados atuais do banco antes de abrir o modal
     const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
     
@@ -1449,13 +1460,13 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                     ].filter(Boolean).join(' e ')}
               </p>
             </div>
-            {agendamentosDiaSelecionado.length > 0 && (
+            {agendamentosDiaSelecionado.length > 0 && !onEditarAgendamento && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setModalReagendarAberto(true)}
-                disabled={agendamentosDiaSelecionado.length === 0 || !canEdit}
-                title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
+                disabled={agendamentosDiaSelecionado.length === 0 || !podeAgirDireto}
+                title={!podeAgirDireto ? "Ação não habilitada pelo administrador" : undefined}
                 className="self-start sm:self-auto text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-8 px-3 text-xs font-medium"
               >
                 <Calendar className="h-3.5 w-3.5 mr-1.5" />
@@ -1604,13 +1615,15 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                             {/* Botões — mobile: full width grandes / desktop: ícones compactos */}
                             <div className={cn(
                               "grid gap-2 w-full pt-2 border-t sm:flex sm:w-auto sm:border-t-0 sm:pt-0 sm:gap-1",
-                              agendamento.statusAgendamento === "Previsto" ? "grid-cols-3" : "grid-cols-2"
+                              onEditarAgendamento
+                                ? (agendamento.statusAgendamento === "Previsto" ? "grid-cols-2" : "grid-cols-1")
+                                : (agendamento.statusAgendamento === "Previsto" ? "grid-cols-3" : "grid-cols-2")
                             )}>
                               {agendamento.statusAgendamento === "Previsto" && (
                                 <Button
                                   variant="default"
                                   size="sm"
-                                  onClick={() => handleConfirmarAgendamento(agendamento)}
+                                  onClick={() => (onEditarAgendamento ? onEditarAgendamento(agendamento) : handleConfirmarAgendamento(agendamento))}
                                   disabled={!canEdit}
                                   title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                                   className={cn(BOTAO_CONFIRMAR, "w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2")}
@@ -1625,7 +1638,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                                 onClick={() => handleAdiar7Dias(agendamento)}
                                 disabled={!canEdit}
                                 title={!canEdit ? "Ação não habilitada pelo administrador" : "Adiar 7 dias (mantém Previsto)"}
-                                className="w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2"
+                                className={cn("w-full min-w-0 h-10 px-1 text-xs sm:w-auto sm:h-8 sm:px-2", onEditarAgendamento && "hidden")}
                               >
                                 <CalendarPlus className="h-4 w-4 shrink-0 sm:h-3 sm:w-3" />
                                 <span className="ml-1 truncate sm:hidden">+7 dias</span>

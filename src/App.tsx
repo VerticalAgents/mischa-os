@@ -62,6 +62,7 @@ const Modulos = lazy(() => import('@/pages/Modulos'));
 const RepHome = lazy(() => import('@/pages/rep/RepHome'));
 const RepClientes = lazy(() => import('@/pages/rep/RepClientes'));
 const RepAgenda = lazy(() => import('@/pages/rep/RepAgenda'));
+const RepPedidos = lazy(() => import('@/pages/rep/RepPedidos'));
 const RepConfiguracoes = lazy(() => import('@/pages/rep/RepConfiguracoes'));
 const RepEstatisticas = lazy(() => import('@/pages/rep/RepEstatisticas'));
 const RepInadimplencia = lazy(() => import('@/pages/rep/RepInadimplencia'));
@@ -110,6 +111,15 @@ function App() {
                         <RepGuard>
                           <RepLayout>
                             <RepClientes />
+                          </RepLayout>
+                        </RepGuard>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rep/pedidos" element={
+                      <ProtectedRoute>
+                        <RepGuard>
+                          <RepLayout>
+                            <RepPedidos />
                           </RepLayout>
                         </RepGuard>
                       </ProtectedRoute>

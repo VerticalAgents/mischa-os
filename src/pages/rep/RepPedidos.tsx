@@ -19,8 +19,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import StepperDisplays from "@/components/rep/pedidos/StepperDisplays";
+import TrocasAccordion from "@/components/agendamento/TrocasAccordion";
 import {
   ClienteDeDisplays,
+  ItemExtra,
   PedidoDoCliente,
   cancelarPedido,
   lancarPedido,
@@ -28,6 +30,7 @@ import {
   listarPedidos,
 } from "@/services/pedidos/pedidoDisplays";
 import {
+  CATEGORIA_DISPLAYS,
   FAIXAS,
   MINIMO_DISPLAYS,
   PedidoDisplays,
@@ -60,6 +63,13 @@ function resumoDosDisplays(pedido: PedidoDisplays | null): string {
   return partes.join(" + ");
 }
 
+/** "3 Avelã (Vencimento), 2 Tradicional" */
+function resumoDosExtras(itens: ItemExtra[]): string {
+  return itens
+    .map((i) => `${i.quantidade} ${semBrownie(i.produto_nome)}${i.motivo_nome ? ` (${i.motivo_nome})` : ""}`)
+    .join(", ");
+}
+
 export default function RepPedidos() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [clientes, setClientes] = useState<ClienteDeDisplays[]>([]);
@@ -69,6 +79,7 @@ export default function RepPedidos() {
   // null = lista; "" = escolhendo o cliente; id = montando o pedido dele
   const [clienteEmEdicao, setClienteEmEdicao] = useState<string | null>(null);
   const [pedido, setPedido] = useState<PedidoDisplays>(PEDIDO_VAZIO);
+  const [trocas, setTrocas] = useState<ItemExtra[]>([]);
   const [busca, setBusca] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -93,14 +104,14 @@ export default function RepPedidos() {
   }, []);
 
   const pedidoPorCliente = useMemo(() => new Map(pedidos.map((p) => [p.clienteId, p])), [pedidos]);
-  const confirmados = useMemo(
-    () =>
-      clientes
-        .map((cliente) => ({ cliente, pedido: pedidoPorCliente.get(cliente.id) }))
-        .filter((x) => x.pedido?.status === "Agendado")
-        .sort((a, b) => (a.pedido!.dataEntrega || "").localeCompare(b.pedido!.dataEntrega || "")),
-    [clientes, pedidoPorCliente]
-  );
+  const porStatus = (status: string) =>
+    clientes
+      .map((cliente) => ({ cliente, pedido: pedidoPorCliente.get(cliente.id) }))
+      .filter((x) => x.pedido?.status === status && x.pedido.quantidadeTotal > 0)
+      .sort((a, b) => (a.pedido!.dataEntrega || "").localeCompare(b.pedido!.dataEntrega || ""));
+  const confirmados = useMemo(() => porStatus("Agendado"), [clientes, pedidoPorCliente]);
+  // Previsto: o cliente recebeu na semana passada (ou o pedido foi cancelado) e falta confirmar.
+  const previstos = useMemo(() => porStatus("Previsto"), [clientes, pedidoPorCliente]);
 
   const abrirPedido = (clienteId: string) => {
     const atual = pedidoPorCliente.get(clienteId);
@@ -110,10 +121,11 @@ export default function RepPedidos() {
         ? { sortido: atual.displays.sortido || 0, sabores: { ...(atual.displays.sabores || {}) } }
         : PEDIDO_VAZIO
     );
+    setTrocas(atual?.trocas ?? []);
     setClienteEmEdicao(clienteId);
   };
 
-  // Vindo da ficha do cliente (/rep/agendamentos?cliente=<id>), já abre o pedido dele.
+  // Vindo da agenda ou da ficha do cliente (/rep/pedidos?cliente=<id>), já abre o pedido dele.
   useEffect(() => {
     const id = searchParams.get("cliente");
     if (!id || loading) return;
@@ -126,6 +138,7 @@ export default function RepPedidos() {
     setClienteEmEdicao(null);
     setBusca("");
     setPedido(PEDIDO_VAZIO);
+    setTrocas([]);
   };
 
   const clienteAtual = clientes.find((c) => c.id === clienteEmEdicao) || null;
@@ -145,7 +158,7 @@ export default function RepPedidos() {
     if (!clienteAtual) return;
     try {
       setSalvando(true);
-      const resultado = await lancarPedido(clienteAtual.id, pedido);
+      const resultado = await lancarPedido(clienteAtual.id, pedido, trocas);
       toast.success(
         `${resultado.alterado ? "Pedido alterado" : "Pedido confirmado"}: entrega ${diaPorExtenso(resultado.data_entrega)}.`
       );
@@ -235,7 +248,9 @@ export default function RepPedidos() {
           <ArrowLeft className="h-4 w-4 mr-1" /> Pedidos
         </Button>
         <div>
-          <p className="text-sm text-muted-foreground">{jaConfirmado ? "Alterar pedido" : "Novo pedido"}</p>
+          <p className="text-sm text-muted-foreground">
+            {jaConfirmado ? "Alterar pedido" : pedidoAtual?.status === "Previsto" ? "Confirmar pedido" : "Novo pedido"}
+          </p>
           <h1 className="text-xl font-semibold leading-tight">{clienteAtual.nome}</h1>
         </div>
 
@@ -265,6 +280,19 @@ export default function RepPedidos() {
                 ))}
               </CardContent>
             </Card>
+
+            <TrocasAccordion
+              trocasPendentes={trocas}
+              onTrocasPendentesChange={setTrocas}
+              categoriasHabilitadas={[CATEGORIA_DISPLAYS]}
+            />
+
+            {(pedidoAtual?.bonificacoes.length ?? 0) > 0 && (
+              <p className="text-sm rounded-md border px-3 py-2">
+                <span className="font-medium">Bonificação da Mischa's:</span>{" "}
+                {resumoDosExtras(pedidoAtual!.bonificacoes)}
+              </p>
+            )}
 
             <Card>
               <CardContent className="p-4 space-y-3">
@@ -311,7 +339,9 @@ export default function RepPedidos() {
               <AlertDialogTitle>{jaConfirmado ? "Salvar a alteração?" : "Confirmar o pedido?"}</AlertDialogTitle>
               <AlertDialogDescription>
                 {clienteAtual.nome}: {resumoDosDisplays(pedido)} ({unidades} brownies), {reais(total)}. Entrega{" "}
-                {diaPorExtenso(entrega)}. O pedido vai direto para a separação da fábrica.
+                {diaPorExtenso(entrega)}.
+                {trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""} O pedido vai direto para a
+                separação da fábrica.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -332,6 +362,66 @@ export default function RepPedidos() {
     );
   }
 
+  const cartao = (cliente: ClienteDeDisplays, p: PedidoDoCliente, previsto: boolean) => {
+    const n = Math.floor(p.quantidadeTotal / UNIDADES_POR_DISPLAY);
+    return (
+      <Card key={cliente.id}>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium leading-tight truncate">{cliente.nome}</p>
+              <p className="text-sm text-muted-foreground">
+                {previsto
+                  ? "Último pedido. A entrega é marcada quando você confirmar."
+                  : p.dataEntrega
+                    ? `Entrega ${diaPorExtenso(p.dataEntrega)}`
+                    : "Sem data de entrega"}
+              </p>
+            </div>
+            {!previsto && p.travado && (
+              <Badge variant="secondary" className="shrink-0">
+                Em separação
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm">
+            {resumoDosDisplays(p.displays) || `${n} displays`}
+            <span className="text-muted-foreground">
+              {" "}
+              · {p.quantidadeTotal} brownies · {reais(p.quantidadeTotal * faixaPorDisplays(n).preco)}
+            </span>
+          </p>
+          {p.trocas.length > 0 && (
+            <p className="text-sm">
+              <span className="font-medium">Trocas:</span> {resumoDosExtras(p.trocas)}
+            </p>
+          )}
+          {p.bonificacoes.length > 0 && (
+            <p className="text-sm">
+              <span className="font-medium">Bonificação:</span> {resumoDosExtras(p.bonificacoes)}
+            </p>
+          )}
+          {previsto ? (
+            <Button className="w-full h-11" onClick={() => abrirPedido(cliente.id)}>
+              Confirmar
+            </Button>
+          ) : (
+            !p.travado && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-11" onClick={() => abrirPedido(cliente.id)}>
+                  Alterar
+                </Button>
+                <Button variant="outline" className="h-11" onClick={() => setCancelando(cliente)}>
+                  Cancelar
+                </Button>
+              </div>
+            )
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   // ---------- lista ----------
   return (
     <div className="space-y-4">
@@ -344,58 +434,31 @@ export default function RepPedidos() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground py-6 text-center">Carregando...</p>
-      ) : confirmados.length === 0 ? (
+      ) : confirmados.length === 0 && previstos.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center space-y-2">
             <Package className="h-8 w-8 mx-auto text-muted-foreground" />
-            <p className="font-medium">Nenhum pedido confirmado</p>
+            <p className="font-medium">Nenhum pedido</p>
             <p className="text-sm text-muted-foreground">
               Toque em Novo pedido para lançar. O mínimo é de {MINIMO_DISPLAYS} displays por entrega.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {confirmados.map(({ cliente, pedido: p }) => {
-            const n = Math.floor(p!.quantidadeTotal / UNIDADES_POR_DISPLAY);
-            return (
-              <Card key={cliente.id}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium leading-tight truncate">{cliente.nome}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {p!.dataEntrega ? `Entrega ${diaPorExtenso(p!.dataEntrega)}` : "Sem data de entrega"}
-                      </p>
-                    </div>
-                    {p!.travado && (
-                      <Badge variant="secondary" className="shrink-0">
-                        Em separação
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm">
-                    {resumoDosDisplays(p!.displays) || `${n} displays`}
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {p!.quantidadeTotal} brownies · {reais(p!.quantidadeTotal * faixaPorDisplays(n).preco)}
-                    </span>
-                  </p>
-                  {!p!.travado && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" className="h-11" onClick={() => abrirPedido(cliente.id)}>
-                        Alterar
-                      </Button>
-                      <Button variant="outline" className="h-11" onClick={() => setCancelando(cliente)}>
-                        Cancelar
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <>
+          {previstos.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">Previstos, falta confirmar</h2>
+              {previstos.map(({ cliente, pedido: p }) => cartao(cliente, p!, true))}
+            </section>
+          )}
+          {confirmados.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">Confirmados</h2>
+              {confirmados.map(({ cliente, pedido: p }) => cartao(cliente, p!, false))}
+            </section>
+          )}
+        </>
       )}
 
       <AlertDialog open={!!cancelando} onOpenChange={(aberto) => !aberto && setCancelando(null)}>

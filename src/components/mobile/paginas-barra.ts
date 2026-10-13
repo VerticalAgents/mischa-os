@@ -29,7 +29,9 @@ export const paginasBarraApp: Registro = {
 
 export const paginasBarraRep: Registro = {
   "/rep/home": lazy(() => import("@/pages/rep/RepHome")),
-  "/rep/agendamentos": lazy(() => import("@/pages/rep/RepAgendamentos")),
+  // RepAgenda escolhe entre a agenda de sempre e a de quem vende em displays.
+  "/rep/agendamentos": lazy(() => import("@/pages/rep/RepAgenda")),
+  "/rep/pedidos": lazy(() => import("@/pages/rep/RepPedidos")),
   "/rep/estatisticas": lazy(() => import("@/pages/rep/RepEstatisticas")),
   "/rep/clientes": lazy(() => import("@/pages/rep/RepClientes")),
 };
