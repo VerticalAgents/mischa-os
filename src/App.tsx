@@ -63,7 +63,7 @@ const RepHome = lazy(() => import('@/pages/rep/RepHome'));
 const RepClientes = lazy(() => import('@/pages/rep/RepClientes'));
 const RepAgenda = lazy(() => import('@/pages/rep/RepAgenda'));
 const RepPedidos = lazy(() => import('@/pages/rep/RepPedidos'));
-const RepConfiguracoes = lazy(() => import('@/pages/rep/RepConfiguracoes'));
+const RepRotas = lazy(() => import('@/pages/rep/RepRotas'));
 const RepEstatisticas = lazy(() => import('@/pages/rep/RepEstatisticas'));
 const RepInadimplencia = lazy(() => import('@/pages/rep/RepInadimplencia'));
 import RepLayout from '@/layouts/RepLayout';
@@ -133,11 +133,13 @@ function App() {
                         </RepGuard>
                       </ProtectedRoute>
                     } />
-                    <Route path="/rep/configuracoes" element={
+                    {/* As rotas moravam em Configurações; o endereço antigo continua valendo. */}
+                    <Route path="/rep/configuracoes" element={<Navigate to="/rep/rotas" replace />} />
+                    <Route path="/rep/rotas" element={
                       <ProtectedRoute>
                         <RepGuard>
                           <RepLayout>
-                            <RepConfiguracoes />
+                            <RepRotas />
                           </RepLayout>
                         </RepGuard>
                       </ProtectedRoute>

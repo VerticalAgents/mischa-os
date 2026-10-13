@@ -483,7 +483,7 @@ export default function RepHome() {
           <Calendar className="w-4 h-4 mr-2 shrink-0" /> Agendamentos
         </Button>
         <Button variant="outline" className="w-full justify-center h-auto py-3 text-xs sm:text-sm whitespace-normal" onClick={() => navigate("/rep/inadimplencia")}>
-          <AlertCircle className="w-4 h-4 mr-2 shrink-0" /> Inadimplência
+          <AlertCircle className="w-4 h-4 mr-2 shrink-0" /> Cobrança
         </Button>
       </div>
 

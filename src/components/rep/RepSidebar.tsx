@@ -6,9 +6,9 @@ import {
   Calendar,
   Package,
   LogOut,
-  Settings,
+  Map,
   BarChart3,
-  AlertTriangle,
+  Receipt,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -42,8 +42,8 @@ const items = [
   { to: "/rep/agendamentos", label: "Agendamentos", icon: Calendar },
   { to: "/rep/estatisticas", label: "Estatísticas", icon: BarChart3 },
   { to: "/rep/clientes", label: "Meus Clientes", icon: Users },
-  { to: "/rep/inadimplencia", label: "Inadimplência", icon: AlertTriangle },
-  { to: "/rep/configuracoes", label: "Configurações", icon: Settings },
+  { to: "/rep/rotas", label: "Rotas", icon: Map },
+  { to: "/rep/inadimplencia", label: "Cobrança", icon: Receipt },
 ];
 
 /** Quem vende em displays tem a tela de Pedidos, logo acima da agenda. */
