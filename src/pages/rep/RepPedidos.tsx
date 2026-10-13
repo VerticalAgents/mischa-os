@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Package, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,57 +16,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import StepperDisplays from "@/components/rep/pedidos/StepperDisplays";
-import TrocasAccordion from "@/components/agendamento/TrocasAccordion";
+import FormularioPedidoDisplays from "@/components/rep/pedidos/FormularioPedidoDisplays";
+import {
+  AVISO_SEPARADO,
+  diaPorExtenso,
+  reais,
+  resumoDosDisplays,
+  resumoDosExtras,
+} from "@/components/rep/pedidos/texto";
 import {
   ClienteDeDisplays,
-  ItemExtra,
   PedidoDoCliente,
   cancelarPedido,
-  lancarPedido,
   listarClientesDeDisplays,
   listarPedidos,
 } from "@/services/pedidos/pedidoDisplays";
-import {
-  CATEGORIA_DISPLAYS,
-  FAIXAS,
-  MINIMO_DISPLAYS,
-  PedidoDisplays,
-  SABORES,
-  SORTIDO,
-  UNIDADES_POR_DISPLAY,
-  dataEntrega,
-  faixaPorDisplays,
-  totalDisplays,
-  totalUnidades,
-} from "@/utils/pedidoDisplays";
-
-const PEDIDO_VAZIO: PedidoDisplays = { sortido: 0, sabores: {} };
-
-const reais = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const semBrownie = (nome: string) => nome.replace(/^Brownie\s+/, "");
-const diaPorExtenso = (iso: string) => format(parseISO(iso), "EEEE, dd/MM", { locale: ptBR });
-
-const COMPOSICAO_SORTIDO = SABORES.map((s) => `${SORTIDO[s]} ${semBrownie(s)}`).join(", ");
-
-/** "2 sortidos + 1 Avelã" */
-function resumoDosDisplays(pedido: PedidoDisplays | null): string {
-  if (!pedido) return "";
-  const partes: string[] = [];
-  if (pedido.sortido > 0) partes.push(`${pedido.sortido} ${pedido.sortido === 1 ? "sortido" : "sortidos"}`);
-  SABORES.forEach((sabor) => {
-    const n = pedido.sabores?.[sabor] || 0;
-    if (n > 0) partes.push(`${n} ${semBrownie(sabor)}`);
-  });
-  return partes.join(" + ");
-}
-
-/** "3 Avelã (Vencimento), 2 Tradicional" */
-function resumoDosExtras(itens: ItemExtra[]): string {
-  return itens
-    .map((i) => `${i.quantidade} ${semBrownie(i.produto_nome)}${i.motivo_nome ? ` (${i.motivo_nome})` : ""}`)
-    .join(", ");
-}
+import { MINIMO_DISPLAYS, UNIDADES_POR_DISPLAY, faixaPorDisplays } from "@/utils/pedidoDisplays";
 
 export default function RepPedidos() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,10 +41,7 @@ export default function RepPedidos() {
 
   // null = lista; "" = escolhendo o cliente; id = montando o pedido dele
   const [clienteEmEdicao, setClienteEmEdicao] = useState<string | null>(null);
-  const [pedido, setPedido] = useState<PedidoDisplays>(PEDIDO_VAZIO);
-  const [trocas, setTrocas] = useState<ItemExtra[]>([]);
   const [busca, setBusca] = useState("");
-  const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [cancelando, setCancelando] = useState<ClienteDeDisplays | null>(null);
 
@@ -113,23 +73,11 @@ export default function RepPedidos() {
   // Previsto: o cliente recebeu na semana passada (ou o pedido foi cancelado) e falta confirmar.
   const previstos = useMemo(() => porStatus("Previsto"), [clientes, pedidoPorCliente]);
 
-  const abrirPedido = (clienteId: string) => {
-    const atual = pedidoPorCliente.get(clienteId);
-    // Parte do último pedido do cliente: alterar um confirmado ou repetir o anterior.
-    setPedido(
-      atual?.displays
-        ? { sortido: atual.displays.sortido || 0, sabores: { ...(atual.displays.sabores || {}) } }
-        : PEDIDO_VAZIO
-    );
-    setTrocas(atual?.trocas ?? []);
-    setClienteEmEdicao(clienteId);
-  };
-
-  // Vindo da agenda ou da ficha do cliente (/rep/pedidos?cliente=<id>), já abre o pedido dele.
+  // Vindo da ficha do cliente (/rep/pedidos?cliente=<id>), já abre o pedido dele.
   useEffect(() => {
     const id = searchParams.get("cliente");
     if (!id || loading) return;
-    if (clientes.some((c) => c.id === id)) abrirPedido(id);
+    if (clientes.some((c) => c.id === id)) setClienteEmEdicao(id);
     searchParams.delete("cliente");
     setSearchParams(searchParams, { replace: true });
   }, [loading]);
@@ -137,41 +85,10 @@ export default function RepPedidos() {
   const fechar = () => {
     setClienteEmEdicao(null);
     setBusca("");
-    setPedido(PEDIDO_VAZIO);
-    setTrocas([]);
   };
 
   const clienteAtual = clientes.find((c) => c.id === clienteEmEdicao) || null;
   const pedidoAtual = clienteAtual ? pedidoPorCliente.get(clienteAtual.id) : undefined;
-  const jaConfirmado = pedidoAtual?.status === "Agendado";
-  const travado = jaConfirmado && !!pedidoAtual?.travado;
-
-  const displays = totalDisplays(pedido);
-  const unidades = totalUnidades(pedido);
-  const faixa = faixaPorDisplays(displays);
-  const total = unidades * faixa.preco;
-  const faltam = Math.max(0, MINIMO_DISPLAYS - displays);
-  // Alterar não muda o dia da entrega; pedido novo entra na próxima rota.
-  const entrega = jaConfirmado && pedidoAtual?.dataEntrega ? pedidoAtual.dataEntrega : dataEntrega(new Date());
-
-  const confirmar = async () => {
-    if (!clienteAtual) return;
-    try {
-      setSalvando(true);
-      const resultado = await lancarPedido(clienteAtual.id, pedido, trocas);
-      toast.success(
-        `${resultado.alterado ? "Pedido alterado" : "Pedido confirmado"}: entrega ${diaPorExtenso(resultado.data_entrega)}.`
-      );
-      setConfirmando(false);
-      fechar();
-      await carregar();
-    } catch (e: any) {
-      toast.error(e?.message || "Não consegui confirmar o pedido.");
-      setConfirmando(false);
-    } finally {
-      setSalvando(false);
-    }
-  };
 
   const cancelar = async () => {
     if (!cancelando) return;
@@ -222,13 +139,13 @@ export default function RepPedidos() {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => abrirPedido(c.id)}
+                  onClick={() => setClienteEmEdicao(c.id)}
                   className="w-full text-left rounded-lg border bg-card px-4 py-3 min-h-11 flex items-center justify-between gap-3 hover:bg-accent transition-colors"
                 >
                   <span className="font-medium truncate">{c.nome}</span>
                   {p?.status === "Agendado" && (
                     <Badge variant="secondary" className="shrink-0">
-                      {p.travado ? "Em separação" : "Pedido confirmado"}
+                      {p.travado ? "Separado" : "Pedido confirmado"}
                     </Badge>
                   )}
                 </button>
@@ -249,174 +166,90 @@ export default function RepPedidos() {
         </Button>
         <div>
           <p className="text-sm text-muted-foreground">
-            {jaConfirmado ? "Alterar pedido" : pedidoAtual?.status === "Previsto" ? "Confirmar pedido" : "Novo pedido"}
+            {pedidoAtual?.status === "Agendado"
+              ? "Alterar pedido"
+              : pedidoAtual?.status === "Previsto"
+                ? "Confirmar pedido"
+                : "Novo pedido"}
           </p>
           <h1 className="text-xl font-semibold leading-tight">{clienteAtual.nome}</h1>
         </div>
-
-        {travado ? (
-          <Card>
-            <CardContent className="p-4 text-sm">
-              A fábrica já separou este pedido. Para mudar ou cancelar, fale com a Mischa's.
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <Card>
-              <CardContent className="p-4 divide-y">
-                <StepperDisplays
-                  rotulo="Sortido"
-                  detalhe={COMPOSICAO_SORTIDO}
-                  valor={pedido.sortido}
-                  aoMudar={(n) => setPedido({ ...pedido, sortido: n })}
-                />
-                {SABORES.map((sabor) => (
-                  <StepperDisplays
-                    key={sabor}
-                    rotulo={`Só ${semBrownie(sabor)}`}
-                    valor={pedido.sabores[sabor] || 0}
-                    aoMudar={(n) => setPedido({ ...pedido, sabores: { ...pedido.sabores, [sabor]: n } })}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-
-            <TrocasAccordion
-              trocasPendentes={trocas}
-              onTrocasPendentesChange={setTrocas}
-              categoriasHabilitadas={[CATEGORIA_DISPLAYS]}
-            />
-
-            {(pedidoAtual?.bonificacoes.length ?? 0) > 0 && (
-              <p className="text-sm rounded-md border px-3 py-2">
-                <span className="font-medium">Bonificação da Mischa's:</span>{" "}
-                {resumoDosExtras(pedidoAtual!.bonificacoes)}
-              </p>
-            )}
-
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <span className="text-muted-foreground">Displays</span>
-                  <span className="text-right font-medium tabular-nums">{displays}</span>
-                  <span className="text-muted-foreground">Brownies</span>
-                  <span className="text-right font-medium tabular-nums">{unidades}</span>
-                  <span className="text-muted-foreground">Preço por brownie</span>
-                  <span className="text-right font-medium tabular-nums">
-                    {displays >= MINIMO_DISPLAYS ? `${reais(faixa.preco)} (${faixa.rotulo} displays)` : "—"}
-                  </span>
-                  <span className="text-muted-foreground">Entrega</span>
-                  <span className="text-right font-medium">{diaPorExtenso(entrega)}</span>
-                </div>
-                <div className="flex items-baseline justify-between border-t pt-3">
-                  <span className="font-medium">Total</span>
-                  <span className="text-2xl font-semibold tabular-nums">
-                    {displays >= MINIMO_DISPLAYS ? reais(total) : "—"}
-                  </span>
-                </div>
-                {faltam > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    O pedido mínimo é de {MINIMO_DISPLAYS} displays ({MINIMO_DISPLAYS * UNIDADES_POR_DISPLAY}{" "}
-                    brownies). {faltam === 1 ? "Falta 1 display." : `Faltam ${faltam} displays.`}
-                  </p>
-                )}
-                <Button className="w-full h-12 text-base" disabled={faltam > 0} onClick={() => setConfirmando(true)}>
-                  {jaConfirmado ? "Salvar alteração" : "Confirmar pedido"}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <p className="text-xs text-muted-foreground">
-              Preço por brownie conforme os displays da entrega:{" "}
-              {[...FAIXAS].reverse().map((f) => `${f.rotulo} = ${reais(f.preco)}`).join(" · ")}.
-            </p>
-          </>
-        )}
-
-        <AlertDialog open={confirmando} onOpenChange={setConfirmando}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{jaConfirmado ? "Salvar a alteração?" : "Confirmar o pedido?"}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {clienteAtual.nome}: {resumoDosDisplays(pedido)} ({unidades} brownies), {reais(total)}. Entrega{" "}
-                {diaPorExtenso(entrega)}.
-                {trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""} O pedido vai direto para a
-                separação da fábrica.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={salvando}>Voltar</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={salvando}
-                onClick={(e) => {
-                  e.preventDefault();
-                  confirmar();
-                }}
-              >
-                {salvando ? "Enviando..." : "Confirmar"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <FormularioPedidoDisplays
+          key={clienteAtual.id}
+          cliente={clienteAtual}
+          pedidoAtual={pedidoAtual}
+          aoSalvar={async () => {
+            fechar();
+            await carregar();
+          }}
+        />
       </div>
     );
   }
 
+  // Molde do cartão da agenda: o conteúdo à esquerda e as ações à direita, na mesma linha.
+  // Só em tela estreita (celular em pé) as ações descem, para não espremer o nome do cliente.
   const cartao = (cliente: ClienteDeDisplays, p: PedidoDoCliente, previsto: boolean) => {
     const n = Math.floor(p.quantidadeTotal / UNIDADES_POR_DISPLAY);
+    const separado = !previsto && p.travado;
     return (
       <Card key={cliente.id}>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-medium leading-tight truncate">{cliente.nome}</p>
-              <p className="text-sm text-muted-foreground">
-                {previsto
-                  ? "Último pedido. A entrega é marcada quando você confirmar."
-                  : p.dataEntrega
-                    ? `Entrega ${diaPorExtenso(p.dataEntrega)}`
-                    : "Sem data de entrega"}
+        <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium leading-tight truncate">{cliente.nome}</p>
+            <p className="text-sm text-muted-foreground">
+              {previsto
+                ? "Último pedido. A entrega é marcada quando você confirmar."
+                : p.dataEntrega
+                  ? `Entrega ${diaPorExtenso(p.dataEntrega)}`
+                  : "Sem data de entrega"}
+            </p>
+            <p className="text-sm">
+              {resumoDosDisplays(p.displays) || `${n} displays`}
+              <span className="text-muted-foreground">
+                {" "}
+                · {p.quantidadeTotal} brownies · {reais(p.quantidadeTotal * faixaPorDisplays(n).preco)}
+              </span>
+            </p>
+            {p.trocas.length > 0 && (
+              <p className="text-sm">
+                <span className="font-medium">Trocas:</span> {resumoDosExtras(p.trocas)}
               </p>
-            </div>
-            {!previsto && p.travado && (
-              <Badge variant="secondary" className="shrink-0">
-                Em separação
-              </Badge>
             )}
+            {p.bonificacoes.length > 0 && (
+              <p className="text-sm">
+                <span className="font-medium">Bonificação:</span> {resumoDosExtras(p.bonificacoes)}
+              </p>
+            )}
+            {separado && <p className="text-sm text-muted-foreground">{AVISO_SEPARADO}</p>}
           </div>
-          <p className="text-sm">
-            {resumoDosDisplays(p.displays) || `${n} displays`}
-            <span className="text-muted-foreground">
-              {" "}
-              · {p.quantidadeTotal} brownies · {reais(p.quantidadeTotal * faixaPorDisplays(n).preco)}
-            </span>
-          </p>
-          {p.trocas.length > 0 && (
-            <p className="text-sm">
-              <span className="font-medium">Trocas:</span> {resumoDosExtras(p.trocas)}
-            </p>
-          )}
-          {p.bonificacoes.length > 0 && (
-            <p className="text-sm">
-              <span className="font-medium">Bonificação:</span> {resumoDosExtras(p.bonificacoes)}
-            </p>
-          )}
-          {previsto ? (
-            <Button className="w-full h-11" onClick={() => abrirPedido(cliente.id)}>
-              Confirmar
-            </Button>
-          ) : (
-            !p.travado && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-11" onClick={() => abrirPedido(cliente.id)}>
+
+          <div className="flex shrink-0 items-center gap-2">
+            {previsto ? (
+              <Button className="h-11 flex-1 sm:h-9 sm:flex-none" onClick={() => setClienteEmEdicao(cliente.id)}>
+                Confirmar
+              </Button>
+            ) : separado ? (
+              <Badge variant="secondary">Separado</Badge>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  className="h-11 flex-1 sm:h-9 sm:flex-none"
+                  onClick={() => setClienteEmEdicao(cliente.id)}
+                >
                   Alterar
                 </Button>
-                <Button variant="outline" className="h-11" onClick={() => setCancelando(cliente)}>
+                <Button
+                  variant="outline"
+                  className="h-11 flex-1 sm:h-9 sm:flex-none"
+                  onClick={() => setCancelando(cliente)}
+                >
                   Cancelar
                 </Button>
-              </div>
-            )
-          )}
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
