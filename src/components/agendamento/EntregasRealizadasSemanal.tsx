@@ -7,12 +7,15 @@ import { Package, Loader2, ChevronDown, ChevronUp, CheckCircle2, TrendingUp } fr
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { Cliente } from "@/types";
+import { type Canal, canalDoItem, kgDoItem } from "@/utils/canalVenda";
 
 interface EntregasRealizadasSemanelProps {
   semanaAtual: Date;
   representanteFiltro: number[];
   rotaFiltro: number[];
   clientes: Cliente[];
+  /** Canal escolhido nos cards do dashboard. Food service sai em kg. */
+  canalFiltro?: Canal | null;
 }
 interface ProdutoQuantidade {
   produto_id: string;
@@ -23,8 +26,10 @@ export default function EntregasRealizadasSemanal({
   semanaAtual,
   representanteFiltro,
   rotaFiltro,
-  clientes: clientesProp
+  clientes: clientesProp,
+  canalFiltro = null
 }: EntregasRealizadasSemanelProps) {
+  const unidade = canalFiltro === 'food_service' ? 'kg' : 'unidades';
   const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<Record<string, ProdutoQuantidade>>({});
   const [quantidadeSemanaAnterior, setQuantidadeSemanaAnterior] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -103,11 +108,22 @@ export default function EntregasRealizadasSemanal({
         const {
           data: produtos,
           error: produtosError
-        } = await supabase.from('produtos_finais').select('id, nome').eq('ativo', true);
+        } = await supabase.from('produtos_finais').select('id, nome, categoria_id, peso_unitario').eq('ativo', true);
         if (produtosError) throw produtosError;
 
         // Criar mapa de produtos
         const produtosMap = new Map(produtos?.map(p => [p.id, p.nome]) || []);
+        const produtosPorId = new Map(produtos?.map(p => [p.id, p]) || []);
+        const clientesPorId = new Map(clientesProp.map(c => [c.id, c]));
+
+        // Quanto do item entra na conta: tudo sem filtro; com canal escolhido, só o
+        // que é dele (em kg no food service) — mesma regra dos cards de canal.
+        const quantidadeDoItem = (clienteId: string, item: any): number => {
+          if (!canalFiltro) return item.quantidade;
+          const produto = produtosPorId.get(item.produto_id);
+          if (canalDoItem(clientesPorId.get(clienteId), produto) !== canalFiltro) return 0;
+          return canalFiltro === 'food_service' ? kgDoItem(item.quantidade, produto) : item.quantidade;
+        };
 
         // Agregar quantidades por produto (semana atual)
         const quantidadesTemp: Record<string, ProdutoQuantidade> = {};
@@ -122,7 +138,8 @@ export default function EntregasRealizadasSemanal({
               return;
             }
             const produtoId = item.produto_id;
-            const quantidade = item.quantidade;
+            const quantidade = quantidadeDoItem(entrega.cliente_id, item);
+            if (quantidade <= 0) return;
             const produtoNome = produtosMap.get(produtoId) || `Produto ${produtoId.slice(0, 8)}...`;
             if (quantidadesTemp[produtoId]) {
               quantidadesTemp[produtoId].quantidade += quantidade;
@@ -143,7 +160,7 @@ export default function EntregasRealizadasSemanal({
           if (!entrega.itens || !Array.isArray(entrega.itens)) return;
           entrega.itens.forEach((item: any) => {
             if (item.quantidade) {
-              totalAnterior += item.quantidade;
+              totalAnterior += quantidadeDoItem(entrega.cliente_id, item);
             }
           });
         });
@@ -157,7 +174,7 @@ export default function EntregasRealizadasSemanal({
       }
     };
     calcularQuantidades();
-  }, [inicioSemana, fimSemana, inicioSemanaAnterior, fimSemanaAnterior, representanteFiltro, rotaFiltro, clientesProp]);
+  }, [inicioSemana, fimSemana, inicioSemanaAnterior, fimSemanaAnterior, representanteFiltro, rotaFiltro, clientesProp, canalFiltro]);
 
   // Calcular totais, percentual e ordenar produtos
   const {
@@ -210,7 +227,7 @@ export default function EntregasRealizadasSemanal({
             <div className="flex items-baseline justify-between gap-3">
               <div className="flex items-baseline gap-1.5 min-w-0">
                 <span className="text-4xl font-bold tabular-nums text-foreground leading-none">{quantidadeTotal}</span>
-                <span className="text-sm text-muted-foreground">unidades</span>
+                <span className="text-sm text-muted-foreground">{unidade}</span>
               </div>
               <span className="shrink-0 text-xs text-muted-foreground">
                 {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}

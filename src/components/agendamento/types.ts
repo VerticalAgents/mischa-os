@@ -9,4 +9,5 @@ export interface AgendamentoItem {
   statusAgendamento: "Agendar" | "Previsto" | "Agendado";
   substatus_pedido?: string;
   isPedidoUnico: boolean;
+  itensPersonalizados?: { produto?: string; produto_id?: string; quantidade: number }[];
 }

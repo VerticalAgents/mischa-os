@@ -67,12 +67,17 @@ export const convertToAgendamentoItem = (agendamento: any, cliente: any): Agenda
       categoriaId: cliente.categoria_id || 1,
       subcategoriaId: cliente.subcategoria_id || 1,
       categoriasHabilitadas: cliente.categorias_habilitadas,
-      desabilitarReagendamento: cliente.desabilitar_reagendamento === true
+      desabilitarReagendamento: cliente.desabilitar_reagendamento === true,
+      tipoCliente: cliente.tipo_cliente || 'PDV',
+      modeloPedido: cliente.modelo_pedido === 'displays' ? 'displays' : 'padrao'
     },
     dataReposicao: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
     statusAgendamento: agendamento.status_agendamento,
     substatus_pedido: agendamento.substatus_pedido, // CORREÇÃO: Adicionar o mapeamento do substatus_pedido
     isPedidoUnico: false,
+    // Itens do pedido "Alterado", como estão no banco. É por eles que o dashboard
+    // separa revenda de food service (src/utils/canalVenda.ts).
+    itensPersonalizados: Array.isArray(agendamento.itens_personalizados) ? agendamento.itens_personalizados : undefined,
     pedido: {
       id: 0,
       idCliente: cliente.id,

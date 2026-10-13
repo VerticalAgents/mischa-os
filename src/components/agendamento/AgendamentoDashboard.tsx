@@ -5,7 +5,7 @@ import { CHIP_STATUS, CHIP_INFO, FUNDO_LINHA, FUNDO_ENTREGA, BOTAO_CONFIRMAR } f
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, CalendarPlus, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, ChevronDown, FileDown, Truck, Package, CalendarDays, CalendarPlus, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3, RotateCcw, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -36,6 +36,12 @@ import { useConfirmationScore } from "@/hooks/useConfirmationScore";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
 import ConfirmationScoreBadge from "@/components/agendamento/ConfirmationScoreBadge";
 import { cn } from "@/lib/utils";
+import CardsCanais from "./CardsCanais";
+import FaturamentoDetalhe, { type LinhaFaturamento } from "./FaturamentoDetalhe";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useTabelaPrecos } from "@/hooks/useTabelaPrecos";
+import { valorDoPedido } from "@/utils/faturamentoPedido";
+import { SCORE_PROVAVEL, type Canal, ehTerceirizacao, indexarProdutos, quantidadeNoCanal, quebrarPorCanal, resumoPorCanal } from "@/utils/canalVenda";
 
 // Componente para indicadores visuais de entrega
 const IndicadoresEntrega = ({ 
@@ -185,6 +191,13 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   });
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
   const [modoPrevistos, setModoPrevistos] = useState<'provaveis' | 'percentual'>('provaveis');
+  // Canal escolhido nos cards (só admin). null = tudo junto.
+  const [canalFiltro, setCanalFiltro] = useState<Canal | null>(null);
+  const [faturamentoAberto, setFaturamentoAberto] = useState(false);
+  const { produtos } = useSupabaseProdutos();
+  const indiceProdutos = useMemo(() => indexarProdutos(produtos), [produtos]);
+  const { tabela: tabelaPrecos } = useTabelaPrecos();
+  const unidadeCanal = canalFiltro === 'food_service' ? 'kg' : 'unidades';
 
   useEffect(() => {
     const loadData = async () => {
@@ -214,7 +227,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     setSemanaAtual(new Date());
   };
 
-  const agendamentosFiltrados = useMemo(() => {
+  // Busca, representante e rota. O canal entra depois, em agendamentosFiltrados,
+  // para os cards de canal continuarem enxergando os três mesmo com um escolhido.
+  const agendamentosSemCanal = useMemo(() => {
     let filtrados = agendamentos;
     
     // Filtro por nome do cliente
@@ -245,8 +260,25 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     return filtrados;
   }, [agendamentos, filtroNome, representanteFiltro, rotaFiltro]);
 
+  const pedidoDoAgendamento = (a: typeof agendamentos[number]) => ({
+    cliente: a.cliente,
+    quantidadeTotal: a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0,
+    itens: a.pedido?.tipoPedido === 'Alterado' ? a.itensPersonalizados : null,
+  });
+
+  // Com um canal escolhido, fica só o que tem algo dele, e a quantidade do pedido
+  // vira a parte do canal (kg no food service) — pedido misto conta só a parte dele.
+  const agendamentosFiltrados = useMemo(() => {
+    if (!canalFiltro) return agendamentosSemCanal;
+    return agendamentosSemCanal.flatMap(a => {
+      const quantidade = quantidadeNoCanal(quebrarPorCanal(pedidoDoAgendamento(a), indiceProdutos), canalFiltro);
+      if (quantidade <= 0 || !a.pedido) return [];
+      return [{ ...a, pedido: { ...a.pedido, totalPedidoUnidades: quantidade } }];
+    });
+  }, [agendamentosSemCanal, canalFiltro, indiceProdutos]);
+
   // Filtrar entregas históricas por representante, rota e nome (cruzando com clientes)
-  const entregasHistoricoFiltradas = useMemo(() => {
+  const entregasSemCanal = useMemo(() => {
     if (representanteFiltro.length === 0 && rotaFiltro.length === 0 && !filtroNome.trim()) {
       return entregasHistorico;
     }
@@ -272,6 +304,22 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     
     return entregasHistorico.filter(e => clienteIdsFiltrados.has(e.cliente_id));
   }, [entregasHistorico, clientes, representanteFiltro, rotaFiltro, filtroNome]);
+
+  const clientePorId = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes]);
+
+  const pedidoDaEntrega = (e: typeof entregasHistorico[number]) => ({
+    cliente: clientePorId.get(e.cliente_id) ?? { id: e.cliente_id },
+    quantidadeTotal: e.quantidade || 0,
+    itens: e.itens,
+  });
+
+  const entregasHistoricoFiltradas = useMemo(() => {
+    if (!canalFiltro) return entregasSemCanal;
+    return entregasSemCanal.flatMap(e => {
+      const quantidade = quantidadeNoCanal(quebrarPorCanal(pedidoDaEntrega(e), indiceProdutos), canalFiltro);
+      return quantidade > 0 ? [{ ...e, quantidade }] : [];
+    });
+  }, [entregasSemCanal, canalFiltro, indiceProdutos, clientePorId]);
 
   const indicadoresSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
@@ -306,11 +354,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   const previstosSemanais = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
-    return agendamentosFiltrados.filter(a => {
+    // Sem o filtro de canal: as notas precisam cobrir os três canais dos cards.
+    return agendamentosSemCanal.filter(a => {
       const data = new Date(a.dataReposicao);
       return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
     });
-  }, [agendamentosFiltrados, semanaAtual]);
+  }, [agendamentosSemCanal, semanaAtual]);
 
   // ===== Inadimplência (títulos atrasados no GestãoClick) =====
   const { clientes: clientesInadimplentes } = useInadimplencia();
@@ -347,6 +396,112 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
   }, [agendamentosFiltrados, semanaAtual, inadimplenciaPorCliente]);
 
   const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
+
+  // Números da semana por canal (cards do admin). Lê as listas de antes do filtro de canal.
+  const resumoCanais = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const naSemana = (data: Date | string) => {
+      const d = new Date(data);
+      return d >= inicioSemana && d <= fimSemana;
+    };
+    const daSemana = agendamentosSemCanal.filter(a => naSemana(a.dataReposicao));
+    return resumoPorCanal(
+      {
+        confirmados: daSemana.filter(a => a.statusAgendamento === "Agendado").map(pedidoDoAgendamento),
+        previstos: daSemana.filter(a => a.statusAgendamento === "Previsto").map(pedidoDoAgendamento),
+        entregas: entregasSemCanal.filter(e => naSemana(e.data) && e.tipo === 'entrega').map(pedidoDaEntrega),
+        clientesTerceirizacao: clientes.filter(c => c.ativo && ehTerceirizacao(c)),
+      },
+      indiceProdutos,
+      {
+        incluirPrevistos,
+        modo: modoPrevistos,
+        percentual: percentualPrevistos,
+        score: id => scoresSemanais.get(id)?.score ?? 0,
+      }
+    );
+  }, [agendamentosSemCanal, entregasSemCanal, semanaAtual, clientes, clientePorId, indiceProdutos, incluirPrevistos, modoPrevistos, percentualPrevistos, scoresSemanais]);
+
+  // Venda gerada na semana, em R$: o que já foi entregue + o que ainda sai (confirmados
+  // e a parte dos previstos que entra na conta, como no Total). Valor calculado pelo
+  // preço de cada cliente, não o da nota. Segue o filtro de canal.
+  const faturamentoSemana = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const naSemana = (data: Date | string) => {
+      const d = new Date(data);
+      return d >= inicioSemana && d <= fimSemana;
+    };
+    const canais: Canal[] = canalFiltro ? [canalFiltro] : ['revenda', 'food_service', 'terceirizacao'];
+    const porCanal = new Map<Canal, { entregue: number; aEntregar: number }>(
+      canais.map(c => [c, { entregue: 0, aEntregar: 0 }])
+    );
+    const linhas: LinhaFaturamento[] = [];
+
+    // `peso` é a fração do pedido que entra na conta (o percentual simulado dos previstos).
+    const somar = (
+      pedido: Parameters<typeof valorDoPedido>[0],
+      status: LinhaFaturamento['status'],
+      chave: string,
+      peso = 1
+    ) => {
+      let valorDoPedidoNaConta = 0;
+      for (const canal of canais) {
+        const v = valorDoPedido(pedido, indiceProdutos, tabelaPrecos, canal) * peso;
+        if (v <= 0) continue;
+        porCanal.get(canal)![status === 'Entregue' ? 'entregue' : 'aEntregar'] += v;
+        valorDoPedidoNaConta += v;
+      }
+      if (valorDoPedidoNaConta > 0) {
+        linhas.push({
+          chave,
+          cliente: pedido.cliente?.nome || 'Cliente',
+          status,
+          unidades: pedido.quantidadeTotal || 0,
+          valor: valorDoPedidoNaConta,
+        });
+      }
+    };
+
+    entregasSemCanal
+      .filter(e => naSemana(e.data) && e.tipo === 'entrega')
+      .forEach(e => somar(pedidoDaEntrega(e), 'Entregue', `e-${e.id}`));
+
+    const daSemana = agendamentosSemCanal.filter(a => naSemana(a.dataReposicao));
+    daSemana
+      .filter(a => a.statusAgendamento === "Agendado")
+      .forEach(a => somar(pedidoDoAgendamento(a), 'Confirmado', `a-${a.cliente.id}`));
+
+    if (incluirPrevistos) {
+      const previstos = daSemana.filter(a => a.statusAgendamento === "Previsto");
+      if (modoPrevistos === 'provaveis') {
+        previstos
+          .filter(a => (scoresSemanais.get(a.cliente.id)?.score ?? 0) > SCORE_PROVAVEL)
+          .forEach(a => somar(pedidoDoAgendamento(a), 'Previsto', `a-${a.cliente.id}`));
+      } else {
+        previstos.forEach(a => somar(pedidoDoAgendamento(a), 'Previsto', `a-${a.cliente.id}`, percentualPrevistos / 100));
+      }
+    }
+
+    const entregue = canais.reduce((s, c) => s + porCanal.get(c)!.entregue, 0);
+    const aEntregar = canais.reduce((s, c) => s + porCanal.get(c)!.aEntregar, 0);
+    return {
+      entregue,
+      aEntregar,
+      total: entregue + aEntregar,
+      porCanal: canais.map(canal => ({ canal, ...porCanal.get(canal)! })),
+      linhas: linhas.sort((a, b) => b.valor - a.valor),
+    };
+  }, [agendamentosSemCanal, entregasSemCanal, semanaAtual, clientePorId, indiceProdutos, tabelaPrecos, canalFiltro, incluirPrevistos, modoPrevistos, percentualPrevistos, scoresSemanais]);
+
+  const reais = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+  const legendaTotalCanais = !incluirPrevistos
+    ? 'O número grande soma confirmadas e entregues'
+    : modoPrevistos === 'provaveis'
+      ? 'O número grande soma confirmadas, entregues e previstas prováveis'
+      : `O número grande soma confirmadas, entregues e ${percentualPrevistos}% das previstas`;
 
   const dadosGraficoStatus = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -1079,33 +1234,78 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         </div>
       </TooltipProvider>
 
+      {/* Canais da semana (admin): substituem o total único e filtram a tela */}
+      {!repMode && (
+        <CardsCanais
+          resumo={resumoCanais}
+          canalFiltro={canalFiltro}
+          onChangeCanal={setCanalFiltro}
+          legendaTotal={legendaTotalCanais}
+        />
+      )}
+
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: "Total Sem.", value: totalUnidadesSemana, dot: "bg-purple-500", Icon: Package, suffix: "un" },
+          {
+            label: "Total Sem.",
+            value: totalUnidadesSemana.toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
+            dot: "bg-purple-500",
+            Icon: Package,
+            suffix: canalFiltro === 'food_service' ? "kg" : "un",
+          },
           { label: "Confirmados", value: indicadoresSemana.confirmados, dot: "bg-emerald-500", Icon: CheckCircle, suffix: "ped" },
           { label: "Previstos", value: indicadoresSemana.previstos, dot: "bg-amber-500", Icon: Clock, suffix: "ped" },
           { label: "Entregues", value: indicadoresSemana.entregasRealizadas, dot: "bg-blue-500", Icon: Truck, suffix: "ped" },
-          {
-            label: "Inadimplentes",
-            value: inadimplentesSemana.clientes,
-            dot: "bg-red-500",
-            Icon: AlertTriangle,
-            suffix: inadimplentesSemana.valor > 0
-              ? inadimplentesSemana.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-              : "em atraso",
-            alerta: inadimplentesSemana.clientes > 0,
-          },
-        ].map(({ label, value, dot, Icon, suffix, alerta }: any) => (
+          // Admin vê o faturamento da semana; o representante segue com os inadimplentes
+          // dele (no admin, o atraso continua na etiqueta de cada pedido da lista do dia).
+          repMode
+            ? {
+                label: "Inadimplentes",
+                value: inadimplentesSemana.clientes,
+                dot: "bg-red-500",
+                Icon: AlertTriangle,
+                suffix: inadimplentesSemana.valor > 0
+                  ? inadimplentesSemana.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                  : "em atraso",
+                alerta: inadimplentesSemana.clientes > 0,
+              }
+            : {
+                label: "Faturamento",
+                value: reais(faturamentoSemana.total),
+                dot: "bg-teal-500",
+                Icon: BarChart3,
+                suffix: `${reais(faturamentoSemana.entregue)} entregue · ${reais(faturamentoSemana.aEntregar)} a entregar`,
+                titulo: "Venda gerada na semana, calculada pelo preço de cada cliente (não é o valor da nota nem o que já foi pago). Clique para ver o detalhe.",
+                aberto: faturamentoAberto,
+                onClick: () => setFaturamentoAberto(v => !v),
+              },
+        ].map(({ label, value, dot, Icon, suffix, alerta, titulo, aberto, onClick }: any) => (
+          // O alvo do mouse (group) fica parado e so o cartao de dentro sobe: com o
+          // hover e o movimento no mesmo elemento, o cursor na borda fazia tremer.
           <div
             key={label}
+            className={cn("group h-full", onClick && "cursor-pointer rounded-bloco focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+            title={titulo}
+            {...(onClick && {
+              role: "button",
+              tabIndex: 0,
+              "aria-expanded": !!aberto,
+              onClick,
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
+              },
+            })}
+          >
+          <div
             className={cn(
+              aberto && "border-foreground/50 bg-muted/40",
               // Bloco, nao controle: raio de 28px + sombra do tema. O hover
               // levanta (secao 11) e fica atras de [@media(hover:hover)] — em
               // tela de toque o hover gruda ao tocar e nao sai mais.
               "flex h-full flex-col rounded-bloco border border-border bg-card p-5 shadow-tema",
               "transition-all duration-300 ease-out-expo",
-              "[@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-tema-md",
+              "[@media(hover:hover)]:group-hover:-translate-y-1 [@media(hover:hover)]:group-hover:shadow-tema-md",
               alerta && "border-destructive/40 bg-destructive/5"
             )}
           >
@@ -1116,16 +1316,28 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                   {label}
                 </span>
               </div>
-              <Icon className="h-4 w-4 text-muted-foreground/60" />
+              {onClick
+                ? <ChevronDown className={cn("h-4 w-4 text-muted-foreground/60 transition-transform duration-200", aberto && "rotate-180")} />
+                : <Icon className="h-4 w-4 text-muted-foreground/60" />}
             </div>
             <div className={cn(
-              "text-3xl font-bold tabular-nums leading-none",
+              "text-3xl font-bold tabular-nums leading-none whitespace-nowrap",
               alerta ? "text-destructive" : "text-foreground"
             )}>{value}</div>
             <div className="text-xs text-muted-foreground mt-1.5 truncate">{suffix}</div>
           </div>
+          </div>
         ))}
       </div>
+
+      {!repMode && faturamentoAberto && (
+        <FaturamentoDetalhe
+          porCanal={faturamentoSemana.porCanal}
+          linhas={faturamentoSemana.linhas}
+          total={faturamentoSemana.total}
+          legenda={legendaTotalCanais.replace('O número grande soma', 'Entram')}
+        />
+      )}
 
       {/* Resumo de Produtos da Semana */}
       {!repMode && (
@@ -1146,6 +1358,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
           representanteFiltro={representanteFiltro}
           rotaFiltro={rotaFiltro}
           clientes={clientes}
+          canalFiltro={canalFiltro}
         />
       </div>
       )}
@@ -1164,7 +1377,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
               <p className="text-xs text-muted-foreground mt-1">
                 {modoGraficos === 'representantes'
                   ? 'Confirmadas + previstas prováveis por representante'
-                  : 'Volume de unidades por status'}
+                  : `Volume de ${unidadeCanal} por status`}
               </p>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
@@ -1213,7 +1426,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                         return (
                           <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
                             <p className="font-semibold text-sm mb-1">{data.status}</p>
-                            <p className="text-xs text-muted-foreground mb-2">{data.unidades} unidades</p>
+                            <p className="text-xs text-muted-foreground mb-2">{data.unidades} {unidadeCanal}</p>
                             {data.clientes && data.clientes.length > 0 && (
                               <div className="border-t pt-2">
                                 <p className="text-xs font-medium mb-1">Clientes:</p>
@@ -1246,7 +1459,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
               Agendamentos por Dia da Semana
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">Volume de unidades ao longo da semana</p>
+            <p className="text-xs text-muted-foreground mt-1">Volume de {unidadeCanal} ao longo da semana</p>
           </div>
           <CardContent>
             <div className="h-64 md:h-80">
@@ -1720,7 +1933,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                         <div className="flex-1 text-left">
                           <div className="font-medium text-left">{entrega.clienteNome}</div>
                           <div className="text-sm text-muted-foreground text-left">
-                            Quantidade: {entrega.quantidade} unidades
+                            Quantidade: {entrega.quantidade} {unidadeCanal}
                           </div>
                           {entrega.observacao && (
                             <div className="text-xs text-muted-foreground mt-1 italic">
