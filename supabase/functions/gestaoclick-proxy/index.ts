@@ -134,7 +134,13 @@ async function clienteComPrazoDeDisplays(
     }
   }
 
-  const dias = prazoDoBoleto({ displays, entregasFeitas, titulosEmAberto });
+  // Prazo liberado pelo Lucca no cadastro vale no lugar da regra (a conta acima nem pesa).
+  const dias = prazoDoBoleto({
+    displays,
+    entregasFeitas,
+    titulosEmAberto,
+    prazoLiberado: cliente.prazo_boleto_liberado_dias,
+  });
   console.log(`[gestaoclick-proxy] Prazo de displays: ${displays} displays, ${entregasFeitas} entregas, ${titulosEmAberto} em aberto -> ${dias} dias`);
   return { ...cliente, prazo_pagamento_tipo: 'dias', prazo_pagamento_dias: dias };
 }
@@ -294,7 +300,7 @@ function vendaComCodigo(lista: unknown, codigo: unknown): any | null {
   return null;
 }
 
-const CAMPOS_PRAZO_CLIENTE ='forma_pagamento, prazo_pagamento_tipo, prazo_pagamento_dias, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos';
+const CAMPOS_PRAZO_CLIENTE ='forma_pagamento, prazo_pagamento_tipo, prazo_pagamento_dias, prazo_pagamento_dia_semana, prazo_pagamento_dias_minimos, prazo_boleto_liberado_dias';
 
 // Helper: Detect GestaoClick error in response (even with 200 status)
 function hasGCError(responseText: string, status: number): boolean {

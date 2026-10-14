@@ -128,6 +128,12 @@ describe('prazo do boleto', () => {
     expect(prazoDoBoleto({ displays: 10, entregasFeitas: 7, titulosEmAberto: 1 })).toBe(14);
   });
 
+  it('prazo liberado pelo Lucca vale no lugar da regra, desde o primeiro pedido', () => {
+    expect(prazoDoBoleto({ displays: 6, entregasFeitas: 0, titulosEmAberto: 0, prazoLiberado: 14 })).toBe(14);
+    expect(prazoDoBoleto({ displays: 2, entregasFeitas: 0, titulosEmAberto: 3, prazoLiberado: 14 })).toBe(14);
+    expect(prazoDoBoleto({ displays: 6, entregasFeitas: 0, titulosEmAberto: 0, prazoLiberado: null })).toBe(7);
+  });
+
   it('pedido pequeno segue em 7 dias, mesmo de cliente antigo', () => {
     expect(prazoDoBoleto({ displays: 3, entregasFeitas: 20, titulosEmAberto: 0 })).toBe(7);
     expect(prazoDoBoleto({ displays: 2, entregasFeitas: 3, titulosEmAberto: 0 })).toBe(7);

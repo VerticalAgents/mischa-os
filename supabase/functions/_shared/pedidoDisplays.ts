@@ -122,8 +122,15 @@ export const DIAS_DE_ATRASO_QUE_BLOQUEIAM = 2;
  * Prazo do boleto, em dias. 14 só para pedido de 4 displays ou mais de cliente que já
  * teve 3 pedidos entregues e pagos; no resto, 7. Pedido quitado = entregue e sem título
  * em aberto: quem deve um boleto de pedido já entregue ainda não tem esse pedido quitado.
+ * Cliente com prazo liberado pelo Lucca (`prazo_boleto_liberado_dias`) fica fora da regra.
  */
-export function prazoDoBoleto(args: { displays: number; entregasFeitas: number; titulosEmAberto: number }): number {
+export function prazoDoBoleto(args: {
+  displays: number;
+  entregasFeitas: number;
+  titulosEmAberto: number;
+  prazoLiberado?: number | null;
+}): number {
+  if (inteiro(args.prazoLiberado) > 0) return inteiro(args.prazoLiberado);
   const quitados = inteiro(args.entregasFeitas) - inteiro(args.titulosEmAberto);
   return inteiro(args.displays) >= DISPLAYS_PARA_PRAZO_MAIOR && quitados >= PEDIDOS_QUITADOS_PARA_PRAZO_MAIOR
     ? PRAZO_BOLETO_MAIOR
