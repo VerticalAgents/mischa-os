@@ -2190,9 +2190,12 @@ Deno.serve(async (req) => {
         if (tipoPessoa === 'PJ') {
           clienteGcBody.cnpj = cnpj_cpf || '';
           // NÃO enviar razao_social - fluxo unidirecional GC → Lovable
-          // Add inscricao_estadual (IE) for PJ
+          // IE para PJ. O Gestão Click ignora o campo `ie` e cria o cliente sem IE
+          // (MVA, Zanatti e Simionato, 14/10/2026): o nome é inscricao_estadual, e
+          // quem tem IE é contribuinte de ICMS (tipo_contribuinte 1), como nos antigos.
           if (inscricao_estadual) {
-            clienteGcBody.ie = inscricao_estadual;
+            clienteGcBody.inscricao_estadual = inscricao_estadual;
+            clienteGcBody.tipo_contribuinte = '1';
           }
         } else {
           clienteGcBody.cpf = cnpj_cpf || '';
