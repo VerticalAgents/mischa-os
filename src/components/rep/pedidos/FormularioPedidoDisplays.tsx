@@ -71,6 +71,7 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
   const vencidos = (situacao?.titulos ?? []).filter((t) => atrasoBloqueiaPedido(t.diasAtraso));
 
   const [entregasFeitas, setEntregasFeitas] = useState(0);
+  const [prazoLiberado, setPrazoLiberado] = useState<number | null>(null);
   useEffect(() => {
     let cancelado = false;
     supabase
@@ -80,6 +81,14 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
       .eq("tipo", "entrega")
       .then(({ count }) => {
         if (!cancelado) setEntregasFeitas(count ?? 0);
+      });
+    supabase
+      .from("clientes")
+      .select("prazo_boleto_liberado_dias" as any)
+      .eq("id", cliente.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelado) setPrazoLiberado((data as any)?.prazo_boleto_liberado_dias ?? null);
       });
     return () => {
       cancelado = true;
@@ -121,7 +130,12 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
   const faixa = faixaPorDisplays(displays);
   const total = unidades * faixa.preco;
   const faltam = Math.max(0, MINIMO_DISPLAYS - displays);
-  const prazo = prazoDoBoleto({ displays, entregasFeitas, titulosEmAberto: situacao?.titulos.length ?? 0 });
+  const prazo = prazoDoBoleto({
+    displays,
+    entregasFeitas,
+    titulosEmAberto: situacao?.titulos.length ?? 0,
+    prazoLiberado,
+  });
   // Alterar não muda o dia da entrega; pedido novo entra na próxima rota.
   const entrega = jaConfirmado && pedidoAtual?.dataEntrega ? pedidoAtual.dataEntrega : dataEntrega(new Date());
 

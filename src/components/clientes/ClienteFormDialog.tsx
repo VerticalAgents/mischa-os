@@ -111,6 +111,13 @@ const REGRAS_DO_CANAL_DE_DISPLAYS: Partial<Cliente> = {
   periodicidadePadrao: 7,
 };
 
+/** 14 dígitos vira 00.000.000/0000-00, 11 vira 000.000.000-00; o resto volta como veio. */
+const formatarDocumento = (digitos: string) => {
+  if (digitos.length === 14) return digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  if (digitos.length === 11) return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  return digitos;
+};
+
 const getDefaultFormData = (): Partial<Cliente> => ({
   nome: '',
   tipoPessoa: 'PJ',
@@ -308,14 +315,17 @@ export default function ClienteFormDialog({
         }
         // Representante não cadastra documento que já existe na base. Ele não enxerga
         // os clientes dos outros, então quem responde é o banco (que também barra ao gravar).
+        // A tela mostra o número que foi conferido, para ele ver na hora se digitou errado,
+        // e o banco anota cada bloqueio em bloqueios_documento (Luis/Simionato, 14/10/2026).
         if (isRep && payload.cnpjCpf) {
-          const { data: jaExiste } = await supabase.rpc('documento_ja_cadastrado', {
+          const { data: conferencia } = await supabase.rpc('conferir_documento_para_cadastro' as any, {
             p_documento: payload.cnpjCpf,
           });
-          if (jaExiste) {
+          const resultado = conferencia as { ja_existe?: boolean; documento?: string } | null;
+          if (resultado?.ja_existe) {
             toast({
               title: "CNPJ já cadastrado",
-              description: "Este CNPJ/CPF já é cliente da Mischa's. Fale com a Mischa's antes de cadastrar.",
+              description: `O número ${formatarDocumento(resultado.documento ?? '')} já é cliente da Mischa's. Confira se digitou certo; se estiver certo, fale com a Mischa's antes de cadastrar.`,
               variant: "destructive",
             });
             setIsSaving(false);
