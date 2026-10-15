@@ -8,6 +8,7 @@ import {
   prazoDoBoleto,
   precoUnitarioDisplays,
 } from '../_shared/pedidoDisplays.ts';
+import { lancarComissao, montarQuinzenas } from './comissoes.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -3154,6 +3155,68 @@ Deno.serve(async (req) => {
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // Comissões no portal do representante (15/10/2026): só leitura, e só a dele. Quem ele é
+      // sai do login (representante_accounts), nunca de um parâmetro da tela.
+      case 'minhas_comissoes': {
+        const json = (corpo: unknown, status = 200) =>
+          new Response(JSON.stringify(corpo), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (!userId) return json({ error: 'Não autenticado' }, 401);
+        const { data: conta } = await supabase
+          .from('representante_accounts')
+          .select('representante_id')
+          .eq('auth_user_id', userId)
+          .eq('ativo', true)
+          .maybeSingle();
+        if (!conta?.representante_id) return json({ error: 'Só o representante vê esta página.' }, 403);
+        const tokens = await resolveTokensDoDono(supabase, userId);
+        if (!tokens) return json({ error: 'Integração com o Gestão Click não configurada.' }, 400);
+        try {
+          const quinzenas = await montarQuinzenas(supabase, tokens, {
+            quantas: 6,
+            representanteId: Number(conta.representante_id),
+          });
+          return json({ success: true, quinzenas });
+        } catch (e) {
+          console.error('[gestaoclick-proxy] minhas_comissoes:', e);
+          return json({ error: e instanceof Error ? e.message : String(e) }, 400);
+        }
+      }
+
+      // Aba Comissões (15/10/2026): só o admin, com os tokens da própria conta.
+      case 'comissao_quinzenas':
+      case 'lancar_comissao': {
+        const json = (corpo: unknown, status = 200) =>
+          new Response(JSON.stringify(corpo), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (!userId) return json({ error: 'Não autenticado' }, 401);
+        const { data: ehAdmin } = await supabase.rpc('has_role', { user_id: userId, required_role: 'admin' });
+        if (!ehAdmin) return json({ error: 'Só o administrador vê as comissões.' }, 403);
+        const { data: cfgData } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .maybeSingle();
+        const cfg = (cfgData?.config || {}) as GestaoClickConfig;
+        if (!cfg.access_token || !cfg.secret_token) return json({ error: 'Tokens do GestaoClick não configurados' }, 400);
+        const tokens = { access_token: cfg.access_token, secret_token: cfg.secret_token };
+        try {
+          if (action === 'comissao_quinzenas') {
+            return json({ success: true, quinzenas: await montarQuinzenas(supabase, tokens, { quantas: params.quantas }) });
+          }
+          const r = await lancarComissao(supabase, tokens, userId, {
+            representante_id: Number(params.representante_id),
+            inicio: String(params.inicio),
+            notas: Array.isArray(params.notas) ? params.notas.map(String) : [],
+            acertos: Array.isArray(params.acertos) ? params.acertos.map(String) : [],
+            vencimento: params.vencimento ? String(params.vencimento) : undefined,
+          });
+          return json({ success: true, ...r });
+        } catch (e) {
+          console.error(`[gestaoclick-proxy] ${action}:`, e);
+          return json({ error: e instanceof Error ? e.message : String(e) }, 400);
+        }
       }
 
       case 'buscar_pagamentos_abertos': {

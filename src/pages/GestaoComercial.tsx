@@ -5,12 +5,14 @@ import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { UserCircle, Users } from "lucide-react";
+import { HandCoins, UserCircle, Users } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
+import Comissoes from "./gestao-comercial/Comissoes";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import RepresentantesOptimized from "./gestao-comercial/RepresentantesOptimized";
 import { useGestaoComercialUiStore } from "@/hooks/useGestaoComercialUiStore";
 
-const ABAS_VALIDAS = ["representantes", "funil-leads"];
+const ABAS_VALIDAS = ["representantes", "funil-leads", "comissoes"];
 
 export default function GestaoComercial() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -58,6 +60,9 @@ export default function GestaoComercial() {
   };
 
   const { canEdit } = useRoutePermission('/gestao-comercial');
+  // Comissões: só o admin (as tabelas e o proxy também barram os outros)
+  const { isAdmin } = useUserRoles();
+  const mostraComissoes = isAdmin();
 
   return (
     <EditPermissionProvider value={{ canEdit }}>
@@ -79,6 +84,7 @@ export default function GestaoComercial() {
           {[
             { id: "representantes", label: "Dashboard" },
             { id: "funil-leads", label: "Funil de Leads" },
+            ...(mostraComissoes ? [{ id: "comissoes", label: "Comissões" }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -103,6 +109,12 @@ export default function GestaoComercial() {
             <UserCircle className="h-4 w-4" />
             Funil de Leads
           </TabsTrigger>
+          {mostraComissoes && (
+            <TabsTrigger value="comissoes" className="flex items-center gap-2">
+              <HandCoins className="h-4 w-4" />
+              Comissões
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="representantes" className="space-y-6 mt-6" forceMount={activeTab === "representantes" ? true : undefined}>
@@ -112,6 +124,12 @@ export default function GestaoComercial() {
         <TabsContent value="funil-leads" className="space-y-6 mt-6" forceMount={activeTab === "funil-leads" ? true : undefined}>
           {activeTab === "funil-leads" && <FunilLeads />}
         </TabsContent>
+
+        {mostraComissoes && (
+          <TabsContent value="comissoes" className="space-y-6 mt-6">
+            {activeTab === "comissoes" && <Comissoes />}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
     </EditPermissionProvider>

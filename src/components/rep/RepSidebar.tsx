@@ -9,6 +9,7 @@ import {
   Map,
   BarChart3,
   Receipt,
+  HandCoins,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -44,6 +45,7 @@ const items = [
   { to: "/rep/clientes", label: "Meus Clientes", icon: Users },
   { to: "/rep/rotas", label: "Rotas", icon: Map },
   { to: "/rep/inadimplencia", label: "Cobrança", icon: Receipt },
+  { to: "/rep/comissoes", label: "Comissões", icon: HandCoins },
 ];
 
 /** Quem vende em displays tem a tela de Pedidos, logo acima da agenda. */

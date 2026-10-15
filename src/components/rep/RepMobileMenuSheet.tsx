@@ -1,6 +1,6 @@
 import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, Calendar, BarChart3, Map, LogOut, X, Receipt, Package } from "lucide-react";
+import { Home, Users, Calendar, BarChart3, Map, LogOut, X, Receipt, Package, HandCoins } from "lucide-react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useThemeStore } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
@@ -21,6 +21,7 @@ export const repMenuItems = [
   { to: "/rep/clientes", label: "Meus Clientes", Icon: Users },
   { to: "/rep/rotas", label: "Rotas", Icon: Map },
   { to: "/rep/inadimplencia", label: "Cobrança", Icon: Receipt },
+  { to: "/rep/comissoes", label: "Comissões", Icon: HandCoins },
 ];
 
 /** Quem vende em displays tem a tela de Pedidos, logo antes da agenda. */
