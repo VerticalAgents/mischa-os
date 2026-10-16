@@ -31,11 +31,13 @@ import {
   CATEGORIA_DISPLAYS,
   FAIXAS,
   MINIMO_DISPLAYS,
+  MOTIVO_BONIFICACAO_AUTOMATICA,
   PedidoDisplays,
   SABORES,
   UNIDADES_POR_DISPLAY,
   atrasoBloqueiaPedido,
   dataEntrega,
+  displaysBonificados,
   faixaPorDisplays,
   prazoDoBoleto,
   totalDisplays,
@@ -81,6 +83,8 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
 
   const [entregasFeitas, setEntregasFeitas] = useState(0);
   const [prazoLiberado, setPrazoLiberado] = useState<number | null>(null);
+  // Cliente de lucro real: 1 display sortido bonificado a cada N comprados (decisão da Mischa's).
+  const [bonificarACada, setBonificarACada] = useState<number | null>(null);
   useEffect(() => {
     let cancelado = false;
     supabase
@@ -93,12 +97,13 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
       });
     supabase
       .from("clientes")
-      .select("prazo_boleto_liberado_dias, observacoes" as any)
+      .select("prazo_boleto_liberado_dias, bonificar_display_a_cada, observacoes" as any)
       .eq("id", cliente.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelado) return;
         setPrazoLiberado((data as any)?.prazo_boleto_liberado_dias ?? null);
+        setBonificarACada((data as any)?.bonificar_display_a_cada ?? null);
         setObsCliente((data as any)?.observacoes ?? "");
         setObsClienteOriginal((data as any)?.observacoes ?? "");
       });
@@ -142,6 +147,12 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
   const faixa = faixaPorDisplays(displays);
   const total = unidades * faixa.preco;
   const faltam = Math.max(0, MINIMO_DISPLAYS - displays);
+  const bonificados = displaysBonificados(displays, bonificarACada);
+  const textoBonificados = bonificados === 1 ? "1 display sortido" : `${bonificados} displays sortidos`;
+  // A automática aparece na linha "Bonificado"; aqui fica só a que a Mischa's lançou à mão.
+  const bonificacoesManuais = (pedidoAtual?.bonificacoes ?? []).filter(
+    (b) => b.motivo_nome !== MOTIVO_BONIFICACAO_AUTOMATICA
+  );
   const prazo = prazoDoBoleto({
     displays,
     entregasFeitas,
@@ -203,9 +214,9 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
         categoriasHabilitadas={[CATEGORIA_DISPLAYS]}
       />
 
-      {(pedidoAtual?.bonificacoes.length ?? 0) > 0 && (
+      {bonificacoesManuais.length > 0 && (
         <p className="text-sm rounded-md border px-3 py-2">
-          <span className="font-medium">Bonificação da Mischa's:</span> {resumoDosExtras(pedidoAtual!.bonificacoes)}
+          <span className="font-medium">Bonificação da Mischa's:</span> {resumoDosExtras(bonificacoesManuais)}
         </p>
       )}
 
@@ -234,6 +245,14 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
             <span className="text-right font-medium tabular-nums">
               {displays >= MINIMO_DISPLAYS ? `${reais(faixa.preco)} (${faixa.rotulo} displays)` : "—"}
             </span>
+            {bonificarACada ? (
+              <>
+                <span className="text-muted-foreground">Bonificado</span>
+                <span className="text-right font-medium">
+                  {bonificados > 0 ? `+ ${textoBonificados}` : `1 a cada ${bonificarACada} displays`}
+                </span>
+              </>
+            ) : null}
             <span className="text-muted-foreground">Entrega</span>
             <span className="text-right font-medium">{diaPorExtenso(entrega)}</span>
             <span className="text-muted-foreground">Pagamento</span>
@@ -275,6 +294,7 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
             <AlertDialogDescription>
               {cliente.nome}: {resumoDosDisplays(pedido)} ({unidades} brownies), {reais(total)}. Entrega{" "}
               {diaPorExtenso(entrega)}, boleto de {prazo} dias.
+              {bonificados > 0 ? ` Vai junto, bonificado pela Mischa's: ${textoBonificados}, sem cobrança.` : ""}
               {trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""}
               {obsPedido.trim() ? ` Obs.: ${obsPedido.trim()}.` : ""} O pedido vai
               direto para a separação da fábrica.

@@ -165,6 +165,20 @@ export function prazoDoBoleto(args: {
     : PRAZO_BOLETO_PADRAO;
 }
 
+/** Motivo das linhas que a RPC põe sozinha em `bonificacoes_pendentes`. */
+export const MOTIVO_BONIFICACAO_AUTOMATICA = 'Bonificação automática (lucro real)';
+
+/**
+ * Displays sortidos bonificados no pedido: 1 a cada `aCada` comprados (cliente de lucro real,
+ * `clientes.bonificar_display_a_cada`; nulo = não bonifica). Prévia da tela: quem grava é a
+ * RPC `rep_lancar_pedido_displays` (`displays_bonificados_do_cliente`). Mudou num, mude no outro.
+ */
+export function displaysBonificados(displays: number, aCada: number | null | undefined): number {
+  const n = inteiro(aCada);
+  if (n < 2) return 0;
+  return Math.floor(inteiro(displays) / n);
+}
+
 export function atrasoBloqueiaPedido(diasDeAtraso: number): boolean {
   return inteiro(diasDeAtraso) >= DIAS_DE_ATRASO_QUE_BLOQUEIAM;
 }

@@ -41,6 +41,7 @@ import {
 } from "@/utils/horariosRecebimento";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
+import BonificacaoAutomaticaCampo from "./BonificacaoAutomaticaCampo";
 import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIA_DISPLAYS, FAIXAS, MINIMO_DISPLAYS, MODELO_DISPLAYS, UNIDADES_POR_DISPLAY } from "@/utils/pedidoDisplays";
@@ -1122,6 +1123,7 @@ export default function ClienteFormDialog({
                     </span>
                   </div>
                 ))}
+                {!isRep && cliente?.id && <BonificacaoAutomaticaCampo clienteId={cliente.id} />}
               </CardContent>
             </Card>
           ) : (formData.categoriasHabilitadas?.length ?? 0) > 0 && (

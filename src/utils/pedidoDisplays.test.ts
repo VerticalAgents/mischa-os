@@ -5,6 +5,7 @@ import {
   composicaoOuPadrao,
   validarComposicao,
   atrasoBloqueiaPedido,
+  displaysBonificados,
   prazoDoBoleto,
   dataEntrega,
   expandirParaItens,
@@ -171,5 +172,17 @@ describe('prazo do boleto', () => {
 describe('bloqueio por atraso', () => {
   it('segura o pedido a partir de 2 dias de vencido', () => {
     expect([0, 1, 2, 3, 30].map(atrasoBloqueiaPedido)).toEqual([false, false, true, true, true]);
+  });
+});
+
+describe('display bonificado (cliente de lucro real)', () => {
+  it('dá 1 a cada 6 comprados, arredondando para baixo', () => {
+    expect([2, 5, 6, 7, 11, 12, 13].map((d) => displaysBonificados(d, 6))).toEqual([0, 0, 1, 1, 1, 2, 2]);
+  });
+  it('sem a regra no cadastro, não bonifica', () => {
+    expect(displaysBonificados(12, null)).toBe(0);
+    expect(displaysBonificados(12, undefined)).toBe(0);
+    expect(displaysBonificados(12, 0)).toBe(0);
+    expect(displaysBonificados(12, 1)).toBe(0);
   });
 });
