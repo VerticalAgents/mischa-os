@@ -1,4 +1,5 @@
 import { Cliente } from '@/types';
+import { lerHorarios } from '@/utils/horariosRecebimento';
 
 interface SanitizationResult {
   data: any;
@@ -496,6 +497,10 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     meta_giro_semanal: sanitized.metaGiroSemanal,
     giro_medio_semanal: sanitized.giroMedioSemanal,
     janelas_entrega: janelasSeguras,
+    // Só vai para o banco quando o formulário mandou: quem salva sem o campo não apaga o horário.
+    ...('horariosRecebimento' in sanitized
+      ? { horarios_recebimento: lerHorarios((sanitized as any).horariosRecebimento) }
+      : {}),
     categorias_habilitadas: categoriasSeguras,
     status_cliente: sanitized.statusCliente,
     ultima_data_reposicao_efetiva: sanitized.ultimaDataReposicaoEfetiva?.toISOString?.() || null,

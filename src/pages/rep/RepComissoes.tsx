@@ -10,7 +10,8 @@ import { formatCurrency } from "@/lib/utils";
 /**
  * Comissões do representante (Lucca, 15/10/2026): só leitura e só a dele. Mostra a quinzena em
  * andamento nota por nota, as contas que o Lucca já lançou (recebida, a receber, atrasada) e o
- * risco de desconto (boleto vencido de cliente dele). A conta é a mesma da aba Comissões do admin
+ * risco de desconto (boleto vencido de cliente dele). Pedido lançado e ainda sem nota aparece à
+ * parte, como previsão: só vira comissão quando a nota sai no despacho. A conta é a mesma da aba Comissões do admin
  * (gestaoclick-proxy, ação minhas_comissoes); quem ele é sai do login, no servidor.
  */
 
@@ -58,6 +59,16 @@ interface Lancamento {
   pago_em: string | null;
 }
 
+interface PedidoAFaturar {
+  cliente: string;
+  data_entrega: string | null;
+  unidades: number;
+  comissao: number;
+  quinzena: Quinzena | null;
+  etapa: "lancado" | "separado" | "venda_gerada";
+  sem_nota: boolean;
+}
+
 interface QuinzenaDoRep {
   quinzena: Quinzena;
   fechada: boolean;
@@ -65,7 +76,10 @@ interface QuinzenaDoRep {
   acertos: Acerto[];
   em_risco: Risco[];
   lancamentos: Lancamento[];
+  a_faturar: PedidoAFaturar[];
 }
+
+const ETAPA = { lancado: "pedido lançado", separado: "separado na fábrica", venda_gerada: "venda gerada" } as const;
 
 const reais = (centavos: number) => formatCurrency(centavos / 100);
 const dataBR = (iso: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
@@ -95,6 +109,10 @@ function demo(): QuinzenaDoRep[] {
         { codigo: "5201", vencimento: h, liquido: 12240, notas: 4, situacao: "a_receber", pago_em: null },
         { codigo: "5150", vencimento: "2026-10-16", liquido: 9180, notas: 3, situacao: "recebida", pago_em: "2026-10-16" },
       ],
+      a_faturar: [
+        { cliente: "Rei do Kit (DEMONSTRAÇÃO)", data_entrega: "2026-10-16", unidades: 36, comissao: 3060, quinzena: { inicio: "2026-10-16", fim: "2026-10-31", pagamento: "2026-11-01" }, etapa: "separado", sem_nota: false },
+        { cliente: "Mercado Eleane (DEMONSTRAÇÃO)", data_entrega: "2026-10-16", unidades: 72, comissao: 6120, quinzena: { inicio: "2026-10-16", fim: "2026-10-31", pagamento: "2026-11-01" }, etapa: "lancado", sem_nota: false },
+      ],
     },
   ];
 }
@@ -107,6 +125,7 @@ function normalizar(lista: Partial<QuinzenaDoRep>[]): QuinzenaDoRep[] {
     acertos: d.acertos || [],
     em_risco: d.em_risco || [],
     lancamentos: (d.lancamentos || []).map((l) => ({ ...l, situacao: l.situacao ?? null, pago_em: l.pago_em ?? null })),
+    a_faturar: d.a_faturar || [],
   }));
 }
 
@@ -120,7 +139,8 @@ export default function RepComissoes() {
   const cache = useMemo(() => {
     try {
       const t = localStorage.getItem(CACHE);
-      return t ? (JSON.parse(t) as QuinzenaDoRep[]) : [];
+      // A leitura guardada pode ser de uma versão antiga da tela (sem `a_faturar`): normaliza também.
+      return t ? normalizar(JSON.parse(t)) : [];
     } catch {
       return [];
     }
@@ -178,6 +198,8 @@ export default function RepComissoes() {
   const descontos = dados.flatMap((d) => d.acertos.filter((a) => a.tipo === "descontar"));
   const devolucoes = dados.flatMap((d) => d.acertos.filter((a) => a.tipo === "devolver"));
   const riscos = dados.flatMap((d) => d.em_risco);
+  const aFaturar = dados.flatMap((d) => d.a_faturar);
+  const previsto = aFaturar.reduce((s, p) => s + p.comissao, 0);
 
   const passo = PASSOS[Math.min(Math.floor(segundos / 3), PASSOS.length - 1)];
 
@@ -220,12 +242,19 @@ export default function RepComissoes() {
 
       {atual && (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardContent className="p-4">
                 <div className="text-xs text-muted-foreground">Esta quinzena, até agora</div>
                 <div className="text-2xl font-semibold tabular-nums">{reais(acumulado)}</div>
-                <div className="text-xs text-muted-foreground">recebe em {dataBR(atual.quinzena.pagamento)}</div>
+                <div className="text-xs text-muted-foreground">já faturado · recebe em {dataBR(atual.quinzena.pagamento)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-xs text-muted-foreground">Pedidos a faturar</div>
+                <div className="text-2xl font-semibold tabular-nums text-muted-foreground">{reais(previsto)}</div>
+                <div className="text-xs text-muted-foreground">previsto · conta quando a nota sair</div>
               </CardContent>
             </Card>
             <Card>
@@ -300,7 +329,7 @@ export default function RepComissoes() {
               </div>
               {naQuinzena.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma venda entregue nesta quinzena ainda. Cada nota (ou entrega paga na hora) entra aqui com R$ 0,85
+                  Nenhuma venda faturada nesta quinzena ainda. Cada nota (ou entrega paga na hora) entra aqui com R$ 0,85
                   por brownie.
                 </p>
               ) : (
@@ -322,6 +351,43 @@ export default function RepComissoes() {
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
                   + {reais(devolucoes.reduce((s, a) => s + a.valor, 0))} de desconto que volta: o cliente pagou.
                 </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-dashed">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="font-semibold">Pedidos a faturar</div>
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  {aFaturar.reduce((s, p) => s + p.unidades, 0)} brownies
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pedidos que você já lançou e ainda não têm nota. É previsão: vira comissão quando a nota sai no despacho, na
+                quinzena da data da nota.
+              </p>
+              {aFaturar.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum pedido esperando nota.</p>
+              ) : (
+                <ul className="divide-y rounded-md border text-sm">
+                  {aFaturar.map((p, i) => (
+                    <li key={`${p.cliente}-${i}`} className="flex items-start justify-between gap-3 px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{p.cliente}</div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {p.data_entrega ? `entrega ${diaMes(p.data_entrega)}` : "sem data"} · {p.unidades} brownies ·{" "}
+                          {ETAPA[p.etapa]}
+                          {p.sem_nota ? " · paga na entrega" : ""}
+                        </div>
+                        {p.quinzena && (
+                          <div className="text-xs text-muted-foreground">recebe em {dataBR(p.quinzena.pagamento)}, se sair na data</div>
+                        )}
+                      </div>
+                      <div className="shrink-0 tabular-nums font-medium text-muted-foreground">{reais(p.comissao)}</div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </CardContent>
           </Card>

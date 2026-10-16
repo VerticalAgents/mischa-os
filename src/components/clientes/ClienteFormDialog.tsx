@@ -32,7 +32,13 @@ import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
 import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
 import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { toast } from "@/hooks/use-toast";
-import DiasSemanaPicker from "./DiasSemanaPicker";
+import HorariosRecebimentoPicker from "./HorariosRecebimentoPicker";
+import {
+  type HorariosRecebimento,
+  diasQueRecebem,
+  horariosDosDias,
+  validarHorarios,
+} from "@/utils/horariosRecebimento";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
 import { useModeloPedidoRep } from "@/hooks/useModeloPedidoRep";
@@ -270,17 +276,24 @@ export default function ClienteFormDialog({
     }));
   };
 
-  const handleDiasEntregaChange = (dias: DiaSemana[]) => {
-    console.log('ClienteFormDialog: Atualizando janelas de entrega:', dias);
+  // Horário de recebimento: os dias que recebem mantêm o janelas_entrega em dia.
+  const handleHorariosChange = (h: HorariosRecebimento) => {
     setFormData(prev => ({
       ...prev,
-      janelasEntrega: dias
+      horariosRecebimento: h,
+      janelasEntrega: diasQueRecebem(h),
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const erroHorario = formData.horariosRecebimento ? validarHorarios(formData.horariosRecebimento) : null;
+    if (erroHorario) {
+      toast({ title: "Horário de recebimento", description: erroHorario, variant: "destructive" });
+      return;
+    }
+
     console.log('📝 Iniciando submissão do formulário:', formData);
     setIsSaving(true);
 
@@ -901,10 +914,13 @@ export default function ClienteFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label>Janelas de Entrega</Label>
-                <DiasSemanaPicker 
-                  value={formData.janelasEntrega || []}
-                  onChange={handleDiasEntregaChange}
+                <Label>Horário de recebimento</Label>
+                <p className="text-xs text-muted-foreground">
+                  Dias e horas em que o cliente recebe. Dia ligado sem faixa = o dia todo.
+                </p>
+                <HorariosRecebimentoPicker
+                  value={formData.horariosRecebimento ?? horariosDosDias(formData.janelasEntrega)}
+                  onChange={handleHorariosChange}
                 />
               </div>
 

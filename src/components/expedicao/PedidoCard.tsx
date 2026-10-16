@@ -34,6 +34,7 @@ interface PedidoCardProps {
     gestaoclick_sincronizado_em?: string;
     observacoes_agendamento?: string;
     observacoes_gerais?: string;
+    horario_recebimento?: string;
     trocas_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
     bonificacoes_pendentes?: Array<{ produto_nome: string; quantidade: number; motivo_nome?: string; motivo?: string }>;
   };
@@ -295,6 +296,16 @@ const PedidoCard = ({
               </Badge>
               );
             })()}
+            {pedido.horario_recebimento && (
+              <Badge
+                variant="outline"
+                className="bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1"
+                title="Horário de recebimento do cadastro do cliente"
+              >
+                <Clock3 className="h-3 w-3" />
+                {pedido.horario_recebimento}
+              </Badge>
+            )}
             {pedido.observacoes_agendamento && (
               <Badge
                 variant="outline"

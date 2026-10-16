@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, MapPin, User, Phone, Mail, Building, Truck, CreditCard, FileText, Clock, Target } from "lucide-react";
 import { calcularMetaGiroSemanal } from '@/utils/giroCalculations';
 import { PEDIDO_MINIMO_UNIDADES } from '@/utils/constants';
+import { resumoHorarios } from '@/utils/horariosRecebimento';
 
 interface ClienteDetalhesInfoProps {
   cliente: Cliente;
@@ -158,7 +159,13 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
           </CardHeader>
           <CardContent className="p-3 lg:p-6 space-y-3 lg:space-y-4">
             <InfoItem label="Tipo de Logística" value={cliente.tipoLogistica} icon={Truck} />
-            {cliente.janelasEntrega && cliente.janelasEntrega.length > 0 && (
+            {cliente.horariosRecebimento ? (
+              <InfoItem
+                label="Horário de recebimento"
+                value={resumoHorarios(cliente.horariosRecebimento)}
+                icon={Clock}
+              />
+            ) : cliente.janelasEntrega && cliente.janelasEntrega.length > 0 && (
               <InfoItem 
                 label="Janelas de Entrega" 
                 value={cliente.janelasEntrega.join(', ')} 

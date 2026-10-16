@@ -1716,8 +1716,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
 
                   const renderCard = (agendamento: typeof agendamentosDiaSelecionado[0]) => {
                     const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
-                      const [quantidade, setQuantidade] = useState(agendamento.cliente.quantidadePadrao);
-                      const [tipoPedido, setTipoPedido] = useState('Padrão');
+                      // Começa pelo que a lista já tem: este componente nasce de novo a cada render e,
+                      // começando em 'Padrão', o selo piscava Padrão → Alterado (Lucca, 15/10/2026).
+                      const [quantidade, setQuantidade] = useState(
+                        agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao
+                      );
+                      const [tipoPedido, setTipoPedido] = useState(agendamento.pedido?.tipoPedido || 'Padrão');
                       
                       useEffect(() => {
                         const buscarDados = async () => {

@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import TrocasAccordion from "@/components/agendamento/TrocasAccordion";
+import ObservacoesAgendamentoSection from "@/components/agendamento/ObservacoesAgendamentoSection";
 import StepperDisplays from "@/components/rep/pedidos/StepperDisplays";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,6 +63,10 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
       : { sortido: 0, sabores: {} }
   );
   const [trocas, setTrocas] = useState<ItemExtra[]>(pedidoAtual?.trocas ?? []);
+  // As duas observações da agenda da casa: a do cliente (permanente) e a só deste pedido.
+  const [obsPedido, setObsPedido] = useState(pedidoAtual?.observacao ?? "");
+  const [obsCliente, setObsCliente] = useState("");
+  const [obsClienteOriginal, setObsClienteOriginal] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
@@ -84,11 +89,14 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
       });
     supabase
       .from("clientes")
-      .select("prazo_boleto_liberado_dias" as any)
+      .select("prazo_boleto_liberado_dias, observacoes" as any)
       .eq("id", cliente.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelado) setPrazoLiberado((data as any)?.prazo_boleto_liberado_dias ?? null);
+        if (cancelado) return;
+        setPrazoLiberado((data as any)?.prazo_boleto_liberado_dias ?? null);
+        setObsCliente((data as any)?.observacoes ?? "");
+        setObsClienteOriginal((data as any)?.observacoes ?? "");
       });
     return () => {
       cancelado = true;
@@ -142,7 +150,15 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
   const confirmar = async () => {
     try {
       setSalvando(true);
-      const resultado = await lancarPedido(cliente.id, pedido, trocas);
+      if (obsCliente.trim() !== obsClienteOriginal.trim()) {
+        const { error } = await supabase
+          .from("clientes")
+          .update({ observacoes: obsCliente.trim() || null })
+          .eq("id", cliente.id);
+        if (error) throw new Error("Não consegui salvar a observação do cliente.");
+        setObsClienteOriginal(obsCliente);
+      }
+      const resultado = await lancarPedido(cliente.id, pedido, trocas, obsPedido);
       toast.success(
         `${resultado.alterado ? "Pedido alterado" : "Pedido confirmado"}: entrega ${diaPorExtenso(resultado.data_entrega)}.`
       );
@@ -188,6 +204,20 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
           <span className="font-medium">Bonificação da Mischa's:</span> {resumoDosExtras(pedidoAtual!.bonificacoes)}
         </p>
       )}
+
+      <ObservacoesAgendamentoSection
+        observacoesGerais={obsCliente}
+        onObservacoesGeraisChange={setObsCliente}
+        observacoesAgendamento={obsPedido}
+        onObservacoesAgendamentoChange={setObsPedido}
+        empilhado
+        textos={{
+          geral: "Observação do cliente (vale sempre)",
+          geralExemplo: "Ex.: entregar pelos fundos, falar com o João",
+          agendamento: "Observação só deste pedido",
+          agendamentoExemplo: "Ex.: levar expositor novo",
+        }}
+      />
 
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -241,7 +271,8 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
             <AlertDialogDescription>
               {cliente.nome}: {resumoDosDisplays(pedido)} ({unidades} brownies), {reais(total)}. Entrega{" "}
               {diaPorExtenso(entrega)}, boleto de {prazo} dias.
-              {trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""} O pedido vai
+              {trocas.length > 0 ? ` Trocas: ${resumoDosExtras(trocas)}.` : ""}
+              {obsPedido.trim() ? ` Obs.: ${obsPedido.trim()}.` : ""} O pedido vai
               direto para a separação da fábrica.
             </AlertDialogDescription>
           </AlertDialogHeader>

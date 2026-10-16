@@ -96,7 +96,7 @@ export const PrintingActions = ({
     }
     
     // Verificar se há observações ou trocas em algum pedido
-    const temAlgumaObservacao = listaAtual.some(p => p.observacoes_gerais || p.observacoes_agendamento);
+    const temAlgumaObservacao = listaAtual.some(p => p.observacoes_gerais || p.observacoes_agendamento || p.horario_recebimento);
     const temAlgumaTroca = listaAtual.some(p => p.trocas_pendentes && p.trocas_pendentes.length > 0);
     const temAlgumaBonificacao = listaAtual.some(p => p.bonificacoes_pendentes && p.bonificacoes_pendentes.length > 0);
 
@@ -318,13 +318,16 @@ export const PrintingActions = ({
       let observacoesHtml = '';
       if (temAlgumaObservacao) {
         observacoesHtml = '<td><div class="observacoes">';
+        if (pedido.horario_recebimento) {
+          observacoesHtml += `<div class="obs-temp"><b>${pedido.horario_recebimento}</b></div>`;
+        }
         if (pedido.observacoes_gerais) {
           observacoesHtml += `<div class="obs-geral">${pedido.observacoes_gerais}</div>`;
         }
         if (pedido.observacoes_agendamento) {
           observacoesHtml += `<div class="obs-temp">${pedido.observacoes_agendamento}</div>`;
         }
-        if (!pedido.observacoes_gerais && !pedido.observacoes_agendamento) {
+        if (!pedido.observacoes_gerais && !pedido.observacoes_agendamento && !pedido.horario_recebimento) {
           observacoesHtml += '<span style="color: #999;">-</span>';
         }
         observacoesHtml += '</div></td>';

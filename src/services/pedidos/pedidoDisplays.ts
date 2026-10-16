@@ -22,6 +22,8 @@ export interface PedidoDoCliente {
   trocas: ItemExtra[];
   /** Só a Mischa's lança bonificação; o representante vê. */
   bonificacoes: ItemExtra[];
+  /** Observação só deste pedido (agendamentos_clientes.observacoes_agendamento). */
+  observacao: string;
 }
 
 /** Troca ou bonificação pendurada no pedido (mesmo formato da agenda da casa). */
@@ -57,7 +59,7 @@ export async function listarPedidos(clienteIds: string[]): Promise<PedidoDoClien
   const { data, error } = await supabase
     .from("agendamentos_clientes")
     .select(
-      "cliente_id, status_agendamento, substatus_pedido, separado_em, gestaoclick_venda_id, data_proxima_reposicao, quantidade_total, displays, trocas_pendentes, bonificacoes_pendentes"
+      "cliente_id, status_agendamento, substatus_pedido, separado_em, gestaoclick_venda_id, data_proxima_reposicao, quantidade_total, displays, trocas_pendentes, bonificacoes_pendentes, observacoes_agendamento"
     )
     .in("cliente_id", clienteIds);
   if (error) throw error;
@@ -70,6 +72,7 @@ export async function listarPedidos(clienteIds: string[]): Promise<PedidoDoClien
     displays: (a.displays as PedidoDisplays) ?? null,
     trocas: Array.isArray(a.trocas_pendentes) ? a.trocas_pendentes : [],
     bonificacoes: Array.isArray(a.bonificacoes_pendentes) ? a.bonificacoes_pendentes : [],
+    observacao: a.observacoes_agendamento || "",
   }));
 }
 
@@ -77,7 +80,9 @@ export async function listarPedidos(clienteIds: string[]): Promise<PedidoDoClien
 export async function lancarPedido(
   clienteId: string,
   pedido: PedidoDisplays,
-  trocas: ItemExtra[] = []
+  trocas: ItemExtra[] = [],
+  /** Observação só deste pedido; vazio apaga, undefined não mexe. */
+  observacao?: string
 ): Promise<ResultadoLancamento> {
   const validacao = validarPedido(pedido);
   if (!validacao.ok) throw new Error(validacao.erro);
@@ -86,7 +91,8 @@ export async function lancarPedido(
     p_displays: pedido as any,
     p_itens: expandirParaItens(pedido) as any,
     p_trocas: trocas.filter((t) => t.produto_nome && t.quantidade > 0) as any,
-  });
+    p_observacoes: observacao ?? null,
+  } as any);
   if (error) throw new Error(error.message);
   return data as unknown as ResultadoLancamento;
 }

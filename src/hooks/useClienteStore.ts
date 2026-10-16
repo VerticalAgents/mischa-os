@@ -33,6 +33,7 @@ interface ClienteState {
 }
 
 import { sanitizeClienteData, createSafeClienteDefaults } from '@/utils/clienteDataSanitizer';
+import { lerHorarios } from '@/utils/horariosRecebimento';
 import { sincronizarClienteComGestaoClick } from '@/services/clientes/criarCliente';
 
 // FUNÇÃO ENHANCED - Debug em tempo real + Proteção de último recurso
@@ -166,6 +167,7 @@ export const transformDbRowToCliente = (row: any): Cliente => {
     metaGiroSemanal: row.meta_giro_semanal || 0,
     giroMedioSemanal: row.giro_medio_semanal || 0,
     janelasEntrega: safeParseJsonb(row.janelas_entrega),
+    horariosRecebimento: lerHorarios(row.horarios_recebimento),
     categoriasHabilitadas: safeParseJsonb(row.categorias_habilitadas),
     statusCliente: canonicalToUiStatus[row.status_cliente] || row.status_cliente || 'Ativo',
     ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : null,
@@ -517,6 +519,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         observacoes: clienteOriginal.observacoes,
         categoriasHabilitadas: clienteOriginal.categoriasHabilitadas,
         janelasEntrega: clienteOriginal.janelasEntrega,
+        horariosRecebimento: clienteOriginal.horariosRecebimento ?? null,
         representanteId: clienteOriginal.representanteId,
         rotaEntregaId: clienteOriginal.rotaEntregaId,
         categoriaEstabelecimentoId: clienteOriginal.categoriaEstabelecimentoId,

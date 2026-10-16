@@ -6,6 +6,7 @@ import { SubstatusPedidoAgendado } from '@/types';
 import { addBusinessDays, isWeekend, format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
 import { useConfirmacaoEntrega } from './useConfirmacaoEntrega';
+import { horarioNaData, lerHorarios } from '@/utils/horariosRecebimento';
 
 interface PedidoExpedicao {
   id: string;
@@ -29,6 +30,8 @@ interface PedidoExpedicao {
   // Observações e trocas
   observacoes_gerais?: string;
   observacoes_agendamento?: string;
+  /** "recebe 9h–12h" no dia da entrega, pelo horário do cadastro; vazio sem restrição. */
+  horario_recebimento?: string;
   trocas_pendentes?: any[];
   bonificacoes_pendentes?: any[];
   // Campos para lista de documentos
@@ -232,7 +235,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 clientes (
                   id, nome, endereco_entrega, contato_telefone, link_google_maps,
                   representante_id, observacoes, gestaoclick_cliente_id,
-                  emite_nota_fiscal, forma_pagamento, tipo_logistica
+                  emite_nota_fiscal, forma_pagamento, tipo_logistica, horarios_recebimento
                 )
               `)
               .eq('status_agendamento', 'Agendado');
@@ -272,6 +275,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date(),
                 observacoes_gerais: cliente?.observacoes || undefined,
                 observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
+                horario_recebimento:
+                  horarioNaData(lerHorarios((cliente as any)?.horarios_recebimento), agendamento.data_proxima_reposicao) || undefined,
                 trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
                 bonificacoes_pendentes: Array.isArray(agendamento.bonificacoes_pendentes) ? agendamento.bonificacoes_pendentes : [],
                 emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
@@ -340,7 +345,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento, tipo_logistica');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento, tipo_logistica, horarios_recebimento');
 
             if (clientesError) {
               const { data: clientesSemLink, error: fallbackError } = await supabase
@@ -427,6 +432,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               // Observações e trocas
               observacoes_gerais: cliente?.observacoes || undefined,
               observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
+              horario_recebimento:
+                horarioNaData(lerHorarios((cliente as any)?.horarios_recebimento), agendamento.data_proxima_reposicao) || undefined,
               trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
               bonificacoes_pendentes: Array.isArray(agendamento.bonificacoes_pendentes) ? agendamento.bonificacoes_pendentes : [],
               // Campos para lista de documentos

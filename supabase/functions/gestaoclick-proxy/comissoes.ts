@@ -9,6 +9,9 @@
  *   nota fica só com a nota, para não contar duas vezes.
  * - O boleto de cada nota é achado pela venda: nota.pedido_id -> /vendas/{id}.codigo ->
  *   recebimento com descrição "Venda de nº {codigo}".
+ * - Pedido lançado e ainda sem nota (Lucca, 15/10/2026) é só previsão: aparece em `a_faturar`,
+ *   na quinzena de hoje, e nunca entra no lançamento. Sai da lista quando a venda ganha nota ou a
+ *   entrega é marcada como feita.
  * - Pode-se lançar parte das notas, a qualquer momento (Lucca, 15/10/2026); cada lançamento é
  *   uma conta a pagar. Lançar recalcula tudo aqui, não confia no que a tela mandou.
  */
@@ -21,6 +24,7 @@ import {
   diasParaVirarDesconto,
   fecharQuinzena,
   notaConta,
+  quinzenaDe,
   quinzenaFechada,
   quinzenasAte,
   situacaoDaConta,
@@ -124,6 +128,18 @@ export interface Risco {
   dias_para_desconto: number;
 }
 
+/** Pedido lançado que ainda não tem nota: comissão prevista, não entra no lançamento. */
+export interface PedidoAFaturar {
+  cliente: string;
+  data_entrega: string | null;
+  unidades: number;
+  comissao: number;
+  /** Quinzena em que deve entrar, pela data de entrega prevista. */
+  quinzena: Quinzena | null;
+  etapa: 'lancado' | 'separado' | 'venda_gerada';
+  sem_nota: boolean;
+}
+
 export interface QuinzenaDoRep {
   representante_id: number;
   representante: string;
@@ -142,6 +158,8 @@ export interface QuinzenaDoRep {
   lancado: number;
   lancamentos: Lancamento[];
   em_risco: Risco[];
+  /** Só na quinzena de hoje. */
+  a_faturar: PedidoAFaturar[];
 }
 
 async function carregarBase(supabase: any, representanteId?: number) {
@@ -155,7 +173,7 @@ async function carregarBase(supabase: any, representanteId?: number) {
   const ids = (reps || []).map((r: Rep) => r.id);
   const { data: clientes } = await supabase
     .from('clientes')
-    .select('id, nome, gestaoclick_cliente_id, representante_id')
+    .select('id, nome, gestaoclick_cliente_id, representante_id, emite_nota_fiscal')
     .in('representante_id', ids.length ? ids : [-1]);
   const repDoCliente = new Map<string, number>();
   (clientes || []).forEach((c: any) => {
@@ -240,6 +258,7 @@ export async function montarQuinzenas(
   // Entregas sem nota: o histórico do Mischa OS já traz só o vendido (sem bonificação e troca),
   // e só existe depois que a entrega foi marcada como feita.
   const clientePorId = new Map(clientes.map((c: any) => [c.id, c]));
+  const vendasEntregues = new Set<string>();
   if (clientes.length) {
     const { data: entregas, error } = await supabase
       .from('historico_entregas')
@@ -248,6 +267,7 @@ export async function montarQuinzenas(
       .gte('data', `${maisAntiga}T03:00:00Z`);
     if (error) throw error;
     for (const e of entregas || []) {
+      if (e.gestaoclick_venda_id) vendasEntregues.add(String(e.gestaoclick_venda_id));
       if (e.tipo !== 'entrega' || (e.tipo_movimento ?? 'venda') !== 'venda') continue;
       if (e.gestaoclick_venda_id && vendasComNota.has(String(e.gestaoclick_venda_id))) continue;
       const c: any = clientePorId.get(e.cliente_id);
@@ -265,6 +285,36 @@ export async function montarQuinzenas(
         comissao: comissaoEmCentavos(e.quantidade, rep.comissao_por_unidade),
         sem_nota: true,
       });
+    }
+  }
+
+  // Pedidos lançados e ainda sem nota nem entrega feita.
+  const aFaturar = new Map<number, PedidoAFaturar[]>();
+  if (clientes.length) {
+    const { data: pedidos, error } = await supabase
+      .from('agendamentos_clientes')
+      .select('cliente_id, status_agendamento, separado_em, gestaoclick_venda_id, data_proxima_reposicao, quantidade_total')
+      .in('cliente_id', clientes.map((c: any) => c.id))
+      .eq('status_agendamento', 'Agendado');
+    if (error) throw error;
+    for (const a of pedidos || []) {
+      const venda = String(a.gestaoclick_venda_id || '');
+      if (venda && (vendasComNota.has(venda) || vendasEntregues.has(venda))) continue;
+      const c: any = clientePorId.get(a.cliente_id);
+      const rep = reps.find((r) => r.id === c?.representante_id);
+      const unidades = Number(a.quantidade_total) || 0;
+      if (!rep || !unidades) continue;
+      const lista = aFaturar.get(rep.id) || [];
+      lista.push({
+        cliente: c.nome || '',
+        data_entrega: a.data_proxima_reposicao || null,
+        unidades,
+        comissao: comissaoEmCentavos(unidades, rep.comissao_por_unidade),
+        quinzena: a.data_proxima_reposicao ? quinzenaDe(a.data_proxima_reposicao) : null,
+        etapa: venda ? 'venda_gerada' : a.separado_em ? 'separado' : 'lancado',
+        sem_nota: c.emite_nota_fiscal === false,
+      });
+      aFaturar.set(rep.id, lista);
     }
   }
 
@@ -402,6 +452,12 @@ export async function montarQuinzenas(
         lancado: m.lancamentos.reduce((s, l) => s + l.liquido, 0),
         lancamentos: m.lancamentos,
         em_risco: aqui ? emRisco : [],
+        a_faturar:
+          m.q.inicio === quinzenas[0].inicio
+            ? (aFaturar.get(rep.id) || []).sort(
+                (a, b) => (a.data_entrega || '9').localeCompare(b.data_entrega || '9') || a.cliente.localeCompare(b.cliente),
+              )
+            : [],
       });
     }
   }

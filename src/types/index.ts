@@ -53,6 +53,8 @@ export interface Cliente {
   
   // Novos campos para configuração avançada
   janelasEntrega?: DiaSemana[];
+  /** Horário de recebimento por dia (utils/horariosRecebimento.ts); null = sem informação. */
+  horariosRecebimento?: Partial<Record<DiaSemana, { de: string; ate: string }[]>> | null;
   representanteId?: number;
   rotaEntregaId?: number;
   categoriaEstabelecimentoId?: number;
