@@ -5,8 +5,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import DisplaySortidoCard from "./DisplaySortidoCard";
+
 export default function ProporcoesTab() {
+  return <Tabs defaultValue="padrao" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="padrao">Pedido padrão (%)</TabsTrigger>
+        <TabsTrigger value="sortido">Display sortido (un.)</TabsTrigger>
+      </TabsList>
+      <TabsContent value="padrao">
+        <ProporcaoPadraoCard />
+      </TabsContent>
+      <TabsContent value="sortido">
+        <DisplaySortidoCard />
+      </TabsContent>
+    </Tabs>;
+}
+
+function ProporcaoPadraoCard() {
   const {
     proporcoes,
     loading,

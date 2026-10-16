@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +80,8 @@ interface QuinzenaDoRep {
   bruto: number;
   lancado: number;
   lancamentos: Lancamento[];
+  /** Pedidos lançados e ainda sem nota (previsão); só vem na quinzena de hoje. */
+  a_faturar?: { unidades: number; comissao: number }[];
 }
 
 const reais = (centavos: number) => formatCurrency(centavos / 100);
@@ -203,6 +206,24 @@ export default function Comissoes() {
     return [...mapa.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [dados]);
 
+  // Quinzena some de "A lançar" quando todos os representantes dela estão lançados ou sem venda.
+  const resolvida = (reps: QuinzenaDoRep[]) => reps.every((d) => d.situacao === "lancada" || d.situacao === "vazia");
+  const aLancar = porQuinzena.filter(([, reps]) => !resolvida(reps));
+  const historico = porQuinzena.filter(([, reps]) => resolvida(reps));
+
+  const totais = useMemo(() => {
+    const lancamentos = dados.flatMap((d) => d.lancamentos);
+    return {
+      faltaLancar: dados.reduce(
+        (s, d) => s + d.notas.filter((n) => n.lancada_em === null).reduce((t, n) => t + n.comissao, 0),
+        0,
+      ),
+      aPagar: lancamentos.filter((l) => l.situacao !== "recebida").reduce((s, l) => s + l.liquido, 0),
+      atrasado: lancamentos.filter((l) => l.situacao === "atrasada").reduce((s, l) => s + l.liquido, 0),
+      aFaturar: dados.reduce((s, d) => s + (d.a_faturar || []).reduce((t, p) => t + p.comissao, 0), 0),
+    };
+  }, [dados]);
+
   const chave = (d: QuinzenaDoRep) => `${d.representante_id}-${d.quinzena.inicio}`;
   const alternar = (set: React.Dispatch<React.SetStateAction<Set<string>>>, k: string) =>
     set((s) => {
@@ -275,39 +296,7 @@ export default function Comissoes() {
     </div>
   );
 
-  if (carregando && !dados.length) {
-    return (
-      <div className="space-y-4">
-        {avisoCarregando}
-        <div className="grid gap-3 md:grid-cols-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-36 animate-pulse rounded-lg border bg-muted/30" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm text-muted-foreground max-w-3xl">
-          Nota emitida do dia 1 ao 15 paga no dia 16; do 16 ao fim do mês, no dia 1º seguinte. Cliente sem nota conta
-          pela data da entrega; bonificação e troca não entram. Você escolhe o que lançar e quando: cada lançamento vira
-          uma conta a pagar em aberto no Gestão Click. Boleto vencido há 2 dias ou mais e não pago é descontado no
-          próximo lançamento e volta quando o cliente pagar.
-        </p>
-        <Button variant="outline" size="sm" onClick={carregar} disabled={carregando}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${carregando ? "animate-spin" : ""}`} /> Atualizar
-        </Button>
-      </div>
-
-      {avisoCarregando}
-
-      {erro && <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{erro}</div>}
-      {!erro && !porQuinzena.length && <p className="text-sm text-muted-foreground">Nenhum representante com comissão.</p>}
-
-      {porQuinzena.map(([inicio, reps]) => {
+  const desenharQuinzena = ([inicio, reps]: [string, QuinzenaDoRep[]]) => {
         const q = reps[0].quinzena;
         return (
           <section key={inicio} className="space-y-3">
@@ -351,6 +340,13 @@ export default function Comissoes() {
                           <div className="font-semibold">{reais(d.bruto)}</div>
                         </div>
                       </div>
+
+                      {(d.a_faturar || []).length > 0 && (
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          A faturar: {reais((d.a_faturar || []).reduce((s, p) => s + p.comissao, 0))} ·{" "}
+                          {(d.a_faturar || []).length} {(d.a_faturar || []).length === 1 ? "pedido" : "pedidos"} sem nota
+                        </div>
+                      )}
 
                       {(d.lancamentos.length > 0 || falta > 0) && (
                         <div className="text-xs tabular-nums space-y-0.5">
@@ -461,7 +457,95 @@ export default function Comissoes() {
             </div>
           </section>
         );
-      })}
+      };
+
+  if (carregando && !dados.length) {
+    return (
+      <div className="space-y-4">
+        {avisoCarregando}
+        <div className="grid gap-3 md:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-36 animate-pulse rounded-lg border bg-muted/30" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <details className="max-w-3xl text-sm text-muted-foreground">
+          <summary className="cursor-pointer select-none font-medium text-foreground">Como funciona</summary>
+          <p className="mt-2">
+            Nota emitida do dia 1 ao 15 paga no dia 16; do 16 ao fim do mês, no dia 1º seguinte. Cliente sem nota conta
+            pela data da entrega; bonificação e troca não entram. Você escolhe o que lançar e quando: cada lançamento vira
+            uma conta a pagar em aberto no Gestão Click. Boleto vencido há 2 dias ou mais e não pago é descontado no
+            próximo lançamento e volta quando o cliente pagar.
+          </p>
+        </details>
+        <Button variant="outline" size="sm" onClick={carregar} disabled={carregando}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${carregando ? "animate-spin" : ""}`} /> Atualizar
+        </Button>
+      </div>
+
+      {avisoCarregando}
+
+      {erro && <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{erro}</div>}
+      {!erro && !porQuinzena.length && <p className="text-sm text-muted-foreground">Nenhum representante com comissão.</p>}
+
+      {dados.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { titulo: "Falta lançar", valor: totais.faltaLancar, detalhe: "notas sem conta a pagar" },
+            { titulo: "A pagar", valor: totais.aPagar, detalhe: "contas lançadas em aberto" },
+            {
+              titulo: "Atrasado",
+              valor: totais.atrasado,
+              detalhe: totais.atrasado > 0 ? "conta vencida sem baixa" : "nada atrasado",
+              alerta: totais.atrasado > 0,
+            },
+            { titulo: "A faturar", valor: totais.aFaturar, detalhe: "previsto · pedidos sem nota", apagado: true },
+          ].map((t) => (
+            <Card key={t.titulo}>
+              <CardContent className="p-3 sm:p-4">
+                <div className="text-xs text-muted-foreground">{t.titulo}</div>
+                <div className={`text-xl sm:text-2xl font-semibold tabular-nums ${t.apagado ? "text-muted-foreground" : ""} ${t.alerta ? "text-destructive" : ""}`}>
+                  {reais(t.valor)}
+                </div>
+                <div className={`text-xs ${t.alerta ? "text-destructive font-medium" : "text-muted-foreground"}`}>{t.detalhe}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {porQuinzena.length > 0 && (
+        <Tabs defaultValue="lancar" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="lancar">
+              A lançar <span className="ml-1 tabular-nums text-muted-foreground">({aLancar.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="historico">
+              Histórico <span className="ml-1 tabular-nums text-muted-foreground">({historico.length})</span>
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="lancar" className="mt-0 space-y-6">
+            {aLancar.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nada a lançar: todas as quinzenas estão lançadas.</p>
+            ) : (
+              aLancar.map(desenharQuinzena)
+            )}
+          </TabsContent>
+          <TabsContent value="historico" className="mt-0 space-y-6">
+            {historico.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma quinzena lançada ainda.</p>
+            ) : (
+              historico.map(desenharQuinzena)
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
 
       <AlertDialog open={!!escolha} onOpenChange={(o) => !o && !lancando && setEscolha(null)}>
         <AlertDialogContent>

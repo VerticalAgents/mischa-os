@@ -71,6 +71,29 @@ async function paginado(tokens: Tokens, path: string, parar?: (pagina: any[]) =>
   return todos;
 }
 
+/** Código de cada venda das notas, lido de /vendas/{id}; o que já foi pago ao representante vem do banco. */
+async function codigosDasVendas(tokens: Tokens, notas: any[], lancadas: any[]): Promise<string[]> {
+  const conhecido = new Map<string, string>();
+  for (const l of lancadas) {
+    if (l.gestaoclick_venda_id && l.venda_codigo) conhecido.set(String(l.gestaoclick_venda_id), String(l.venda_codigo));
+  }
+  const ids = [...new Set(notas.map((n: any) => String(n.pedido_id || '')).filter(Boolean))];
+  const faltam = ids.filter((id) => !conhecido.has(id));
+  for (let i = 0; i < faltam.length; i += 5) {
+    await Promise.all(
+      faltam.slice(i, i + 5).map(async (id) => {
+        try {
+          const v = (await gc(tokens, `/vendas/${id}`))?.data;
+          if (v?.codigo) conhecido.set(id, String(v.codigo));
+        } catch (_) {
+          /* sem o código, essa venda só não é reconhecida pelo código */
+        }
+      }),
+    );
+  }
+  return ids.map((id) => conhecido.get(id)).filter((c): c is string => !!c);
+}
+
 const hojeBR = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
 
 interface Rep {
@@ -237,6 +260,10 @@ export async function montarQuinzenas(
   ]);
   const vendasComNota = new Set(todasNotas.map((n: any) => String(n.pedido_id || '')).filter(Boolean));
   const notasGC = todasNotas.filter((n: any) => notaConta(n) && repDoCliente.has(String(n.destinatario_id)));
+  // A nota aponta para o id da venda (nota.pedido_id), mas o Mischa OS guarda o CÓDIGO dela
+  // (agendamentos_clientes e historico_entregas.gestaoclick_venda_id). Sem traduzir, pedido já
+  // faturado continuava "a faturar" e a entrega com nota contava de novo como "sem nota" (16/10/2026).
+  for (const codigo of await codigosDasVendas(tokens, notasGC, lancadas)) vendasComNota.add(codigo);
   type Venda = Omit<NotaDaQuinzena, 'lancada_em'> & { representante_id: number };
   const vendas: Venda[] = notasGC.map((n: any) => {
     const rep = reps.find((r) => r.id === repDoCliente.get(String(n.destinatario_id)))!;

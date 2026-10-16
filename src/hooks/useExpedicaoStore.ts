@@ -23,6 +23,8 @@ interface PedidoExpedicao {
   tipo_pedido: string;
   status_agendamento: string;
   substatus_pedido?: SubstatusPedidoAgendado;
+  /** Pedido em displays dos representantes ({ sortido, sabores }); null nos outros. */
+  displays?: { sortido?: number; sabores?: Record<string, number> } | null;
   itens_personalizados?: any;
   gestaoclick_venda_id?: string;
   gestaoclick_sincronizado_em?: string;
@@ -270,6 +272,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 status_agendamento: agendamento.status_agendamento,
                 substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
                 itens_personalizados: agendamento.itens_personalizados,
+                displays: (agendamento.displays as PedidoExpedicao["displays"]) ?? null,
                 gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
                 gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
                 created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date(),
@@ -426,6 +429,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               status_agendamento: agendamento.status_agendamento,
               substatus_pedido: agendamento.substatus_pedido as SubstatusPedidoAgendado,
               itens_personalizados: agendamento.itens_personalizados,
+              displays: (agendamento.displays as PedidoExpedicao["displays"]) ?? null,
               gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
               gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
               created_at: new Date(agendamento.created_at),

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
+  ComposicaoSortido,
   MODELO_DISPLAYS,
   PedidoDisplays,
   expandirParaItens,
@@ -81,6 +82,8 @@ export async function lancarPedido(
   clienteId: string,
   pedido: PedidoDisplays,
   trocas: ItemExtra[] = [],
+  /** O que vai no sortido (Configurações › Proporções); sem ela, o padrão do código. */
+  composicao?: ComposicaoSortido,
   /** Observação só deste pedido; vazio apaga, undefined não mexe. */
   observacao?: string
 ): Promise<ResultadoLancamento> {
@@ -89,7 +92,7 @@ export async function lancarPedido(
   const { data, error } = await supabase.rpc("rep_lancar_pedido_displays", {
     p_cliente_id: clienteId,
     p_displays: pedido as any,
-    p_itens: expandirParaItens(pedido) as any,
+    p_itens: expandirParaItens(pedido, composicao) as any,
     p_trocas: trocas.filter((t) => t.produto_nome && t.quantidade > 0) as any,
     p_observacoes: observacao ?? null,
   } as any);

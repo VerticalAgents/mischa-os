@@ -633,7 +633,8 @@ export const PrintingActions = ({
           nome: item.nome || item.produto || item.sabor || "Produto",
           quantidade: item.quantidade || item.quantidade_sabor || 0,
         })),
-        hoje
+        hoje,
+        pedido.displays
       ).map((etiqueta) => ({ pedido, etiqueta }))
     );
 
@@ -649,11 +650,13 @@ export const PrintingActions = ({
       linhas.push(etiquetas.slice(i, i + ROLO.colunas));
     }
 
-    const topo = (pedido: any, rotulo: string) => `
+    const topo = (pedido: any, rotulo: string, tarja?: string) => `
       <div class="topo">
         <div class="linha-pilula">${rotulo ? `<span class="pilula">${escapar(rotulo)}</span>` : ""}</div>
         <div class="cliente ${classeTamanhoNome(pedido.cliente_nome)}">${escapar(pedido.cliente_nome)}</div>
-        ${pedido.tipo_pedido ? `<div class="tarja${pedido.tipo_pedido === "Alterado" ? "" : " contorno"}">${escapar(pedido.tipo_pedido)}</div>` : ""}
+        ${tarja
+          ? `<div class="tarja">${escapar(tarja)}</div>`
+          : pedido.tipo_pedido ? `<div class="tarja${pedido.tipo_pedido === "Alterado" ? "" : " contorno"}">${escapar(pedido.tipo_pedido)}</div>` : ""}
       </div>
       <div class="regua"></div>
     `;
@@ -670,6 +673,27 @@ export const PrintingActions = ({
             <div class="rodape">
               <span class="rotulo">Validade</span>
               <span class="validade">${formatDate(etiqueta.validade)}</span>
+            </div>
+          </div>
+        `;
+      }
+      if (etiqueta.tipo === "display") {
+        // Display é exato: nada de "≈ aprox." (Lucca, 15/10/2026).
+        const lista = etiqueta.sabores.length > 1
+          ? `<div class="sabores">${etiqueta.sabores
+              .map((s) => `<div class="sabor"><span>${escapar(s.nome.replace(/^Brownie\s+/i, ""))}</span><b>${s.quantidade}</b></div>`)
+              .join("")}</div>`
+          : "";
+        return `
+          <div class="etiqueta${lista ? " com-sabores" : ""}">
+            ${topo(pedido, etiqueta.rotulo, etiqueta.titulo)}
+            <div class="meio">
+              <div class="bloco-un"><div class="unidades">${etiqueta.unidades}<span> un.</span></div><div class="rotulo">neste display</div></div>
+              ${lista}
+            </div>
+            <div class="rodape">
+              <span class="rotulo">Total do pedido</span>
+              <span class="total">${etiqueta.unidadesDoPedido} un.</span>
             </div>
           </div>
         `;

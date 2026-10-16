@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, HandCoins, Loader2, RefreshCw } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -135,6 +136,44 @@ const SITUACAO_CONTA = {
   atrasada: { texto: "atrasada", classe: "bg-destructive/10 text-destructive" },
 } as const;
 
+type Aba = "quinzena" | "faturar" | "contas" | "descontos";
+
+function CartaoResumo(props: {
+  titulo: string;
+  valor: string;
+  detalhe: string;
+  ativo: boolean;
+  onClick: () => void;
+  apagado?: boolean;
+  alerta?: boolean;
+}) {
+  return (
+    <button type="button" onClick={props.onClick} className="text-left">
+      <Card className={`h-full transition-colors hover:border-primary/50 ${props.ativo ? "border-primary ring-1 ring-primary/30" : ""}`}>
+        <CardContent className="p-3 sm:p-4">
+          <div className="text-xs text-muted-foreground">{props.titulo}</div>
+          <div className={`text-xl sm:text-2xl font-semibold tabular-nums ${props.apagado ? "text-muted-foreground" : ""}`}>
+            {props.valor}
+          </div>
+          <div className={`text-xs ${props.alerta ? "text-destructive font-medium" : "text-muted-foreground"}`}>{props.detalhe}</div>
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
+
+function Linha(props: { nome: string; detalhe: string; valor: string; classeDetalhe?: string; classeValor?: string }) {
+  return (
+    <li className="flex items-start justify-between gap-3 px-3 py-2">
+      <div className="min-w-0">
+        <div className="truncate font-medium">{props.nome}</div>
+        <div className={`text-xs tabular-nums ${props.classeDetalhe ?? "text-muted-foreground"}`}>{props.detalhe}</div>
+      </div>
+      <div className={`shrink-0 tabular-nums font-medium ${props.classeValor ?? ""}`}>{props.valor}</div>
+    </li>
+  );
+}
+
 export default function RepComissoes() {
   const cache = useMemo(() => {
     try {
@@ -198,8 +237,36 @@ export default function RepComissoes() {
   const descontos = dados.flatMap((d) => d.acertos.filter((a) => a.tipo === "descontar"));
   const devolucoes = dados.flatMap((d) => d.acertos.filter((a) => a.tipo === "devolver"));
   const riscos = dados.flatMap((d) => d.em_risco);
-  const aFaturar = dados.flatMap((d) => d.a_faturar);
+  const aFaturar = useMemo(() => dados.flatMap((d) => d.a_faturar), [dados]);
   const previsto = aFaturar.reduce((s, p) => s + p.comissao, 0);
+  const temDescontos = riscos.length > 0 || descontos.length > 0;
+
+  // A faturar agrupado pela data de entrega: a data aparece uma vez, não em cada pedido.
+  const gruposAFaturar = useMemo(() => {
+    const mapa = new Map<string, { data: string; pagamento: string | null; unidades: number; comissao: number; pedidos: PedidoAFaturar[] }>();
+    for (const p of aFaturar) {
+      const data = p.data_entrega ? p.data_entrega.slice(0, 10) : "";
+      const g = mapa.get(data) || { data, pagamento: p.quinzena?.pagamento ?? null, unidades: 0, comissao: 0, pedidos: [] };
+      g.unidades += p.unidades;
+      g.comissao += p.comissao;
+      g.pedidos.push(p);
+      mapa.set(data, g);
+    }
+    return [...mapa.values()].sort((a, b) => (a.data || "9").localeCompare(b.data || "9"));
+  }, [aFaturar]);
+
+  // Abre na primeira aba com alguma coisa; o Lucca não quer rolar até achar (15/10/2026).
+  const [abaEscolhida, setAba] = useState<Aba | null>(null);
+  const aba: Aba =
+    abaEscolhida && (abaEscolhida !== "descontos" || temDescontos)
+      ? abaEscolhida
+      : naQuinzena.length > 0
+        ? "quinzena"
+        : aFaturar.length > 0
+          ? "faturar"
+          : lancamentos.length > 0 || fechadasPendentes.length > 0
+            ? "contas"
+            : "quinzena";
 
   const passo = PASSOS[Math.min(Math.floor(segundos / 3), PASSOS.length - 1)];
 
@@ -242,202 +309,210 @@ export default function RepComissoes() {
 
       {atual && (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Esta quinzena, até agora</div>
-                <div className="text-2xl font-semibold tabular-nums">{reais(acumulado)}</div>
-                <div className="text-xs text-muted-foreground">já faturado · recebe em {dataBR(atual.quinzena.pagamento)}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Pedidos a faturar</div>
-                <div className="text-2xl font-semibold tabular-nums text-muted-foreground">{reais(previsto)}</div>
-                <div className="text-xs text-muted-foreground">previsto · conta quando a nota sair</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">A receber</div>
-                <div className="text-2xl font-semibold tabular-nums">{reais(totalAReceber)}</div>
-                <div className={`text-xs ${atrasado > 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                  {atrasado > 0 ? `${reais(atrasado)} atrasado` : "nada atrasado"}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Recebido no mês</div>
-                <div className="text-2xl font-semibold tabular-nums">{reais(recebidoMes)}</div>
-                <div className="text-xs text-muted-foreground">pago pela Mischa's</div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <CartaoResumo
+              ativo={aba === "quinzena"}
+              onClick={() => setAba("quinzena")}
+              titulo="Esta quinzena"
+              valor={reais(acumulado)}
+              detalhe={`já faturado · recebe ${diaMes(atual.quinzena.pagamento)}`}
+            />
+            <CartaoResumo
+              ativo={aba === "faturar"}
+              onClick={() => setAba("faturar")}
+              titulo="A faturar"
+              valor={reais(previsto)}
+              detalhe="previsto · conta quando a nota sair"
+              apagado
+            />
+            <CartaoResumo
+              ativo={aba === "contas"}
+              onClick={() => setAba("contas")}
+              titulo="A receber"
+              valor={reais(totalAReceber)}
+              detalhe={atrasado > 0 ? `${reais(atrasado)} atrasado` : "nada atrasado"}
+              alerta={atrasado > 0}
+            />
+            <CartaoResumo
+              ativo={aba === "contas"}
+              onClick={() => setAba("contas")}
+              titulo="Recebido no mês"
+              valor={reais(recebidoMes)}
+              detalhe="pago pela Mischa's"
+            />
           </div>
 
-          {(riscos.length > 0 || descontos.length > 0) && (
-            <Card className="border-amber-500/50">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-semibold">Risco de desconto</div>
+          <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)} className="space-y-3">
+            <TabsList className="h-auto w-full justify-start overflow-x-auto">
+              <TabsTrigger value="quinzena">Esta quinzena</TabsTrigger>
+              <TabsTrigger value="faturar">
+                A faturar{aFaturar.length > 0 && <span className="ml-1 tabular-nums text-muted-foreground">({aFaturar.length})</span>}
+              </TabsTrigger>
+              <TabsTrigger value="contas">Minhas contas</TabsTrigger>
+              {temDescontos && (
+                <TabsTrigger value="descontos" className="text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Descontos
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="quinzena" className="mt-0">
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="font-semibold">
+                      {diaMes(atual.quinzena.inicio)} a {diaMes(atual.quinzena.fim)}
+                      <span className="font-normal text-muted-foreground"> · recebe {dataBR(atual.quinzena.pagamento)}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      {naQuinzena.reduce((s, n) => s + n.unidades, 0)} brownies
+                    </div>
+                  </div>
+                  {naQuinzena.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma venda faturada nesta quinzena ainda. Cada nota (ou entrega paga na hora) entra aqui com
+                      R$ 0,85 por brownie.
+                    </p>
+                  ) : (
+                    <ul className="divide-y rounded-md border text-sm">
+                      {naQuinzena.map((n) => (
+                        <Linha
+                          key={n.nf_id}
+                          nome={n.cliente}
+                          detalhe={`${rotuloNota(n)} · ${diaMes(n.data_emissao)} · ${n.unidades} brownies`}
+                          valor={reais(n.comissao)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                  {devolucoes.length > 0 && (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      + {reais(devolucoes.reduce((s, a) => s + a.valor, 0))} de desconto que volta: o cliente pagou.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="faturar" className="mt-0">
+              <Card>
+                <CardContent className="p-4 space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Pedidos lançados e ainda sem nota. É previsão: vira comissão quando a nota sai no despacho.
+                  </p>
+                  {gruposAFaturar.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum pedido esperando nota.</p>
+                  ) : (
+                    gruposAFaturar.map((g) => (
+                      <div key={g.data} className="space-y-2">
+                        <div className="flex items-baseline justify-between gap-2 text-sm">
+                          <div className="font-semibold">
+                            {g.data ? `Entrega ${diaMes(g.data)}` : "Sem data"}
+                            {g.pagamento && (
+                              <span className="font-normal text-muted-foreground"> · recebe {diaMes(g.pagamento)}</span>
+                            )}
+                          </div>
+                          <div className="tabular-nums text-muted-foreground">
+                            {g.unidades} brownies · <span className="font-medium text-foreground">{reais(g.comissao)}</span>
+                          </div>
+                        </div>
+                        <ul className="divide-y rounded-md border text-sm">
+                          {g.pedidos.map((p, i) => (
+                            <li key={`${p.cliente}-${i}`} className="flex items-center justify-between gap-3 px-3 py-1.5">
+                              <span className="min-w-0 truncate">
+                                {p.cliente}
+                                <span className="text-xs text-muted-foreground tabular-nums">
+                                  {" "}· {p.unidades} brownies
+                                  {p.etapa !== "lancado" ? ` · ${ETAPA[p.etapa]}` : ""}
+                                  {p.sem_nota ? " · paga na entrega" : ""}
+                                </span>
+                              </span>
+                              <span className="shrink-0 tabular-nums text-muted-foreground">{reais(p.comissao)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="contas" className="mt-0">
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  {lancamentos.length === 0 && fechadasPendentes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Quando a Mischa's lançar sua comissão, a conta aparece aqui com o vencimento e se já foi paga.
+                    </p>
+                  ) : (
+                    <ul className="divide-y rounded-md border text-sm">
+                      {fechadasPendentes.length > 0 && (
+                        <Linha
+                          nome="Quinzena fechada, aguardando lançamento"
+                          detalhe={`${fechadasPendentes.length} ${fechadasPendentes.length === 1 ? "nota" : "notas"} · paga em ${dataBR(fechadasPendentes[0].pagamento)}`}
+                          valor={reais(fechadasPendentes.reduce((s, n) => s + n.comissao, 0))}
+                        />
+                      )}
+                      {lancamentos.map((l, i) => (
+                        <li key={`${l.codigo}-${i}`} className="flex items-start justify-between gap-3 px-3 py-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium tabular-nums">Vence {dataBR(l.vencimento)}</span>
+                              {l.situacao && (
+                                <Badge variant="outline" className={`border-0 ${SITUACAO_CONTA[l.situacao].classe}`}>
+                                  {SITUACAO_CONTA[l.situacao].texto}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground tabular-nums">
+                              {l.notas} {l.notas === 1 ? "nota" : "notas"}
+                              {l.pago_em ? ` · paga em ${dataBR(l.pago_em)}` : ""}
+                            </div>
+                          </div>
+                          <div className="shrink-0 tabular-nums font-medium">{reais(l.liquido)}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {temDescontos && (
+              <TabsContent value="descontos" className="mt-0">
+                <Card className="border-amber-500/50">
+                  <CardContent className="p-4 space-y-3">
                     <p className="text-xs text-muted-foreground">
                       Boleto vencido há 2 dias sai da sua próxima comissão. Se o cliente pagar depois, volta.{" "}
                       <Link to="/rep/inadimplencia" className="underline">Ver cobrança</Link>
                     </p>
-                  </div>
-                </div>
-                <ul className="divide-y rounded-md border text-sm">
-                  {riscos.map((r) => (
-                    <li key={r.nf_id} className="flex items-start justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{r.cliente}</div>
-                        <div className="text-xs text-amber-700 dark:text-amber-400">
-                          {rotuloNota(r)} · venceu {dataBR(r.vencimento)} · vira desconto em {r.dias_para_desconto}{" "}
-                          {r.dias_para_desconto === 1 ? "dia" : "dias"}
-                        </div>
-                      </div>
-                      <div className="shrink-0 tabular-nums font-medium">{reais(r.valor)}</div>
-                    </li>
-                  ))}
-                  {descontos.map((a) => (
-                    <li key={a.nf_id} className="flex items-start justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{a.cliente}</div>
-                        <div className="text-xs text-destructive">
-                          {rotuloNota(a)} · venceu {dataBR(a.vencimento)} · será descontado
-                        </div>
-                      </div>
-                      <div className="shrink-0 tabular-nums font-medium text-destructive">− {reais(a.valor)}</div>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="font-semibold">
-                  Quinzena {diaMes(atual.quinzena.inicio)} a {diaMes(atual.quinzena.fim)}
-                </div>
-                <div className="text-xs text-muted-foreground tabular-nums">
-                  {naQuinzena.reduce((s, n) => s + n.unidades, 0)} brownies
-                </div>
-              </div>
-              {naQuinzena.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma venda faturada nesta quinzena ainda. Cada nota (ou entrega paga na hora) entra aqui com R$ 0,85
-                  por brownie.
-                </p>
-              ) : (
-                <ul className="divide-y rounded-md border text-sm">
-                  {naQuinzena.map((n) => (
-                    <li key={n.nf_id} className="flex items-start justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{n.cliente}</div>
-                        <div className="text-xs text-muted-foreground tabular-nums">
-                          {rotuloNota(n)} · {diaMes(n.data_emissao)} · {n.unidades} brownies
-                        </div>
-                      </div>
-                      <div className="shrink-0 tabular-nums font-medium">{reais(n.comissao)}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {devolucoes.length > 0 && (
-                <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                  + {reais(devolucoes.reduce((s, a) => s + a.valor, 0))} de desconto que volta: o cliente pagou.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-dashed">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="font-semibold">Pedidos a faturar</div>
-                <div className="text-xs text-muted-foreground tabular-nums">
-                  {aFaturar.reduce((s, p) => s + p.unidades, 0)} brownies
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Pedidos que você já lançou e ainda não têm nota. É previsão: vira comissão quando a nota sai no despacho, na
-                quinzena da data da nota.
-              </p>
-              {aFaturar.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum pedido esperando nota.</p>
-              ) : (
-                <ul className="divide-y rounded-md border text-sm">
-                  {aFaturar.map((p, i) => (
-                    <li key={`${p.cliente}-${i}`} className="flex items-start justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{p.cliente}</div>
-                        <div className="text-xs text-muted-foreground tabular-nums">
-                          {p.data_entrega ? `entrega ${diaMes(p.data_entrega)}` : "sem data"} · {p.unidades} brownies ·{" "}
-                          {ETAPA[p.etapa]}
-                          {p.sem_nota ? " · paga na entrega" : ""}
-                        </div>
-                        {p.quinzena && (
-                          <div className="text-xs text-muted-foreground">recebe em {dataBR(p.quinzena.pagamento)}, se sair na data</div>
-                        )}
-                      </div>
-                      <div className="shrink-0 tabular-nums font-medium text-muted-foreground">{reais(p.comissao)}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="font-semibold">Minhas contas</div>
-              {lancamentos.length === 0 && fechadasPendentes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Quando a Mischa's lançar sua comissão, a conta aparece aqui com o vencimento e se já foi paga.
-                </p>
-              ) : (
-                <ul className="divide-y rounded-md border text-sm">
-                  {fechadasPendentes.length > 0 && (
-                    <li className="flex items-start justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="font-medium">Quinzena fechada, aguardando lançamento</div>
-                        <div className="text-xs text-muted-foreground">
-                          {fechadasPendentes.length} {fechadasPendentes.length === 1 ? "nota" : "notas"} · paga em{" "}
-                          {dataBR(fechadasPendentes[0].pagamento)}
-                        </div>
-                      </div>
-                      <div className="shrink-0 tabular-nums font-medium">
-                        {reais(fechadasPendentes.reduce((s, n) => s + n.comissao, 0))}
-                      </div>
-                    </li>
-                  )}
-                  {lancamentos.map((l, i) => (
-                    <li key={`${l.codigo}-${i}`} className="flex items-start justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium tabular-nums">Vence {dataBR(l.vencimento)}</span>
-                          {l.situacao && (
-                            <Badge variant="outline" className={`border-0 ${SITUACAO_CONTA[l.situacao].classe}`}>
-                              {SITUACAO_CONTA[l.situacao].texto}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground tabular-nums">
-                          {l.notas} {l.notas === 1 ? "nota" : "notas"}
-                          {l.pago_em ? ` · paga em ${dataBR(l.pago_em)}` : ""}
-                        </div>
-                      </div>
-                      <div className="shrink-0 tabular-nums font-medium">{reais(l.liquido)}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+                    <ul className="divide-y rounded-md border text-sm">
+                      {riscos.map((r) => (
+                        <Linha
+                          key={r.nf_id}
+                          nome={r.cliente}
+                          detalhe={`${rotuloNota(r)} · venceu ${dataBR(r.vencimento)} · vira desconto em ${r.dias_para_desconto} ${r.dias_para_desconto === 1 ? "dia" : "dias"}`}
+                          classeDetalhe="text-amber-700 dark:text-amber-400"
+                          valor={reais(r.valor)}
+                        />
+                      ))}
+                      {descontos.map((a) => (
+                        <Linha
+                          key={a.nf_id}
+                          nome={a.cliente}
+                          detalhe={`${rotuloNota(a)} · venceu ${dataBR(a.vencimento)} · será descontado`}
+                          classeDetalhe="text-destructive"
+                          valor={`− ${reais(a.valor)}`}
+                          classeValor="text-destructive"
+                        />
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+          </Tabs>
         </>
       )}
     </div>

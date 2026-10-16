@@ -16,6 +16,7 @@ import TrocasAccordion from "@/components/agendamento/TrocasAccordion";
 import ObservacoesAgendamentoSection from "@/components/agendamento/ObservacoesAgendamentoSection";
 import StepperDisplays from "@/components/rep/pedidos/StepperDisplays";
 import { useInadimplencia } from "@/hooks/useInadimplencia";
+import { useComposicaoSortido } from "@/hooks/useComposicaoSortido";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AVISO_SEPARADO,
@@ -32,7 +33,6 @@ import {
   MINIMO_DISPLAYS,
   PedidoDisplays,
   SABORES,
-  SORTIDO,
   UNIDADES_POR_DISPLAY,
   atrasoBloqueiaPedido,
   dataEntrega,
@@ -42,7 +42,6 @@ import {
   totalUnidades,
 } from "@/utils/pedidoDisplays";
 
-const COMPOSICAO_SORTIDO = SABORES.map((s) => `${SORTIDO[s]} ${semBrownie(s)}`).join(", ");
 
 interface Props {
   cliente: ClienteDeDisplays;
@@ -69,6 +68,11 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
   const [obsClienteOriginal, setObsClienteOriginal] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // O que vai no sortido vem de Configurações › Proporções.
+  const { composicao } = useComposicaoSortido();
+  const composicaoSortido = SABORES.filter((s) => (composicao[s] ?? 0) > 0)
+    .map((s) => `${composicao[s]} ${semBrownie(s)}`)
+    .join(", ");
 
   // Pagamentos do cliente, lidos do Gestão Click: seguram pedido novo e definem o prazo do boleto.
   const { clientes: situacoes, loading: conferindoPagamentos } = useInadimplencia();
@@ -158,7 +162,7 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
         if (error) throw new Error("Não consegui salvar a observação do cliente.");
         setObsClienteOriginal(obsCliente);
       }
-      const resultado = await lancarPedido(cliente.id, pedido, trocas, obsPedido);
+      const resultado = await lancarPedido(cliente.id, pedido, trocas, composicao, obsPedido);
       toast.success(
         `${resultado.alterado ? "Pedido alterado" : "Pedido confirmado"}: entrega ${diaPorExtenso(resultado.data_entrega)}.`
       );
@@ -178,7 +182,7 @@ export default function FormularioPedidoDisplays({ cliente, pedidoAtual, aoSalva
         <CardContent className="p-4 divide-y">
           <StepperDisplays
             rotulo="Sortido"
-            detalhe={COMPOSICAO_SORTIDO}
+            detalhe={composicaoSortido}
             valor={pedido.sortido}
             aoMudar={(n) => setPedido({ ...pedido, sortido: n })}
           />

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   SORTIDO,
   UNIDADES_POR_DISPLAY,
+  composicaoOuPadrao,
+  validarComposicao,
   atrasoBloqueiaPedido,
   prazoDoBoleto,
   dataEntrega,
@@ -27,11 +29,32 @@ describe('display sortido', () => {
     expect(totalUnidades(pedido)).toBe(54);
     expect(expandirParaItens(pedido)).toEqual([
       { produto: 'Brownie Avelã', quantidade: 28 },
-      { produto: 'Brownie Stikadinho', quantidade: 10 },
-      { produto: 'Brownie Choco Duo', quantidade: 8 },
-      { produto: 'Brownie Tradicional', quantidade: 4 },
-      { produto: 'Brownie Meio Amargo', quantidade: 4 },
+      { produto: 'Brownie Stikadinho', quantidade: 8 },
+      { produto: 'Brownie Choco Duo', quantidade: 10 },
+      { produto: 'Brownie Tradicional', quantidade: 6 },
+      { produto: 'Brownie Meio Amargo', quantidade: 2 },
     ]);
+  });
+
+  it('usa a composição salva no lugar do padrão', () => {
+    const composicao = {
+      'Brownie Avelã': 6, 'Brownie Stikadinho': 6, 'Brownie Choco Duo': 6,
+      'Brownie Tradicional': 0, 'Brownie Meio Amargo': 0,
+    };
+    expect(expandirParaItens({ sortido: 2, sabores: {} }, composicao)).toEqual([
+      { produto: 'Brownie Avelã', quantidade: 12 },
+      { produto: 'Brownie Stikadinho', quantidade: 12 },
+      { produto: 'Brownie Choco Duo', quantidade: 12 },
+    ]);
+  });
+
+  it('composição que não soma 18 cai no padrão', () => {
+    const torta = { 'Brownie Avelã': 10, 'Brownie Stikadinho': 10 };
+    expect(validarComposicao(torta).ok).toBe(false);
+    expect(composicaoOuPadrao(torta)).toBe(SORTIDO);
+    expect(validarComposicao({ ...SORTIDO, 'Mini Brownie Tradicional': 0 }).ok).toBe(false);
+    expect(validarComposicao({ ...SORTIDO, 'Brownie Avelã': 4.5, 'Brownie Meio Amargo': 1.5 }).ok).toBe(false);
+    expect(validarComposicao(SORTIDO).ok).toBe(true);
   });
 
   it('display de um sabor só não cria linha dos outros sabores', () => {

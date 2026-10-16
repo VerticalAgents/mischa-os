@@ -21,14 +21,41 @@ export const SABORES = [
   'Brownie Meio Amargo',
 ] as const;
 
-/** O que vai dentro de um display sortido. Soma 18. */
+/**
+ * O que vai dentro de um display sortido, quando não há outra composição salva.
+ * Soma 18. A que vale é a de Configurações › Proporções › Display sortido
+ * (`configuracoes_sistema`, módulo `displays`); esta é a de 15/10/2026.
+ */
 export const SORTIDO: Record<string, number> = {
   'Brownie Avelã': 5,
-  'Brownie Stikadinho': 5,
-  'Brownie Choco Duo': 4,
-  'Brownie Tradicional': 2,
-  'Brownie Meio Amargo': 2,
+  'Brownie Choco Duo': 5,
+  'Brownie Stikadinho': 4,
+  'Brownie Tradicional': 3,
+  'Brownie Meio Amargo': 1,
 };
+
+export const MODULO_CONFIG_DISPLAYS = 'displays';
+
+export type ComposicaoSortido = Record<string, number>;
+
+/** Composição válida: só os sabores do canal, inteiros, somando um display. */
+export function validarComposicao(c: ComposicaoSortido | null | undefined): { ok: boolean; erro?: string } {
+  if (!c || typeof c !== 'object') return { ok: false, erro: 'Composição vazia.' };
+  const fora = Object.keys(c).find((nome) => !(SABORES as readonly string[]).includes(nome));
+  if (fora) return { ok: false, erro: `Sabor fora do canal: ${fora}` };
+  const torto = Object.values(c).find((n) => !Number.isInteger(Number(n)) || Number(n) < 0);
+  if (torto !== undefined) return { ok: false, erro: 'Cada sabor leva um número inteiro, zero ou mais.' };
+  const soma = Object.values(c).reduce((s, n) => s + Number(n), 0);
+  if (soma !== UNIDADES_POR_DISPLAY) {
+    return { ok: false, erro: `A soma tem que dar ${UNIDADES_POR_DISPLAY} (está ${soma}).` };
+  }
+  return { ok: true };
+}
+
+/** A composição salva, se for válida; senão, o padrão. */
+export function composicaoOuPadrao(c: ComposicaoSortido | null | undefined): ComposicaoSortido {
+  return validarComposicao(c).ok ? (c as ComposicaoSortido) : SORTIDO;
+}
 
 /** Preço por brownie pela quantidade de displays da entrega, da maior faixa para a menor. */
 export const FAIXAS = [
@@ -61,12 +88,13 @@ export function totalUnidades(pedido: PedidoDisplays): number {
 }
 
 /** Abre os displays em brownies por sabor, no formato de `itens_personalizados`. */
-export function expandirParaItens(pedido: PedidoDisplays): ItemPedido[] {
+export function expandirParaItens(pedido: PedidoDisplays, composicao: ComposicaoSortido = SORTIDO): ItemPedido[] {
   const sortidos = inteiro(pedido?.sortido);
+  const sortido = composicaoOuPadrao(composicao);
   return SABORES.map((produto) => ({
     produto,
     quantidade:
-      sortidos * (SORTIDO[produto] ?? 0) + inteiro(pedido?.sabores?.[produto]) * UNIDADES_POR_DISPLAY,
+      sortidos * inteiro(sortido[produto]) + inteiro(pedido?.sabores?.[produto]) * UNIDADES_POR_DISPLAY,
   })).filter((item) => item.quantidade > 0);
 }
 

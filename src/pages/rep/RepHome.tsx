@@ -54,7 +54,12 @@ export default function RepHome() {
   const [detalhe, setDetalhe] = useState<ConteudoDetalhe | null>(null);
 
 
-  const greetingName = user?.email?.split("@")[0] || "representante";
+  // O nome vem do e-mail de login (luis@...): primeira letra de cada palavra em maiúscula.
+  const greetingName = (user?.email?.split("@")[0] || "representante")
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
 
   const resumoInadimplencia = useMemo(() => {
     if (!inadimplencia) return { clientes: 0, valor: 0 };

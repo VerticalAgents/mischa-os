@@ -67,3 +67,54 @@ describe("montarEtiquetasPedido", () => {
     expect(somarDias(new Date(2026, 11, 20), 120)).toEqual(new Date(2027, 3, 19));
   });
 });
+
+describe("etiqueta por display", () => {
+  const sortido = (n: number) => [
+    { nome: "Brownie Avelã", quantidade: 5 * n },
+    { nome: "Brownie Stikadinho", quantidade: 4 * n },
+    { nome: "Brownie Choco Duo", quantidade: 5 * n },
+    { nome: "Brownie Tradicional", quantidade: 3 * n },
+    { nome: "Brownie Meio Amargo", quantidade: 1 * n },
+  ];
+
+  it("dá uma etiqueta por display sortido, com o conteúdo exato de cada um", () => {
+    const etiquetas = montarEtiquetasPedido("Atacado Simionato", sortido(6), HOJE, { sortido: 6, sabores: {} });
+    expect(etiquetas).toHaveLength(6);
+    expect(etiquetas.map((e) => e.tipo === "display" && e.rotulo)).toEqual([
+      "1 de 6", "2 de 6", "3 de 6", "4 de 6", "5 de 6", "6 de 6",
+    ]);
+    const [primeira] = etiquetas;
+    expect(primeira.tipo).toBe("display");
+    if (primeira.tipo !== "display") return;
+    expect(primeira.titulo).toBe("Display sortido");
+    expect(primeira.unidades).toBe(18);
+    expect(primeira.unidadesDoPedido).toBe(108);
+    expect(primeira.sabores.map((s) => s.quantidade)).toEqual([5, 4, 5, 3, 1]);
+  });
+
+  it("pedido misto: sortidos primeiro, depois os de um sabor só", () => {
+    const itens = sortido(2).map((i) => (i.nome === "Brownie Avelã" ? { ...i, quantidade: i.quantidade + 18 } : i));
+    const etiquetas = montarEtiquetasPedido("Mercado", itens, HOJE, {
+      sortido: 2,
+      sabores: { "Brownie Avelã": 1 },
+    });
+    expect(etiquetas.map((e) => e.tipo === "display" && e.titulo)).toEqual([
+      "Display sortido", "Display sortido", "Display Avelã",
+    ]);
+    const ultima = etiquetas[2];
+    expect(ultima.tipo === "display" && ultima.sabores).toEqual([{ nome: "Brownie Avelã", quantidade: 18 }]);
+    const primeira = etiquetas[0];
+    expect(primeira.tipo === "display" && primeira.sabores.find((s) => s.nome === "Brownie Avelã")?.quantidade).toBe(5);
+  });
+
+  it("itens que não fecham com os displays voltam para a etiqueta de pacote", () => {
+    const itens = sortido(2).map((i) => (i.nome === "Brownie Meio Amargo" ? { ...i, quantidade: 3 } : i));
+    const etiquetas = montarEtiquetasPedido("Mercado", itens, HOJE, { sortido: 2, sabores: {} });
+    expect(etiquetas.every((e) => e.tipo === "pacote")).toBe(true);
+  });
+
+  it("pedido sem displays continua por pacote", () => {
+    const etiquetas = montarEtiquetasPedido("Padaria", sortido(2), HOJE, null);
+    expect(etiquetas.map((e) => e.tipo)).toEqual(["pacote"]);
+  });
+});

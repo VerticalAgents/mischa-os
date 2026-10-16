@@ -107,6 +107,17 @@ export type EtiquetaPedido =
       sabores: ItemEtiqueta[];
     }
   | {
+      tipo: "display";
+      /** "1 de 6", contando os displays do pedido. */
+      rotulo: string;
+      /** "Display sortido" ou "Display Avelã". */
+      titulo: string;
+      /** Exatamente o que vai NESTE display (soma 18). */
+      sabores: ItemEtiqueta[];
+      unidades: number;
+      unidadesDoPedido: number;
+    }
+  | {
       tipo: "avulso";
       produto: string;
       /** "Pacote de 1 kg", só no nano (Lucca, 11/10/2026). Vazio nos outros. */
@@ -129,10 +140,86 @@ export function somarDias(data: Date, dias: number): Date {
  * `itens` é o que vai no pedido, já resolvido (pedido Padrão chega com a
  * proporção padrão calculada).
  */
+export const UNIDADES_DISPLAY_ETIQUETA = 18;
+
+/** Displays do pedido do representante, como estão em `agendamentos_clientes.displays`. */
+export interface DisplaysEtiqueta {
+  sortido?: number;
+  sabores?: Record<string, number>;
+}
+
+const semBrownie = (nome: string) => nome.replace(/^Brownie\s+/i, "");
+
+/**
+ * Uma etiqueta por display, com o que vai exatamente dentro dele (Lucca, 15/10/2026).
+ * O conteúdo do sortido sai dos itens do pedido (menos os displays de um sabor só,
+ * dividido pelo número de sortidos): a etiqueta mostra o que foi lançado, mesmo que
+ * a composição em Configurações mude depois. Se a conta não fecha (alguém mexeu nos
+ * itens à mão), devolve null e o pedido sai com a etiqueta de pacote de sempre.
+ */
+export function etiquetasDosDisplays(
+  displays: DisplaysEtiqueta | null | undefined,
+  brownies: ItemEtiqueta[]
+): EtiquetaPedido[] | null {
+  if (!displays) return null;
+  const inteiro = (n: unknown) => Math.max(0, Math.floor(Number(n) || 0));
+  const sortidos = inteiro(displays.sortido);
+  const deUmSabor = Object.entries(displays.sabores ?? {})
+    .map(([nome, n]) => ({ nome, n: inteiro(n) }))
+    .filter((d) => d.n > 0);
+  const total = sortidos + deUmSabor.reduce((s, d) => s + d.n, 0);
+  if (total === 0) return null;
+
+  const unidadesDoPedido = brownies.reduce((s, i) => s + i.quantidade, 0);
+  if (unidadesDoPedido !== total * UNIDADES_DISPLAY_ETIQUETA) return null;
+
+  const resto = new Map(brownies.map((i) => [i.nome, i.quantidade]));
+  for (const d of deUmSabor) {
+    const tem = resto.get(d.nome) ?? 0;
+    if (tem < d.n * UNIDADES_DISPLAY_ETIQUETA) return null;
+    resto.set(d.nome, tem - d.n * UNIDADES_DISPLAY_ETIQUETA);
+  }
+  const porSortido: ItemEtiqueta[] = [];
+  for (const [nome, qtd] of resto) {
+    if (qtd === 0) continue;
+    if (sortidos === 0 || qtd % sortidos !== 0) return null;
+    porSortido.push({ nome, quantidade: qtd / sortidos });
+  }
+
+  const etiquetas: EtiquetaPedido[] = [];
+  const rotulo = (i: number) => (total > 1 ? `${i} de ${total}` : "");
+  let n = 0;
+  for (let i = 0; i < sortidos; i++) {
+    etiquetas.push({
+      tipo: "display",
+      rotulo: rotulo(++n),
+      titulo: "Display sortido",
+      sabores: porSortido,
+      unidades: UNIDADES_DISPLAY_ETIQUETA,
+      unidadesDoPedido,
+    });
+  }
+  for (const d of deUmSabor) {
+    for (let i = 0; i < d.n; i++) {
+      etiquetas.push({
+        tipo: "display",
+        rotulo: rotulo(++n),
+        titulo: `Display ${semBrownie(d.nome)}`,
+        sabores: [{ nome: d.nome, quantidade: UNIDADES_DISPLAY_ETIQUETA }],
+        unidades: UNIDADES_DISPLAY_ETIQUETA,
+        unidadesDoPedido,
+      });
+    }
+  }
+  return etiquetas;
+}
+
 export function montarEtiquetasPedido(
   clienteNome: string,
   itens: ItemEtiqueta[],
-  hoje: Date
+  hoje: Date,
+  /** Pedido em displays (representantes): uma etiqueta por display em vez de por pacote. */
+  displays?: DisplaysEtiqueta | null
 ): EtiquetaPedido[] {
   if (CLIENTES_SEM_ETIQUETA.includes(normalizar(clienteNome))) return [];
 
@@ -148,7 +235,10 @@ export function montarEtiquetasPedido(
   const unidadesBrownie = brownies.reduce((s, i) => s + i.quantidade, 0);
   // Pedido só de nano/mini não tem saco de brownie. Pedido sem item nenhum
   // ainda rende uma etiqueta: o volume existe e precisa ser identificado.
-  if (unidadesBrownie > 0 || avulsos.length === 0) {
+  const porDisplay = unidadesBrownie > 0 ? etiquetasDosDisplays(displays, brownies) : null;
+  if (porDisplay) {
+    etiquetas.push(...porDisplay);
+  } else if (unidadesBrownie > 0 || avulsos.length === 0) {
     const pacotes = dividirEmPacotes(unidadesBrownie);
     for (const pacote of pacotes) {
       etiquetas.push({ tipo: "pacote", pacote, sabores: brownies });
