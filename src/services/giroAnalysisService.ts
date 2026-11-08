@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { casaComNomeRepresentante } from "@/utils/vendaDireta";
 
 export interface DadosAnaliseGiroConsolidados {
   cliente_id: string;
@@ -292,7 +293,7 @@ export class GiroAnalysisService {
     let filteredData = data || [];
     
     if (filtros.representante) {
-      filteredData = filteredData.filter(row => row.representante_nome === filtros.representante);
+      filteredData = filteredData.filter(row => casaComNomeRepresentante(filtros.representante, row.representante_nome));
     }
     if (filtros.rota) {
       filteredData = filteredData.filter(row => row.rota_entrega_nome === filtros.rota);

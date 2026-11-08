@@ -16,6 +16,10 @@ const corsHeaders = {
 };
 
 const GESTAOCLICK_BASE_URL = 'https://api.gestaoclick.com';
+// Vendedor da venda direta (cliente sem representante). Era o funcionario do antigo
+// representante "001- MISCHA'S", inativado em 04/11/2026. Quem tem representante sem
+// funcionario continua saindo sem vendedor.
+const VENDEDOR_VENDA_DIRETA = '1079190';
 
 interface GestaoClickConfig {
   access_token: string;
@@ -1269,7 +1273,9 @@ Deno.serve(async (req) => {
 
         // 9. Get vendedor_id from representante if mapped
         let vendedorId = config.vendedor_id;
-        if (cliente.representante_id) {
+        if (!cliente.representante_id) {
+          vendedorId = VENDEDOR_VENDA_DIRETA;
+        } else {
           const { data: representante } = await supabase
             .from('representantes')
             .select('gestaoclick_funcionario_id')

@@ -33,6 +33,7 @@ import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCate
 import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { toast } from "@/hooks/use-toast";
 import HorariosRecebimentoPicker from "./HorariosRecebimentoPicker";
+import CanalVendaField from "./CanalVendaField";
 import {
   type HorariosRecebimento,
   diasQueRecebem,
@@ -170,6 +171,8 @@ export default function ClienteFormDialog({
   const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
   const { representantes } = useSupabaseRepresentantes();
+  // Lado do toggle: separado do id porque "Representante" pode estar marcado antes de escolher quem.
+  const [comRepresentante, setComRepresentante] = useState(false);
   const { isRepresentante } = useUserRoles();
   const { representanteId: meuRepresentanteId, loading: loadingMeuRep } = useMyRepresentanteId();
   const isRep = isRepresentante();
@@ -286,15 +289,24 @@ export default function ClienteFormDialog({
     }));
   };
 
+  useEffect(() => {
+    setComRepresentante(!!formData.representanteId);
+  }, [open, cliente?.id, formData.representanteId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!isRep && comRepresentante && !formData.representanteId) {
+      toast({ title: "Representante", description: "Selecione o representante ou marque Venda direta.", variant: "destructive" });
+      return;
+    }
+
     const erroHorario = formData.horariosRecebimento ? validarHorarios(formData.horariosRecebimento) : null;
     if (erroHorario) {
       toast({ title: "Horário de recebimento", description: erroHorario, variant: "destructive" });
       return;
     }
-
+    
     console.log('📝 Iniciando submissão do formulário:', formData);
     setIsSaving(true);
 
@@ -773,35 +785,26 @@ export default function ClienteFormDialog({
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="representante">Representante</Label>
                   {isRep ? (
-                    <Input
-                      value={
-                        representantes.find((r) => r.id === formData.representanteId)?.nome
-                          ?? "Você"
-                      }
-                      disabled
-                      className="bg-muted"
-                    />
-                  ) : representantes.length === 0 && formData.representanteId ? (
-                    <Input value="Carregando..." disabled className="bg-muted" />
+                    <>
+                      <Label htmlFor="representante">Representante</Label>
+                      <Input
+                        value={
+                          representantes.find((r) => r.id === formData.representanteId)?.nome
+                            ?? "Você"
+                        }
+                        disabled
+                        className="bg-muted"
+                      />
+                    </>
                   ) : (
-                    <Select 
-                      key={`rep-${representantes.length}`}
-                      value={formData.representanteId?.toString() || undefined} 
-                      onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um representante" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {representantes.map((rep) => (
-                          <SelectItem key={rep.id} value={rep.id.toString()}>
-                            {rep.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CanalVendaField
+                      comRepresentante={comRepresentante}
+                      onComRepresentanteChange={setComRepresentante}
+                      representanteId={formData.representanteId}
+                      onRepresentanteChange={(id) => handleInputChange('representanteId', id)}
+                      representantes={representantes}
+                    />
                   )}
                 </div>
                 <div className="space-y-2">

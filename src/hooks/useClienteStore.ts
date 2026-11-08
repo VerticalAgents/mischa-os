@@ -35,6 +35,7 @@ interface ClienteState {
 import { sanitizeClienteData, createSafeClienteDefaults } from '@/utils/clienteDataSanitizer';
 import { lerHorarios } from '@/utils/horariosRecebimento';
 import { sincronizarClienteComGestaoClick } from '@/services/clientes/criarCliente';
+import { VENDA_DIRETA_ID } from "@/utils/vendaDireta";
 
 // FUNÇÃO ENHANCED - Debug em tempo real + Proteção de último recurso
 export function transformClienteToDbRow(c: any) {
@@ -562,8 +563,10 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         cliente.statusCliente === filtros.status;
 
       const matchesRepresentante = !filtros.representanteId || 
-        filtros.representanteId === 'Todos' || 
-        cliente.representanteId === filtros.representanteId;
+        filtros.representanteId === 'Todos' ||
+        (filtros.representanteId === VENDA_DIRETA_ID
+          ? !cliente.representanteId
+          : cliente.representanteId === filtros.representanteId);
 
       const matchesRotaEntrega = !filtros.rotaEntregaId || 
         filtros.rotaEntregaId === 'Todas' || 

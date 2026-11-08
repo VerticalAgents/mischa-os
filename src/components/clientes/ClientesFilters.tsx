@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import { rotuloDeStatus, STATUS_SELECIONAVEIS } from "@/utils/statusCliente";
+import { VENDA_DIRETA_ID, VENDA_DIRETA_ROTULO } from "@/utils/vendaDireta";
 
 // Define the available columns for the table
 export interface ColumnOption {
@@ -116,6 +117,7 @@ export default function ClientesFilters({
         }}
       >
         <option value="">Todos os representantes</option>
+        <option value={VENDA_DIRETA_ID}>{VENDA_DIRETA_ROTULO}</option>
         {representantes.filter(r => r.ativo).map(rep => (
           <option key={rep.id} value={rep.id}>
             {rep.nome}

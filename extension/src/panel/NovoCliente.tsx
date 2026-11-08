@@ -329,7 +329,7 @@ export default function NovoCliente({ nomeSugerido, telefone, aoCriar, aoCancela
               mudar({ representanteId: e.target.value ? Number(e.target.value) : null })
             }
           >
-            <option value="">sem representante</option>
+            <option value="">Venda direta</option>
             {representantes.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.nome}

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { Cliente } from "@/types";
 import { type Canal, canalDoItem, kgDoItem } from "@/utils/canalVenda";
+import { casaComFiltroRepresentante } from "@/utils/vendaDireta";
 
 interface EntregasRealizadasSemanelProps {
   semanaAtual: Date;
@@ -89,8 +90,7 @@ export default function EntregasRealizadasSemanal({
           const clienteIdsFiltrados = new Set(
             clientesProp
               .filter(c => {
-                const matchRep = representanteFiltro.length === 0 || 
-                  (c.representanteId && representanteFiltro.includes(c.representanteId));
+                const matchRep = casaComFiltroRepresentante(representanteFiltro, c.representanteId);
                 const matchRota = rotaFiltro.length === 0 || 
                   (c.rotaEntregaId && rotaFiltro.includes(c.rotaEntregaId));
                 return matchRep && matchRota;

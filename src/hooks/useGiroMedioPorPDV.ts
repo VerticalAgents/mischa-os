@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { isClienteOperacional, isClienteIndustrialPuro } from '@/utils/clienteTipo';
+import { casaComValorRepresentante } from "@/utils/vendaDireta";
 
 const CATEGORIA_DISTRIBUIDOR_ID = 16;
 
@@ -50,7 +51,7 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     let filtered = clientes.filter(c => c.statusCliente === 'Ativo' && isClienteOperacional(c));
     
     if (representanteId && representanteId !== 'todos') {
-      filtered = filtered.filter(c => c.representanteId?.toString() === representanteId);
+      filtered = filtered.filter(c => casaComValorRepresentante(representanteId, c.representanteId));
     }
     
     return filtered;

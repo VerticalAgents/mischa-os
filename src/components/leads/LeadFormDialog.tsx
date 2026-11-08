@@ -11,6 +11,7 @@ import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
 import { toast } from "sonner";
 import BuscaPorCep from "@/components/common/BuscaPorCep";
+import CanalVendaField from "@/components/clientes/CanalVendaField";
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -45,6 +46,12 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  // Lado do toggle: separado do id porque "Representante" pode estar marcado antes de escolher quem.
+  const [comRepresentante, setComRepresentante] = useState(false);
+
+  useEffect(() => {
+    setComRepresentante(!!formData.representanteId);
+  }, [open, lead?.id, formData.representanteId]);
   const [errors, setErrors] = useState<{ nome?: boolean; origem?: boolean; motivoPerda?: boolean }>({});
 
   useEffect(() => {
@@ -97,6 +104,11 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (comRepresentante && !formData.representanteId) {
+      toast.error("Selecione o representante ou marque Venda direta.");
+      return;
+    }
     
     const newErrors: { nome?: boolean; origem?: boolean; motivoPerda?: boolean } = {};
     
@@ -297,22 +309,13 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="representante">Representante</Label>
-                  <Select 
-                    value={formData.representanteId?.toString()} 
-                    onValueChange={(value) => setFormData({ ...formData, representanteId: value ? parseInt(value) : undefined })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um representante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {representantes.map((rep) => (
-                        <SelectItem key={rep.id} value={rep.id.toString()}>{rep.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <CanalVendaField
+                  comRepresentante={comRepresentante}
+                  onComRepresentanteChange={setComRepresentante}
+                  representanteId={formData.representanteId}
+                  onRepresentanteChange={(id) => setFormData((atual) => ({ ...atual, representanteId: id }))}
+                  representantes={representantes}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
                   <Select 

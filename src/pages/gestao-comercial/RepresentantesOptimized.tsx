@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOptimizedRepresentantesData } from "@/hooks/useOptimizedRepresentantesData";
 import RepresentantesIndicadoresOptimized from "@/components/gestao-comercial/RepresentantesIndicadoresOptimized";
 import RepresentantesCharts from "@/components/gestao-comercial/RepresentantesCharts";
+import { VENDA_DIRETA_ID, VENDA_DIRETA_ROTULO } from "@/utils/vendaDireta";
 
 // Lazy load heavy components
 const SortableClientesTable = lazy(() => import("@/components/common/SortableClientesTable"));
@@ -91,7 +92,8 @@ export default function RepresentantesOptimized({ isActive }: RepresentantesOpti
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os Representantes</SelectItem>
-              {representantes.map((rep) => (
+              <SelectItem value={String(VENDA_DIRETA_ID)}>{VENDA_DIRETA_ROTULO}</SelectItem>
+              {representantes.filter((rep) => rep.ativo).map((rep) => (
                 <SelectItem key={rep.id} value={rep.id.toString()}>
                   {rep.nome}
                 </SelectItem>

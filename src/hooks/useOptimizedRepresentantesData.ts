@@ -4,6 +4,7 @@ import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
 import { useGiroMedioPorPDV } from '@/hooks/useGiroMedioPorPDV';
 import { isClienteOperacional } from '@/utils/clienteTipo';
+import { VENDA_DIRETA_ID, VENDA_DIRETA_ROTULO, casaComValorRepresentante } from "@/utils/vendaDireta";
 
 export const useOptimizedRepresentantesData = (representanteSelecionado: string, isActive: boolean) => {
   // Only load data when tab is active
@@ -17,7 +18,7 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
   const filteredClientes = useMemo(() => {
     return representanteSelecionado === "todos" 
       ? clientes 
-      : clientes.filter(cliente => cliente.representanteId?.toString() === representanteSelecionado);
+      : clientes.filter(cliente => casaComValorRepresentante(representanteSelecionado, cliente.representanteId));
   }, [clientes, representanteSelecionado]);
 
   const categorizedClientes = useMemo(() => {
@@ -86,6 +87,7 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
 
   const representanteNome = useMemo(() => {
     if (representanteSelecionado === "todos") return "Todos os Representantes";
+    if (representanteSelecionado === String(VENDA_DIRETA_ID)) return VENDA_DIRETA_ROTULO;
     const rep = representantes.find(r => r.id.toString() === representanteSelecionado);
     return rep ? rep.nome : "Representante não encontrado";
   }, [representanteSelecionado, representantes]);

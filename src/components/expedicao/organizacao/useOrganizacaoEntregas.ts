@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { hojeISO } from '@/utils/dataLocal';
+import { VENDA_DIRETA_ROTULO } from "@/utils/vendaDireta";
 
 interface EntregaOrganizada {
   id: string;
@@ -137,7 +138,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
       // Normalizar e mapear entregas
       const entregasProcessadas: EntregaOrganizada[] = agendamentos.map((ag: any, index: number) => {
         const cliente = ag.clientes;
-        const representanteNome = representantesMap.get(cliente?.representante_id) || 'Sem representante';
+        const representanteNome = representantesMap.get(cliente?.representante_id) || VENDA_DIRETA_ROTULO;
         
         // Buscar categorias habilitadas do cliente
         const categoriasHabilitadas: number[] = Array.isArray(cliente?.categorias_habilitadas) 

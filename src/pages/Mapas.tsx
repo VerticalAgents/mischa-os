@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MapPin, Search, Filter, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { VENDA_DIRETA_ID, VENDA_DIRETA_ROTULO, casaComFiltroRepresentante } from "@/utils/vendaDireta";
 
 // Token público do Mapbox
 const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVjY2FtaWxsZXRvIiwiYSI6ImNtZ3Bkc2txZTJiNHQya29qN2N0azZqbGwifQ.l_osvQeh-cxxof4ndAQ6jA';
@@ -81,8 +82,8 @@ const Mapas = () => {
     
     // Filter by representantes
     if (selectedRepresentantes.length > 0) {
-      filtered = filtered.filter(cliente => 
-        cliente.representante_id && selectedRepresentantes.includes(cliente.representante_id)
+      filtered = filtered.filter(cliente =>
+        casaComFiltroRepresentante(selectedRepresentantes, cliente.representante_id)
       );
     }
     
@@ -138,6 +139,7 @@ const Mapas = () => {
       const { data, error } = await supabase
         .from('representantes')
         .select('id, nome')
+        .eq('ativo', true)
         .order('nome');
 
       if (error) throw error;
@@ -321,7 +323,7 @@ const Mapas = () => {
     ];
 
     const getRepresentanteColor = (representanteId: number | undefined): string => {
-      if (!representanteId) return '#9ca3af'; // Cinza para sem representante
+      if (!representanteId) return '#9ca3af'; // Cinza para venda direta
       const index = representantes.findIndex(r => r.id === representanteId);
       return representanteColors[index % representanteColors.length];
     };
@@ -436,6 +438,22 @@ const Mapas = () => {
           </PopoverTrigger>
           <PopoverContent className="w-56 p-3">
             <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rep-venda-direta"
+                  checked={selectedRepresentantes.includes(VENDA_DIRETA_ID)}
+                  onCheckedChange={(checked) => {
+                    setSelectedRepresentantes(
+                      checked
+                        ? [...selectedRepresentantes, VENDA_DIRETA_ID]
+                        : selectedRepresentantes.filter(id => id !== VENDA_DIRETA_ID)
+                    );
+                  }}
+                />
+                <label htmlFor="rep-venda-direta" className="text-sm font-medium leading-none cursor-pointer">
+                  {VENDA_DIRETA_ROTULO}
+                </label>
+              </div>
               {representantes.map((rep) => (
                 <div key={rep.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -677,7 +695,7 @@ const Mapas = () => {
                   className="w-4 h-4 rounded-full border-2 border-white shadow-sm flex-shrink-0"
                   style={{ backgroundColor: '#9ca3af' }}
                 />
-                <span className="text-xs text-muted-foreground">Sem representante</span>
+                <span className="text-xs text-muted-foreground">{VENDA_DIRETA_ROTULO}</span>
               </div>
             </div>
           </div>

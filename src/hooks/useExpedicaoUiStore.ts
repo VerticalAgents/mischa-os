@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { VENDA_DIRETA_ID } from "@/utils/vendaDireta";
 
 interface ExpedicaoUiState {
   // Filtros da Separação de Pedidos
@@ -109,7 +110,15 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
     }),
     {
       name: 'expedicao-ui-state',
-      version: 8,
+      version: 9,
+      // 04/11/2026: o representante 4 ("001- MISCHA'S") virou Venda direta. Sem isto,
+      // quem tinha ele marcado ficaria com um filtro que nao aparece mais na tela.
+      migrate: (salvo: any, versao: number) => {
+        if (versao !== 8 || !salvo) return undefined as any;
+        const lista: number[] = salvo.filtroRepresentantes ?? [];
+        const trocada = lista.map((id) => (id === 4 ? VENDA_DIRETA_ID : id));
+        return { ...salvo, filtroRepresentantes: [...new Set(trocada)] };
+      },
     }
   )
 );

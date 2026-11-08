@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
 import { GiroAnalysisFilters } from '@/types/giroAnalysis';
+import { casaComNomeRepresentante } from "@/utils/vendaDireta";
 
 export interface ClienteCurvaABC {
   cliente_id: string;
@@ -186,7 +187,7 @@ export function useCurvaABC(periodo: string = '90d', filtros: GiroAnalysisFilter
       // Filtrar por representante
       if (filtros.representante) {
         const repNome = c.representante_id ? repMap.get(c.representante_id) : null;
-        if (repNome !== filtros.representante) return false;
+        if (!casaComNomeRepresentante(filtros.representante, repNome)) return false;
       }
       
       // Filtrar por rota

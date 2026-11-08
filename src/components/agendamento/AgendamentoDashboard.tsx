@@ -42,6 +42,7 @@ import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useTabelaPrecos } from "@/hooks/useTabelaPrecos";
 import { valorDoPedido } from "@/utils/faturamentoPedido";
 import { SCORE_PROVAVEL, type Canal, ehTerceirizacao, indexarProdutos, quantidadeNoCanal, quebrarPorCanal, resumoPorCanal } from "@/utils/canalVenda";
+import { VENDA_DIRETA_ID, VENDA_DIRETA_ROTULO, casaComFiltroRepresentante } from "@/utils/vendaDireta";
 
 // Componente para indicadores visuais de entrega
 const IndicadoresEntrega = ({ 
@@ -243,9 +244,8 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     
     // Filtro por representante (multi-select)
     if (representanteFiltro.length > 0) {
-      filtrados = filtrados.filter(agendamento => 
-        agendamento.cliente.representanteId && 
-        representanteFiltro.includes(agendamento.cliente.representanteId)
+      filtrados = filtrados.filter(agendamento =>
+        casaComFiltroRepresentante(representanteFiltro, agendamento.cliente.representanteId)
       );
     }
     
@@ -293,8 +293,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
         .filter(cliente => {
           const matchNome = !filtroNome.trim() || 
             cliente.nome.toLowerCase().includes(filtroNome.toLowerCase().trim());
-          const matchRep = representanteFiltro.length === 0 || 
-            (cliente.representanteId && representanteFiltro.includes(cliente.representanteId));
+          const matchRep = casaComFiltroRepresentante(representanteFiltro, cliente.representanteId);
           const matchRota = rotaFiltro.length === 0 || 
             (cliente.rotaEntregaId && rotaFiltro.includes(cliente.rotaEntregaId));
           return matchNome && matchRep && matchRota;
@@ -583,7 +582,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     for (const a of agSemana) {
       const repId = a.cliente.representanteId;
       const rep = repId ? representantes.find(r => r.id === repId) : undefined;
-      const nome = rep ? rep.nome : (repId ? `Rep #${repId}` : "Sem representante");
+      const nome = rep ? rep.nome : (repId ? `Rep #${repId}` : VENDA_DIRETA_ROTULO);
       const unidades = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
       const b = ensure(nome);
       b.unidades += unidades;
@@ -685,7 +684,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
       const clientesPorRep: Record<string, string[]> = {};
       for (const a of ags) {
         const repId = a.cliente.representanteId;
-        const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : "Sem representante";
+        const nome = repId ? (representantes.find(r => r.id === repId)?.nome || `Rep #${repId}`) : VENDA_DIRETA_ROTULO;
         const u = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
         porRep[nome] = (porRep[nome] || 0) + u;
         if (!clientesPorRep[nome]) clientesPorRep[nome] = [];
@@ -1021,7 +1020,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
     const nomeRepresentante = representanteFiltro.length === 0 
       ? "Todos os representantes" 
       : representanteFiltro.length === 1
-      ? representantes.find(r => r.id === representanteFiltro[0])?.nome || "Representante"
+      ? representanteFiltro[0] === VENDA_DIRETA_ID
+        ? VENDA_DIRETA_ROTULO
+        : representantes.find(r => r.id === representanteFiltro[0])?.nome || "Representante"
       : `${representanteFiltro.length} representantes`;
     
     doc.text(`Representante: ${nomeRepresentante}`, 20, 35);
@@ -1700,17 +1701,17 @@ export default function AgendamentoDashboard({ hideExportPDF = false, repMode = 
                     const repId = ag.cliente.representanteId;
                     const repNome = repId
                       ? representantes.find(r => r.id === repId)?.nome || `Representante #${repId}`
-                      : 'Sem representante';
+                      : VENDA_DIRETA_ROTULO;
                     if (!previstosPorRepresentante.has(repNome)) {
                       previstosPorRepresentante.set(repNome, []);
                     }
                     previstosPorRepresentante.get(repNome)!.push(ag);
                   });
 
-                  // Ordenar grupos: representantes nomeados primeiro, "Sem representante" por último
+                  // Ordenar grupos: representantes nomeados primeiro, "Venda direta" por último
                   const gruposOrdenados = Array.from(previstosPorRepresentante.entries()).sort((a, b) => {
-                    if (a[0] === 'Sem representante') return 1;
-                    if (b[0] === 'Sem representante') return -1;
+                    if (a[0] === VENDA_DIRETA_ROTULO) return 1;
+                    if (b[0] === VENDA_DIRETA_ROTULO) return -1;
                     return a[0].localeCompare(b[0]);
                   });
 

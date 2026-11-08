@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Filter, X, RefreshCw } from 'lucide-react';
 import { GiroAnalysisFilters } from '@/types/giroAnalysis';
+import { VENDA_DIRETA_ROTULO } from "@/utils/vendaDireta";
 
 interface GiroAnalysisFiltersProps {
   filtros: GiroAnalysisFilters;
@@ -154,6 +155,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value={VENDA_DIRETA_ROTULO}>{VENDA_DIRETA_ROTULO}</SelectItem>
                   {validRepresentantes.map((rep) => {
                     const safeValue = rep && rep.trim() ? rep.trim() : null;
                     if (!safeValue) return null;

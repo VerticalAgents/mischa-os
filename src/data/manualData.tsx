@@ -178,7 +178,7 @@ export const manualSections: ManualSection[] = [
         description: 'Registre os vendedores ou representantes',
         actionUrl: '/configuracoes?tab=clientes',
         tips: [
-          'Associe cada cliente ao seu representante',
+          'No cadastro do cliente, escolha Venda direta ou o representante dele',
           'Defina comissões quando aplicável',
           'Mantenha contatos atualizados'
         ]

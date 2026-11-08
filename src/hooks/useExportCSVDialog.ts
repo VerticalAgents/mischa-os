@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useExportacao } from './useExportacao';
+import { casaComFiltroRepresentante } from "@/utils/vendaDireta";
 
 interface PedidoExpedicao {
   id: string;
@@ -29,9 +30,7 @@ export const useExportCSVDialog = (entregas: PedidoExpedicao[]) => {
     if (filtroRepresentantes.length === 0) {
       return entregas;
     }
-    return entregas.filter(e => 
-      e.representante_id && filtroRepresentantes.includes(e.representante_id)
-    );
+    return entregas.filter(e => casaComFiltroRepresentante(filtroRepresentantes, e.representante_id));
   }, [entregas, filtroRepresentantes]);
 
   // Sincronizar seleção quando as entregas filtradas mudam

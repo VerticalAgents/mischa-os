@@ -462,6 +462,10 @@ export async function listarCategoriasProduto(): Promise<Categoria[]> {
 }
 
 export async function listarRepresentantes(): Promise<{ id: number; nome: string }[]> {
-  const { data } = await supabase.from('representantes').select('id, nome').order('nome');
+  const { data } = await supabase
+    .from('representantes')
+    .select('id, nome')
+    .eq('ativo', true)
+    .order('nome');
   return (data || []) as { id: number; nome: string }[];
 }

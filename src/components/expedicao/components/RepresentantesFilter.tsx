@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Users, ChevronDown } from "lucide-react";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { VENDA_DIRETA_ID, VENDA_DIRETA_ROTULO } from "@/utils/vendaDireta";
 
 interface RepresentantesFilterProps {
   selectedIds: number[];
@@ -24,8 +25,8 @@ export const RepresentantesFilter = ({
   const [open, setOpen] = React.useState(false);
 
   const representantesAtivos = representantes.filter((r) => r.ativo);
-  const SEM_REPRESENTANTE_ID = -1;
-  const totalOpcoes = representantesAtivos.length + 1; // +1 para "Sem representante"
+  const SEM_REPRESENTANTE_ID = VENDA_DIRETA_ID;
+  const totalOpcoes = representantesAtivos.length + 1; // +1 para "Venda direta"
 
   const handleToggle = (id: number) => {
     if (selectedIds.includes(id)) {
@@ -49,7 +50,7 @@ export const RepresentantesFilter = ({
   const getButtonText = () => {
     if (noneSelected || allSelected) return "Todos os representantes";
     if (selectedIds.length === 1) {
-      if (selectedIds[0] === SEM_REPRESENTANTE_ID) return "Sem representante";
+      if (selectedIds[0] === SEM_REPRESENTANTE_ID) return VENDA_DIRETA_ROTULO;
       const rep = representantesAtivos.find((r) => r.id === selectedIds[0]);
       return rep?.nome || "1 representante";
     }
@@ -109,7 +110,7 @@ export const RepresentantesFilter = ({
           </div>
         </div>
         <div className="max-h-[300px] overflow-y-auto p-2">
-          {/* Sem representante */}
+          {/* Venda direta */}
           <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
             <Checkbox
               checked={selectedIds.includes(SEM_REPRESENTANTE_ID)}
@@ -120,7 +121,7 @@ export const RepresentantesFilter = ({
               htmlFor="rep-sem"
               className="flex-1 cursor-pointer text-sm italic text-muted-foreground"
             >
-              Sem representante
+              {VENDA_DIRETA_ROTULO}
             </label>
           </div>
           {representantesAtivos.map((rep) => (

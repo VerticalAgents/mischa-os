@@ -7,6 +7,7 @@ import { useClienteStore } from "@/hooks/useClienteStore";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GiroAnalysisFilters } from "@/types/giroAnalysis";
+import { casaComNomeRepresentante } from "@/utils/vendaDireta";
 
 const SortableClientesTable = lazy(() => import("@/components/common/SortableClientesTable"));
 
@@ -86,7 +87,7 @@ export function StatusDetalhamento({ filtros }: StatusDetalhamentoProps) {
     if (filtros.representante) {
       filtered = filtered.filter(c => {
         const repNome = c.representanteId ? representanteMap.get(c.representanteId) : null;
-        return repNome === filtros.representante;
+        return casaComNomeRepresentante(filtros.representante, repNome);
       });
     }
 

@@ -294,7 +294,11 @@ export async function entregasDaSemana(padrao?: number | null): Promise<EntregaF
 export const MISCHAS = 'mischas';
 
 export async function listarCarteiras(): Promise<{ chave: string; nome: string }[]> {
-  const { data } = await supabase.from('representantes').select('id, nome').order('nome');
+  const { data } = await supabase
+    .from('representantes')
+    .select('id, nome')
+    .eq('ativo', true)
+    .order('nome');
 
   return [
     { chave: MISCHAS, nome: "Mischa's (direto)" },
@@ -311,7 +315,11 @@ export const carteiraDaParada = (p: ParadaDaRota) =>
 export async function lerCarteirasEscolhidas(contatoId: string): Promise<string[] | null> {
   const chave = `carteiras-${contatoId}`;
   const guardado = await chrome.storage.local.get(chave);
-  return (guardado?.[chave] as string[]) ?? null;
+  const carteiras = guardado?.[chave] as string[] | undefined;
+  if (!carteiras) return null;
+  // Ate 04/11/2026 a venda direta era o representante 4 ("001- MISCHA'S"). Quem tinha
+  // essa carteira guardada perderia esses clientes da rota.
+  return [...new Set(carteiras.map((c) => (c === '4' ? MISCHAS : c)))];
 }
 
 export async function guardarCarteirasEscolhidas(contatoId: string, carteiras: string[]) {

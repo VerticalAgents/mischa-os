@@ -9,6 +9,7 @@ import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
 import { SelecaoPedidosImpressaoDialog } from "./SelecaoPedidosImpressaoDialog";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { calcularQuantidadesPadrao, ordenarItensPorOrdemCategoria } from "@/utils/proporcoesPadrao";
+import { VENDA_DIRETA_ROTULO } from "@/utils/vendaDireta";
 
 interface TrocaPendente {
   produto_id?: string;
@@ -278,15 +279,15 @@ export const PrintingActions = ({
     listaAtual.forEach(pedido => {
       const repNome = pedido.representante_id
         ? representantes.find(r => r.id === pedido.representante_id)?.nome || `Representante #${pedido.representante_id}`
-        : 'Sem representante';
+        : VENDA_DIRETA_ROTULO;
       if (!gruposRepresentante.has(repNome)) gruposRepresentante.set(repNome, []);
       gruposRepresentante.get(repNome)!.push(pedido);
     });
 
-    // Ordenar: nomes alfabéticos, "Sem representante" por último
+    // Ordenar: nomes alfabéticos, "Venda direta" por último
     const gruposOrdenados = Array.from(gruposRepresentante.entries()).sort(([a], [b]) => {
-      if (a === 'Sem representante') return 1;
-      if (b === 'Sem representante') return -1;
+      if (a === VENDA_DIRETA_ROTULO) return 1;
+      if (b === VENDA_DIRETA_ROTULO) return -1;
       return a.localeCompare(b);
     });
 
